@@ -1,0 +1,3 @@
+# Keep new demo asset pins stable; existing Parsing design text is LF-normalized for its file pin.
+*.json -text
+*.yaml -text

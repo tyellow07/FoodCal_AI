@@ -1,0 +1,23 @@
+{
+  "fixture_version": 1,
+  "usage": "synthetic/test_only",
+  "image": {"image_id": "synthetic-vegetable-canvas-v1", "width": 640, "height": 480},
+  "annotations": [
+    {
+      "annotation_id": "annotation-1", "ingredient_candidate": "小黃瓜",
+      "status": "observed_candidate", "confidence": null,
+      "image_region": {"format": "xyxy", "coordinate_space": "original_image_pixels", "x_min": 100, "y_min": 80, "x_max": 220, "y_max": 240}
+    },
+    {
+      "annotation_id": "annotation-2", "ingredient_candidate": "紅蘿蔔",
+      "status": "uncertain", "confidence": null,
+      "image_region": {"format": "xyxy", "coordinate_space": "original_image_pixels", "x_min": 250, "y_min": 100, "x_max": 330, "y_max": 210}
+    }
+  ],
+  "recipe": {
+    "recipe_id": "synthetic-recipe-v1",
+    "source": {"source_id": "visual-demo-fixture", "reference": "fixture://visual_ingredients_v1/fixture.json", "kind": "test_fixture", "review_status": "test_only"},
+    "ingredients": ["小黃瓜", "紅蘿蔔", "烹調油", "糖"]
+  },
+  "hidden_candidates": ["烹調油", "糖"]
+}

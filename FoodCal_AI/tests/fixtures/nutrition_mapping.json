@@ -1,0 +1,38 @@
+{
+  "kind": "synthetic",
+  "review_status": "test_only",
+  "entries": [
+    {
+      "entry_id": "synthetic-chicken-breast-raw",
+      "ingredient_name": "雞胸肉",
+      "identity": {"food": "chicken", "part": "breast", "state": "raw", "quality": "synthetic_unspecified_grade", "weight_basis": "edible_portion"},
+      "source": {"source_id": "foodcal-synthetic-nutrition", "reference": "tests/fixtures/nutrition_mapping.json#synthetic-chicken-breast-raw", "kind": "synthetic", "review_status": "test_only"},
+      "nutrient_basis": "per_100g_edible_portion",
+      "nutrients": null
+    },
+    {
+      "entry_id": "synthetic-salt",
+      "ingredient_name": "鹽",
+      "identity": {"food": "salt", "part": "whole_product", "state": "as_supplied", "quality": "synthetic_unspecified_grade", "weight_basis": "edible_portion"},
+      "source": {"source_id": "foodcal-synthetic-nutrition", "reference": "tests/fixtures/nutrition_mapping.json#synthetic-salt", "kind": "synthetic", "review_status": "test_only"},
+      "nutrient_basis": "per_100g_edible_portion",
+      "nutrients": null
+    },
+    {
+      "entry_id": "synthetic-beef-raw",
+      "ingredient_name": "牛肉",
+      "identity": {"food": "beef", "part": "synthetic_cut_a", "state": "raw", "quality": "synthetic_unspecified_grade", "weight_basis": "edible_portion"},
+      "source": {"source_id": "foodcal-synthetic-nutrition", "reference": "tests/fixtures/nutrition_mapping.json#synthetic-beef-raw", "kind": "synthetic", "review_status": "test_only"},
+      "nutrient_basis": "per_100g_edible_portion",
+      "nutrients": null
+    },
+    {
+      "entry_id": "synthetic-beef-cooked",
+      "ingredient_name": "牛肉",
+      "identity": {"food": "beef", "part": "synthetic_cut_a", "state": "cooked", "quality": "synthetic_unspecified_grade", "weight_basis": "edible_portion"},
+      "source": {"source_id": "foodcal-synthetic-nutrition", "reference": "tests/fixtures/nutrition_mapping.json#synthetic-beef-cooked", "kind": "synthetic", "review_status": "test_only"},
+      "nutrient_basis": "per_100g_edible_portion",
+      "nutrients": null
+    }
+  ]
+}

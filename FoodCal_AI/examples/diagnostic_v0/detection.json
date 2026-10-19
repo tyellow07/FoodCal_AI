@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "status": "detections_available",
+  "image": {
+    "source": "test://synthetic-image-v0",
+    "width": 640,
+    "height": 480
+  },
+  "model": {
+    "identifier": "synthetic-detection-v0",
+    "kind": "synthetic_fixture",
+    "class_count": 15
+  },
+  "inference_settings": {
+    "executed": false
+  },
+  "detections": [
+    {
+      "detection_id": 1,
+      "class_id": 7,
+      "class_name": "cold_noodle",
+      "confidence": 0.8,
+      "interpretation": "candidate",
+      "bounding_box": {
+        "format": "xyxy",
+        "coordinate_space": "original_image_pixels",
+        "x_min": 10.0,
+        "y_min": 20.0,
+        "x_max": 210.0,
+        "y_max": 250.0
+      },
+      "model_identifier": "synthetic-detection-v0"
+    },
+    {
+      "detection_id": 2,
+      "class_id": 14,
+      "class_name": "turkey_rice",
+      "confidence": 0.8,
+      "interpretation": "candidate",
+      "bounding_box": {
+        "format": "xyxy",
+        "coordinate_space": "original_image_pixels",
+        "x_min": 20.0,
+        "y_min": 20.0,
+        "x_max": 220.0,
+        "y_max": 250.0
+      },
+      "model_identifier": "synthetic-detection-v0"
+    }
+  ],
+  "limitations": [
+    "Synthetic fixture replay, not image inference.",
+    "Boxes and classes are protocol examples, not verified food."
+  ]
+}
