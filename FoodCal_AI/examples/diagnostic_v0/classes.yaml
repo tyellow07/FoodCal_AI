@@ -1,0 +1,19 @@
+names:
+- Over-easy egg
+- bawan
+- beef_noodles
+- braised_napa_cabbage
+- braised_pork_over_rice
+- chicken_mushroom_soup
+- chinese_pickled_cucumber
+- cold_noodle
+- deep-fried_chicken_cutlets
+- egg_pancake_roll
+- fried-spanish_mackerel_thick_soup
+- fried_instant_noodles
+- fried_rice_noodles
+- loofah
+- turkey_rice
+fixture_kind: taxonomy_only
+authority_reference: data/roboflow_taiwanese_food_detection/foodcal_data.yaml
+authority_sha256: a96e7994cffdd148ac5a84c18fa24308c079189e1e78d4e578ff119c11eefbb9

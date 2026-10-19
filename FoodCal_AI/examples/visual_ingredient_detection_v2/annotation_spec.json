@@ -1,0 +1,23 @@
+{
+  "spec_version": "ingredient-bbox-v2-draft-0",
+  "usage": "diagnostic/test_only",
+  "status": "annotation_pilot_not_training_ready",
+  "class_namespace": "new_ingredient_model_not_existing_yolo_ids",
+  "classes": [
+    {"class_id": 0, "name": "visible_fried_egg", "definition": "可見蛋白與蛋黃構成的煎蛋外觀組件；不核可 over-easy 工法", "granularity": "visible_instance", "exclude": ["omelette", "scrambled_egg", "egg_pancake_roll", "hidden_egg", "egg_defined_only_by_recipe"]},
+    {"class_id": 1, "name": "cooked_rice_region", "definition": "可辨識熟米粒構成的連續可見區域，不是整碗飯菜", "granularity": "visible_contiguous_group", "exclude": ["whole_rice_dish_box", "covered_or_hidden_rice", "uncertain_grain_identity"]},
+    {"class_id": 2, "name": "cooked_noodle_region", "definition": "形態可辨的熟麵條連續可見區域，保留小麥／米等身分未知", "granularity": "visible_contiguous_group", "exclude": ["whole_noodle_dish_box", "hidden_noodles", "sprouts_or_vegetable_strips_if_uncertain"]}
+  ],
+  "deferred_candidates": ["visible_meat_piece_pending_species_and_coating_policy", "vegetable_piece_pending_identity", "loofah_pending_semantic_review"],
+  "record_required": ["annotation_id", "spec_version", "source_id", "image_sha256", "license_evidence_ref", "source_group_id", "split", "class_id", "bounding_box", "visibility", "occlusion", "truncation", "semantic_review_status", "review_process", "uncertainty_reason"],
+  "bounding_box": {"format": "xyxy", "coordinate_space": "original_image_pixels", "endpoints": "half_open", "bounds": "0 <= x_min < x_max <= width; 0 <= y_min < y_max <= height", "policy": "tight_visible_extent; never infer amodal extent; separated visible groups use separate boxes"},
+  "visibility_values": ["clear", "partial", "indeterminate"],
+  "occlusion_values": ["none", "partial", "unknown"],
+  "truncation_values": ["none", "image_boundary", "unknown"],
+  "semantic_review_status_values": ["accepted_for_pilot_annotation", "ambiguous", "rejected", "insufficient_evidence"],
+  "training_export": {"allowed_status": "accepted_for_pilot_annotation", "requires_independent_review": true, "unresolved_region_handling": "exclude_or_quarantine_image_not_unlabeled_negative", "original_dataset_mutation_allowed": false},
+  "split_policy": {"unit": "source_and_near_duplicate_group", "target_ratio": [0.7, 0.15, 0.15], "seed": 42, "exact_hash_match_must_share_split": true, "filename_prefix_is_candidate_link": true, "visual_near_duplicate_review_required": true, "test_is_locked_before_training": true},
+  "nutrition_eligible": false,
+  "photo_portion_grams": null,
+  "calorie_estimate": "unavailable"
+}

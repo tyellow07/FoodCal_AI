@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "recipes": [
+    {
+      "recipe_id": "fixture-cold-noodle-a",
+      "name": "[TEST FIXTURE] cold_noodle candidate A",
+      "food_class": {"class_id": 7, "class_name": "cold_noodle"},
+      "source": {
+        "source_id": "foodcal-test-fixtures",
+        "kind": "test_fixture",
+        "review_status": "test_only",
+        "reference": "tests/fixtures/recipe_catalog.json#fixture-cold-noodle-a"
+      },
+      "ingredients": ["TEST_ONLY ingredient token"],
+      "cooking_methods": ["TEST_ONLY preparation token"]
+    },
+    {
+      "recipe_id": "fixture-cold-noodle-b",
+      "name": "[TEST FIXTURE] cold_noodle candidate B",
+      "food_class": {"class_id": 7, "class_name": "cold_noodle"},
+      "source": {
+        "source_id": "foodcal-test-fixtures",
+        "kind": "test_fixture",
+        "review_status": "test_only",
+        "reference": "tests/fixtures/recipe_catalog.json#fixture-cold-noodle-b"
+      }
+    },
+    {
+      "recipe_id": "fixture-turkey-rice",
+      "name": "[TEST FIXTURE] turkey_rice candidate",
+      "food_class": {"class_id": 14, "class_name": "turkey_rice"},
+      "source": {
+        "source_id": "foodcal-test-fixtures",
+        "kind": "test_fixture",
+        "review_status": "test_only",
+        "reference": "tests/fixtures/recipe_catalog.json#fixture-turkey-rice"
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+# Windows CRLF is a line terminator; retain checks for actual trailing spaces.
+* whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Preserve experiment input/evidence bytes and their recorded SHA-256 hashes.
+# Accept existing CRLF terminators; still check real trailing spaces/blank EOF.
+experiments/recipe_parsing_gemma/prompt.md -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+experiments/recipe_parsing_gemma/test_cases.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+experiments/recipe_parsing_gemma/results/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+experiments/recipe_parsing_gemma/shareable/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+experiments/recipe_parsing_adapter_evaluation/shareable/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+src/recipe_parsing/ollama_prompt.md -text
+src/recipe_parsing/prompt_versions/*.md -text

@@ -1,0 +1,816 @@
+[
+  {
+    "contract": "foodcal.recipe_parsing",
+    "schema_version": 1,
+    "input_id": "case_01_clear_quantities",
+    "status": "parsed",
+    "review_status": "unreviewed",
+    "source": {
+      "source_id": "foodcal-synthetic-recipe-cases",
+      "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_01_clear_quantities",
+      "kind": "test_fixture",
+      "review_status": "test_only",
+      "text": "食材：雞胸肉 200g, 鹽 2g, 黑胡椒 1g, 橄欖油 10ml",
+      "text_sha256": "7ab1a18c0d386ab2a1660196dfa3bdea710959c8a529434d711770e9d4d1cb99"
+    },
+    "retrieval_binding": null,
+    "provenance": {
+      "parser_id": "contract-v1-design-reference",
+      "parser_kind": "design_example",
+      "model": null,
+      "prompt_sha256": null,
+      "raw_output_sha256": null,
+      "settings": {}
+    },
+    "ingredients": [
+      {
+        "ingredient_id": "ing_3_6",
+        "anchor": {
+          "start": 3,
+          "end": 6
+        },
+        "ingredient_name": "雞胸肉",
+        "quantity": 200,
+        "quantity_raw": "200",
+        "quantity_state": "exact",
+        "quantity_rule": "numeric_literal",
+        "unit": "g",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_3_11",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_13_14",
+        "anchor": {
+          "start": 13,
+          "end": 14
+        },
+        "ingredient_name": "鹽",
+        "quantity": 2,
+        "quantity_raw": "2",
+        "quantity_state": "exact",
+        "quantity_rule": "numeric_literal",
+        "unit": "g",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_13_17",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_19_22",
+        "anchor": {
+          "start": 19,
+          "end": 22
+        },
+        "ingredient_name": "黑胡椒",
+        "quantity": 1,
+        "quantity_raw": "1",
+        "quantity_state": "exact",
+        "quantity_rule": "numeric_literal",
+        "unit": "g",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_19_25",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_27_30",
+        "anchor": {
+          "start": 27,
+          "end": 30
+        },
+        "ingredient_name": "橄欖油",
+        "quantity": 10,
+        "quantity_raw": "10",
+        "quantity_state": "exact",
+        "quantity_rule": "numeric_literal",
+        "unit": "ml",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_27_35",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      }
+    ],
+    "preparation_steps": [],
+    "evidence": [
+      {
+        "evidence_id": "ev_3_11",
+        "start": 3,
+        "end": 11,
+        "evidence_text": "雞胸肉 200g"
+      },
+      {
+        "evidence_id": "ev_13_17",
+        "start": 13,
+        "end": 17,
+        "evidence_text": "鹽 2g"
+      },
+      {
+        "evidence_id": "ev_19_25",
+        "start": 19,
+        "end": 25,
+        "evidence_text": "黑胡椒 1g"
+      },
+      {
+        "evidence_id": "ev_27_35",
+        "start": 27,
+        "end": 35,
+        "evidence_text": "橄欖油 10ml"
+      }
+    ],
+    "issues": []
+  },
+  {
+    "contract": "foodcal.recipe_parsing",
+    "schema_version": 1,
+    "input_id": "case_02_vague_units",
+    "status": "parsed",
+    "review_status": "unreviewed",
+    "source": {
+      "source_id": "foodcal-synthetic-recipe-cases",
+      "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_02_vague_units",
+      "kind": "test_fixture",
+      "review_status": "test_only",
+      "text": "準備：薑片 適量, 蔥花 少許, 醬油 2大匙",
+      "text_sha256": "0753199307b7aabf21931775f14f709a97451ed6eb38b21b2a5af0830e79533c"
+    },
+    "retrieval_binding": null,
+    "provenance": {
+      "parser_id": "contract-v1-design-reference",
+      "parser_kind": "design_example",
+      "model": null,
+      "prompt_sha256": null,
+      "raw_output_sha256": null,
+      "settings": {}
+    },
+    "ingredients": [
+      {
+        "ingredient_id": "ing_3_5",
+        "anchor": {
+          "start": 3,
+          "end": 5
+        },
+        "ingredient_name": "薑片",
+        "quantity": null,
+        "quantity_raw": "適量",
+        "quantity_state": "vague",
+        "quantity_rule": null,
+        "unit": "適量",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": true,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_3_8",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_10_12",
+        "anchor": {
+          "start": 10,
+          "end": 12
+        },
+        "ingredient_name": "蔥花",
+        "quantity": null,
+        "quantity_raw": "少許",
+        "quantity_state": "vague",
+        "quantity_rule": null,
+        "unit": "少許",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": true,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_10_15",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_17_19",
+        "anchor": {
+          "start": 17,
+          "end": 19
+        },
+        "ingredient_name": "醬油",
+        "quantity": 2,
+        "quantity_raw": "2",
+        "quantity_state": "exact",
+        "quantity_rule": "numeric_literal",
+        "unit": "大匙",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_17_23",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      }
+    ],
+    "preparation_steps": [],
+    "evidence": [
+      {
+        "evidence_id": "ev_3_8",
+        "start": 3,
+        "end": 8,
+        "evidence_text": "薑片 適量"
+      },
+      {
+        "evidence_id": "ev_10_15",
+        "start": 10,
+        "end": 15,
+        "evidence_text": "蔥花 少許"
+      },
+      {
+        "evidence_id": "ev_17_23",
+        "start": 17,
+        "end": 23,
+        "evidence_text": "醬油 2大匙"
+      }
+    ],
+    "issues": [
+      {
+        "code": "quantity_vague",
+        "severity": "info",
+        "path": "/ingredients/0/quantity",
+        "message": "Original text retains vague or absent quantity; no numerical estimate."
+      },
+      {
+        "code": "quantity_vague",
+        "severity": "info",
+        "path": "/ingredients/1/quantity",
+        "message": "Original text retains vague or absent quantity; no numerical estimate."
+      }
+    ]
+  },
+  {
+    "contract": "foodcal.recipe_parsing",
+    "schema_version": 1,
+    "input_id": "case_03_optional_ingredients",
+    "status": "parsed",
+    "review_status": "unreviewed",
+    "source": {
+      "source_id": "foodcal-synthetic-recipe-cases",
+      "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_03_optional_ingredients",
+      "kind": "test_fixture",
+      "review_status": "test_only",
+      "text": "主料：豬肉 300g; 輔料：洋蔥 半顆, 紅蘿蔔 1根 (可不加)",
+      "text_sha256": "8362289f2e92c2c2cf3f8b883c43aed1ef6199941420015111bdc50e9631df15"
+    },
+    "retrieval_binding": null,
+    "provenance": {
+      "parser_id": "contract-v1-design-reference",
+      "parser_kind": "design_example",
+      "model": null,
+      "prompt_sha256": null,
+      "raw_output_sha256": null,
+      "settings": {}
+    },
+    "ingredients": [
+      {
+        "ingredient_id": "ing_3_5",
+        "anchor": {
+          "start": 3,
+          "end": 5
+        },
+        "ingredient_name": "豬肉",
+        "quantity": 300,
+        "quantity_raw": "300",
+        "quantity_state": "exact",
+        "quantity_rule": "numeric_literal",
+        "unit": "g",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_3_10",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_15_17",
+        "anchor": {
+          "start": 15,
+          "end": 17
+        },
+        "ingredient_name": "洋蔥",
+        "quantity": 0.5,
+        "quantity_raw": "半",
+        "quantity_state": "exact",
+        "quantity_rule": "half_literal",
+        "unit": "顆",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_15_20",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_22_25",
+        "anchor": {
+          "start": 22,
+          "end": 25
+        },
+        "ingredient_name": "紅蘿蔔",
+        "quantity": 1,
+        "quantity_raw": "1",
+        "quantity_state": "exact",
+        "quantity_rule": "numeric_literal",
+        "unit": "根",
+        "optional": true,
+        "optional_state": "explicit_optional",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_22_34",
+            "supports": [
+              "name",
+              "quantity",
+              "unit",
+              "optionality"
+            ]
+          }
+        ]
+      }
+    ],
+    "preparation_steps": [],
+    "evidence": [
+      {
+        "evidence_id": "ev_3_10",
+        "start": 3,
+        "end": 10,
+        "evidence_text": "豬肉 300g"
+      },
+      {
+        "evidence_id": "ev_15_20",
+        "start": 15,
+        "end": 20,
+        "evidence_text": "洋蔥 半顆"
+      },
+      {
+        "evidence_id": "ev_22_34",
+        "start": 22,
+        "end": 34,
+        "evidence_text": "紅蘿蔔 1根 (可不加)"
+      }
+    ],
+    "issues": []
+  },
+  {
+    "contract": "foodcal.recipe_parsing",
+    "schema_version": 1,
+    "input_id": "case_04_missing_weight",
+    "status": "parsed",
+    "review_status": "unreviewed",
+    "source": {
+      "source_id": "foodcal-synthetic-recipe-cases",
+      "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_04_missing_weight",
+      "kind": "test_fixture",
+      "review_status": "test_only",
+      "text": "加入：大蒜, 辣椒, 豆豉",
+      "text_sha256": "06c4ce88fe74dcc429efc14bff9373b93845ebd089c39949d585d006383d2c10"
+    },
+    "retrieval_binding": null,
+    "provenance": {
+      "parser_id": "contract-v1-design-reference",
+      "parser_kind": "design_example",
+      "model": null,
+      "prompt_sha256": null,
+      "raw_output_sha256": null,
+      "settings": {}
+    },
+    "ingredients": [
+      {
+        "ingredient_id": "ing_3_5",
+        "anchor": {
+          "start": 3,
+          "end": 5
+        },
+        "ingredient_name": "大蒜",
+        "quantity": null,
+        "quantity_raw": null,
+        "quantity_state": "missing",
+        "quantity_rule": null,
+        "unit": null,
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": true,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_3_5",
+            "supports": [
+              "name"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_7_9",
+        "anchor": {
+          "start": 7,
+          "end": 9
+        },
+        "ingredient_name": "辣椒",
+        "quantity": null,
+        "quantity_raw": null,
+        "quantity_state": "missing",
+        "quantity_rule": null,
+        "unit": null,
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": true,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_7_9",
+            "supports": [
+              "name"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_11_13",
+        "anchor": {
+          "start": 11,
+          "end": 13
+        },
+        "ingredient_name": "豆豉",
+        "quantity": null,
+        "quantity_raw": null,
+        "quantity_state": "missing",
+        "quantity_rule": null,
+        "unit": null,
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": true,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_11_13",
+            "supports": [
+              "name"
+            ]
+          }
+        ]
+      }
+    ],
+    "preparation_steps": [
+      {
+        "step_id": "step_0_2",
+        "anchor": {
+          "start": 0,
+          "end": 2
+        },
+        "action_raw": "加入",
+        "normalized_action": "add",
+        "normalization_rule": "v1.zh.add",
+        "ingredient_ids": [
+          "ing_3_5",
+          "ing_7_9",
+          "ing_11_13"
+        ],
+        "target_status": "resolved",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_0_13",
+            "supports": [
+              "action",
+              "targets",
+              "context"
+            ]
+          }
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "ev_0_13",
+        "start": 0,
+        "end": 13,
+        "evidence_text": "加入：大蒜, 辣椒, 豆豉"
+      },
+      {
+        "evidence_id": "ev_3_5",
+        "start": 3,
+        "end": 5,
+        "evidence_text": "大蒜"
+      },
+      {
+        "evidence_id": "ev_7_9",
+        "start": 7,
+        "end": 9,
+        "evidence_text": "辣椒"
+      },
+      {
+        "evidence_id": "ev_11_13",
+        "start": 11,
+        "end": 13,
+        "evidence_text": "豆豉"
+      }
+    ],
+    "issues": [
+      {
+        "code": "quantity_missing",
+        "severity": "info",
+        "path": "/ingredients/0/quantity",
+        "message": "Original text retains vague or absent quantity; no numerical estimate."
+      },
+      {
+        "code": "quantity_missing",
+        "severity": "info",
+        "path": "/ingredients/1/quantity",
+        "message": "Original text retains vague or absent quantity; no numerical estimate."
+      },
+      {
+        "code": "quantity_missing",
+        "severity": "info",
+        "path": "/ingredients/2/quantity",
+        "message": "Original text retains vague or absent quantity; no numerical estimate."
+      }
+    ]
+  },
+  {
+    "contract": "foodcal.recipe_parsing",
+    "schema_version": 1,
+    "input_id": "case_05_composite_seasoning",
+    "status": "parsed",
+    "review_status": "unreviewed",
+    "source": {
+      "source_id": "foodcal-synthetic-recipe-cases",
+      "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_05_composite_seasoning",
+      "kind": "test_fixture",
+      "review_status": "test_only",
+      "text": "醃料：由 蠔油 1匙、米酒 1匙、糖 0.5匙 混合而成；主料：牛肉 500g (切片)",
+      "text_sha256": "41c2d1ba2c5e1117cf4207389876fe4ec39300cb9fdb89d429ab9c5fe64e34b0"
+    },
+    "retrieval_binding": null,
+    "provenance": {
+      "parser_id": "contract-v1-design-reference",
+      "parser_kind": "design_example",
+      "model": null,
+      "prompt_sha256": null,
+      "raw_output_sha256": null,
+      "settings": {}
+    },
+    "ingredients": [
+      {
+        "ingredient_id": "ing_5_7",
+        "anchor": {
+          "start": 5,
+          "end": 7
+        },
+        "ingredient_name": "蠔油",
+        "quantity": 1,
+        "quantity_raw": "1",
+        "quantity_state": "exact",
+        "quantity_rule": "numeric_literal",
+        "unit": "匙",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_5_10",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_11_13",
+        "anchor": {
+          "start": 11,
+          "end": 13
+        },
+        "ingredient_name": "米酒",
+        "quantity": 1,
+        "quantity_raw": "1",
+        "quantity_state": "exact",
+        "quantity_rule": "numeric_literal",
+        "unit": "匙",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_11_16",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_17_18",
+        "anchor": {
+          "start": 17,
+          "end": 18
+        },
+        "ingredient_name": "糖",
+        "quantity": 0.5,
+        "quantity_raw": "0.5",
+        "quantity_state": "exact",
+        "quantity_rule": "numeric_literal",
+        "unit": "匙",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_17_23",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      },
+      {
+        "ingredient_id": "ing_32_34",
+        "anchor": {
+          "start": 32,
+          "end": 34
+        },
+        "ingredient_name": "牛肉",
+        "quantity": 500,
+        "quantity_raw": "500",
+        "quantity_state": "exact",
+        "quantity_rule": "numeric_literal",
+        "unit": "g",
+        "optional": false,
+        "optional_state": "not_marked",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_32_44",
+            "supports": [
+              "name",
+              "quantity",
+              "unit"
+            ]
+          }
+        ]
+      }
+    ],
+    "preparation_steps": [
+      {
+        "step_id": "step_24_28",
+        "anchor": {
+          "start": 24,
+          "end": 28
+        },
+        "action_raw": "混合而成",
+        "normalized_action": "mix",
+        "normalization_rule": "v1.zh.mix",
+        "ingredient_ids": [
+          "ing_5_7",
+          "ing_11_13",
+          "ing_17_18"
+        ],
+        "target_status": "resolved",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_0_28",
+            "supports": [
+              "action",
+              "targets",
+              "context"
+            ]
+          }
+        ]
+      },
+      {
+        "step_id": "step_41_43",
+        "anchor": {
+          "start": 41,
+          "end": 43
+        },
+        "action_raw": "切片",
+        "normalized_action": "slice",
+        "normalization_rule": "v1.zh.slice",
+        "ingredient_ids": [
+          "ing_32_34"
+        ],
+        "target_status": "resolved",
+        "uncertainty": false,
+        "evidence_links": [
+          {
+            "evidence_id": "ev_32_44",
+            "supports": [
+              "action",
+              "targets",
+              "context"
+            ]
+          }
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "ev_0_28",
+        "start": 0,
+        "end": 28,
+        "evidence_text": "醃料：由 蠔油 1匙、米酒 1匙、糖 0.5匙 混合而成"
+      },
+      {
+        "evidence_id": "ev_5_10",
+        "start": 5,
+        "end": 10,
+        "evidence_text": "蠔油 1匙"
+      },
+      {
+        "evidence_id": "ev_11_16",
+        "start": 11,
+        "end": 16,
+        "evidence_text": "米酒 1匙"
+      },
+      {
+        "evidence_id": "ev_17_23",
+        "start": 17,
+        "end": 23,
+        "evidence_text": "糖 0.5匙"
+      },
+      {
+        "evidence_id": "ev_32_44",
+        "start": 32,
+        "end": 44,
+        "evidence_text": "牛肉 500g (切片)"
+      }
+    ],
+    "issues": []
+  }
+]

@@ -1,0 +1,191 @@
+[
+  {
+    "id": "case_01_clear_quantities",
+    "description": "數量明確的情境",
+    "text": "食材：雞胸肉 200g, 鹽 2g, 黑胡椒 1g, 橄欖油 10ml",
+    "expected": [
+      {
+        "ingredient_name": "雞胸肉",
+        "quantity": 200,
+        "unit": "g",
+        "preparation_method": null,
+        "optional": false,
+        "evidence_text": "雞胸肉 200g",
+        "uncertainty": false
+      },
+      {
+        "ingredient_name": "鹽",
+        "quantity": 2,
+        "unit": "g",
+        "preparation_method": null,
+        "optional": false,
+        "evidence_text": "鹽 2g",
+        "uncertainty": false
+      },
+      {
+        "ingredient_name": "黑胡椒",
+        "quantity": 1,
+        "unit": "g",
+        "preparation_method": null,
+        "optional": false,
+        "evidence_text": "黑胡椒 1g",
+        "uncertainty": false
+      },
+      {
+        "ingredient_name": "橄欖油",
+        "quantity": 10,
+        "unit": "ml",
+        "preparation_method": null,
+        "optional": false,
+        "evidence_text": "橄欖油 10ml",
+        "uncertainty": false
+      }
+    ]
+  },
+  {
+    "id": "case_02_vague_units",
+    "description": "單位模糊（適量/少許）的情境",
+    "text": "準備：薑片 適量, 蔥花 少許, 醬油 2大匙",
+    "expected": [
+      {
+        "ingredient_name": "薑片",
+        "quantity": null,
+        "unit": "適量",
+        "preparation_method": null,
+        "optional": false,
+        "evidence_text": "薑片 適量",
+        "uncertainty": true
+      },
+      {
+        "ingredient_name": "蔥花",
+        "quantity": null,
+        "unit": "少許",
+        "preparation_method": null,
+        "optional": false,
+        "evidence_text": "蔥花 少許",
+        "uncertainty": true
+      },
+      {
+        "ingredient_name": "醬油",
+        "quantity": 2,
+        "unit": "大匙",
+        "preparation_method": null,
+        "optional": false,
+        "evidence_text": "醬油 2大匙",
+        "uncertainty": false
+      }
+    ]
+  },
+  {
+    "id": "case_03_optional_ingredients",
+    "description": "包含可選食材的情境",
+    "text": "主料：豬肉 300g; 輔料：洋蔥 半顆, 紅蘿蔔 1根 (可不加)",
+    "expected": [
+      {
+        "ingredient_name": "豬肉",
+        "quantity": 300,
+        "unit": "g",
+        "preparation_method": null,
+        "optional": false,
+        "evidence_text": "豬肉 300g",
+        "uncertainty": false
+      },
+      {
+        "ingredient_name": "洋蔥",
+        "quantity": 0.5,
+        "unit": "顆",
+        "preparation_method": null,
+        "telefone": null,
+        "optional": false,
+        "evidence_text": "洋蔥 半顆",
+        "uncertainty": false
+      },
+      {
+        "ingredient_name": "紅蘿蔔",
+        "quantity": 1,
+        "unit": "根",
+        "preparation_method": null,
+        "optional": true,
+        "evidence_text": "紅蘿蔔 1根 (可不加)",
+        "uncertainty": false
+      }
+    ]
+  },
+  {
+    "id": "case_04_missing_weight",
+    "description": "完全沒有重量/數量的情境",
+    "text": "加入：大蒜, 辣椒, 豆豉",
+    "expected": [
+      {
+        "ingredient_name": "大蒜",
+        "quantity": null,
+        "unit": null,
+        "preparation_method": null,
+        "optional": false,
+        "evidence_text": "大蒜",
+        "uncertainty": true
+      },
+      {
+        "ingredient_name": "辣椒",
+        "quantity": null,
+        "unit": null,
+        "preparation_method": null,
+        "optional": false,
+        "evidence_text": "辣椒",
+        "uncertainty": true
+      },
+      {
+        "ingredient_name": "豆豉",
+        "quantity": null,
+        "unit": null,
+        "preparation_method": null,
+        "optional": false,
+        "evidence_text": "豆豉",
+        "uncertainty": true
+      }
+    ]
+  },
+  {
+    "id": "case_05_composite_seasoning",
+    "description": "複合調味料及準備方法的情境",
+    "text": "醃料：由 蠔油 1匙、米酒 1匙、糖 0.5匙 混合而成；主料：牛肉 500g (切片)",
+    "expected": [
+      {
+        "ingredient_name": "蠔油",
+        "quantity": 1,
+        "unit": "匙",
+        "preparation_method": "混合醃料",
+        "optional": false,
+        "evidence_text": "蠔油 1匙",
+        "uncertainty": false
+      },
+      {
+        "ingredient_name": "米酒",
+        "quantity": 1,
+        "unit": "匙",
+        "preparation_method": "混合醃料",
+        "optional": false,
+        "evidence_text": "米酒 1匙",
+        "uncertainty": false
+      },
+      {
+        "ingredient_name": "糖",
+        "quantity": 0.5,
+        "unit": "匙",
+        "preparation_method": "混合醃料",
+        "optional": false,
+        "evidence_text": "糖 0.5匙",
+        "uncertainty": false
+      },
+      {
+        "ingredient_name": "牛肉",
+        "quantity": 500,
+        "unit": "g",
+        "preparation_method": "切片",
+        "optional": false,
+        "evidence_text": "牛肉 500g (切片)",
+        "uncertainty": false
+      }
+    ]
+  }
+]

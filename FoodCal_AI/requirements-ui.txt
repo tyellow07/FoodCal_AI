@@ -1,0 +1,2 @@
+# Optional local UI; keep existing project Python dependencies available.
+streamlit==1.65.0

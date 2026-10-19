@@ -1,0 +1,94 @@
+{
+  "fixture_version": 1,
+  "kind": "synthetic",
+  "review_status": "test_only",
+  "note": "Class-to-recipe associations test the protocol only; these are not actual cold_noodle recipes.",
+  "classes_sha256": "7307d7356728d0d1d06d933f7c524fdba86deede32e663a3ad2179e6085f53c9",
+  "associations": [
+    {
+      "recipe_id": "synthetic-chain-001",
+      "source_id": "foodcal-synthetic-recipe-cases",
+      "catalog_sha256": "378b481f8a04880b0566592558e0d6a2d83c80ef13df5887207546318f2f93cb",
+      "parsing_fixture_sha256": "d95c39ff663dcdf88476600f394037b09f71729bc5f15be354038b622697d154",
+      "input_id": "case_01_clear_quantities",
+      "expected_source": {
+        "source_id": "foodcal-synthetic-recipe-cases",
+        "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_01_clear_quantities",
+        "kind": "test_fixture",
+        "review_status": "test_only",
+        "text": "食材：雞胸肉 200g, 鹽 2g, 黑胡椒 1g, 橄欖油 10ml",
+        "text_sha256": "7ab1a18c0d386ab2a1660196dfa3bdea710959c8a529434d711770e9d4d1cb99"
+      },
+      "identity_assertions": {},
+      "source_links": {}
+    },
+    {
+      "recipe_id": "synthetic-chain-002",
+      "source_id": "foodcal-synthetic-recipe-cases",
+      "catalog_sha256": "378b481f8a04880b0566592558e0d6a2d83c80ef13df5887207546318f2f93cb",
+      "parsing_fixture_sha256": "d95c39ff663dcdf88476600f394037b09f71729bc5f15be354038b622697d154",
+      "input_id": "case_02_vague_units",
+      "expected_source": {
+        "source_id": "foodcal-synthetic-recipe-cases",
+        "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_02_vague_units",
+        "kind": "test_fixture",
+        "review_status": "test_only",
+        "text": "準備：薑片 適量, 蔥花 少許, 醬油 2大匙",
+        "text_sha256": "0753199307b7aabf21931775f14f709a97451ed6eb38b21b2a5af0830e79533c"
+      },
+      "identity_assertions": {},
+      "source_links": {}
+    },
+    {
+      "recipe_id": "synthetic-chain-003",
+      "source_id": "foodcal-synthetic-recipe-cases",
+      "catalog_sha256": "378b481f8a04880b0566592558e0d6a2d83c80ef13df5887207546318f2f93cb",
+      "parsing_fixture_sha256": "d95c39ff663dcdf88476600f394037b09f71729bc5f15be354038b622697d154",
+      "input_id": "case_03_optional_ingredients",
+      "expected_source": {
+        "source_id": "foodcal-synthetic-recipe-cases",
+        "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_03_optional_ingredients",
+        "kind": "test_fixture",
+        "review_status": "test_only",
+        "text": "主料：豬肉 300g; 輔料：洋蔥 半顆, 紅蘿蔔 1根 (可不加)",
+        "text_sha256": "8362289f2e92c2c2cf3f8b883c43aed1ef6199941420015111bdc50e9631df15"
+      },
+      "identity_assertions": {},
+      "source_links": {}
+    },
+    {
+      "recipe_id": "synthetic-chain-004",
+      "source_id": "foodcal-synthetic-recipe-cases",
+      "catalog_sha256": "378b481f8a04880b0566592558e0d6a2d83c80ef13df5887207546318f2f93cb",
+      "parsing_fixture_sha256": "d95c39ff663dcdf88476600f394037b09f71729bc5f15be354038b622697d154",
+      "input_id": "case_04_missing_weight",
+      "expected_source": {
+        "source_id": "foodcal-synthetic-recipe-cases",
+        "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_04_missing_weight",
+        "kind": "test_fixture",
+        "review_status": "test_only",
+        "text": "加入：大蒜, 辣椒, 豆豉",
+        "text_sha256": "06c4ce88fe74dcc429efc14bff9373b93845ebd089c39949d585d006383d2c10"
+      },
+      "identity_assertions": {},
+      "source_links": {}
+    },
+    {
+      "recipe_id": "synthetic-chain-005",
+      "source_id": "foodcal-synthetic-recipe-cases",
+      "catalog_sha256": "378b481f8a04880b0566592558e0d6a2d83c80ef13df5887207546318f2f93cb",
+      "parsing_fixture_sha256": "d95c39ff663dcdf88476600f394037b09f71729bc5f15be354038b622697d154",
+      "input_id": "case_05_composite_seasoning",
+      "expected_source": {
+        "source_id": "foodcal-synthetic-recipe-cases",
+        "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_05_composite_seasoning",
+        "kind": "test_fixture",
+        "review_status": "test_only",
+        "text": "醃料：由 蠔油 1匙、米酒 1匙、糖 0.5匙 混合而成；主料：牛肉 500g (切片)",
+        "text_sha256": "41c2d1ba2c5e1117cf4207389876fe4ec39300cb9fdb89d429ab9c5fe64e34b0"
+      },
+      "identity_assertions": {},
+      "source_links": {}
+    }
+  ]
+}

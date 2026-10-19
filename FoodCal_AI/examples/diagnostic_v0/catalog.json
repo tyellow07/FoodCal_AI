@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "recipes": [
+    {
+      "recipe_id": "synthetic-chain-001",
+      "name": "[SYNTHETIC PROTOCOL TEST] case_01_clear_quantities",
+      "food_class": {
+        "class_id": 7,
+        "class_name": "cold_noodle"
+      },
+      "source": {
+        "source_id": "foodcal-synthetic-recipe-cases",
+        "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_01_clear_quantities",
+        "kind": "test_fixture",
+        "review_status": "test_only"
+      }
+    },
+    {
+      "recipe_id": "synthetic-chain-002",
+      "name": "[SYNTHETIC PROTOCOL TEST] case_02_vague_units",
+      "food_class": {
+        "class_id": 7,
+        "class_name": "cold_noodle"
+      },
+      "source": {
+        "source_id": "foodcal-synthetic-recipe-cases",
+        "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_02_vague_units",
+        "kind": "test_fixture",
+        "review_status": "test_only"
+      }
+    },
+    {
+      "recipe_id": "synthetic-chain-003",
+      "name": "[SYNTHETIC PROTOCOL TEST] case_03_optional_ingredients",
+      "food_class": {
+        "class_id": 7,
+        "class_name": "cold_noodle"
+      },
+      "source": {
+        "source_id": "foodcal-synthetic-recipe-cases",
+        "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_03_optional_ingredients",
+        "kind": "test_fixture",
+        "review_status": "test_only"
+      }
+    },
+    {
+      "recipe_id": "synthetic-chain-004",
+      "name": "[SYNTHETIC PROTOCOL TEST] case_04_missing_weight",
+      "food_class": {
+        "class_id": 7,
+        "class_name": "cold_noodle"
+      },
+      "source": {
+        "source_id": "foodcal-synthetic-recipe-cases",
+        "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_04_missing_weight",
+        "kind": "test_fixture",
+        "review_status": "test_only"
+      }
+    },
+    {
+      "recipe_id": "synthetic-chain-005",
+      "name": "[SYNTHETIC PROTOCOL TEST] case_05_composite_seasoning",
+      "food_class": {
+        "class_id": 7,
+        "class_name": "cold_noodle"
+      },
+      "source": {
+        "source_id": "foodcal-synthetic-recipe-cases",
+        "reference": "experiments/recipe_parsing_gemma/test_cases.json#case_05_composite_seasoning",
+        "kind": "test_fixture",
+        "review_status": "test_only"
+      }
+    }
+  ]
+}
