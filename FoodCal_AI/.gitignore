@@ -107,6 +107,15 @@
 !/tools/ingredient_pilot.py
 !/tools/inventory_ingredient_data_v2.py
 
+# Reviewed handoff additions (2026-11-08)
+!/AGENTS.md
+!/HANDOFF.md
+!/INTEGRATION_REPORT.md
+!/docs/ingredient_pilot_ai_import_v0.md
+!/tools/ingredient_ai_draft.py
+!/tests/test_ingredient_ai_draft.py
+!/tests/test_ingredient_ai_gui.py
+
 # Private data stays blocked even under future broad allow rules.
 **/data/
 **/runs/
