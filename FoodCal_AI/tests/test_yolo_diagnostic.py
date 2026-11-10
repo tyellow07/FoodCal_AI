@@ -61,8 +61,21 @@ class YoloDiagnosticTests(unittest.TestCase):
         self.assertEqual(r['stages']['parsing']['status'], 'blocked')
         self.assertIsNone(r['photo_portion_grams'])
         self.assertEqual(r['calorie_estimate']['status'], 'unavailable')
+        self.assertEqual(r['library_version'], 'mock-ultralytics')
         self.assertNotIn(str(self.root), json.dumps(r))
         self.assertTrue((self.root/'audit'/r['private_audit_id']/'detection_raw.json').exists())
+
+    def test_missing_library_metadata_is_recorded_as_unknown_not_a_crash(self):
+        def missing(name):
+            raise importlib.metadata.PackageNotFoundError(name)
+        with patch('src.pipeline.yolo_diagnostic.FoodDetector', return_value=self.detector), \
+                patch.object(importlib.metadata, 'version', side_effect=missing):
+            r = run_yolo_diagnostic(self.image, self.approval, model_path=self.weights,
+                                    classes_path=self.classes, audit_root=self.root/'audit')
+        self.assertEqual(r['status'], 'partial', r['issues'])
+        self.assertIsNone(r['library_version'])
+        saved = json.loads((self.root/'audit'/r['private_audit_id']/'result.json').read_text(encoding='utf-8'))
+        self.assertIsNone(saved['library_version'])
 
     def test_fixture_recipes_explicit_but_not_parsed(self):
         r, _ = self.call(True)
