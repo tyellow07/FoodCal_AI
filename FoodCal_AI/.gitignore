@@ -127,6 +127,9 @@
 # Annotation cross-process revision lock (2026-11-11): synthetic temp-directory tests only; pending team review
 !/tests/test_ingredient_revision_lock.py
 
+# Photo item source review design proposal (2026-11-11): documentation only; pending team review
+!/docs/photo_item_source_review_design_v0.md
+
 # Private data stays blocked even under future broad allow rules.
 **/data/
 **/runs/

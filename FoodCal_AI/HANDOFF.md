@@ -62,7 +62,7 @@ python -B -m src.pipeline.diagnostic_demo
 
 1. Streamlit 四項與 Tk 八項已於 2026-11-11 在 macOS 補跑通過（見「離線驗證」）。仍待：全新環境乾淨安裝、在 Windows／Linux 重跑修正後的 GUI 測試，以及依需求進行人工 GUI 驗收。
 2. 視覺食材模型／標註仍需合法資料、獨立語意複核、來源群組與 split 驗證；目前不具訓練資格。不得自動訓練或接受 AI proposal。
-3. 2026-11-11 已完成 Photo Portion Estimation Contract v0（契約、校準紀錄門檻、區間不確定性與 photo_calculation 串接閘門，見 docs/photo_portion_estimation_contract_v0.md）。仍待：合法且可依來源分組的秤重資料與真正估算方法／校準、photo_calculation 營養基準審查 profile、審查後接入 diagnostic 輸出、剩食前後對比。未完成前維持 null/unavailable。
+3. 2026-11-11 已完成 Photo Portion Estimation Contract v0（契約、校準紀錄門檻、區間不確定性與 photo_calculation 串接閘門，見 docs/photo_portion_estimation_contract_v0.md）。仍待：合法且可依來源分組的秤重資料與真正估算方法／校準、photo_calculation 營養基準審查 profile（設計提案：docs/photo_item_source_review_design_v0.md，以照片食材為範圍、不經過食譜；待團隊確認第 10 節待決事項後實作）、審查後接入 diagnostic 輸出、剩食前後對比。未完成前維持 null/unavailable。
 4. 完成 ingredient identity、nutrition basis、合法營養來源與 review 契約整合；Recipe prior 僅解釋可能隱藏食材，不可冒充視覺證據。
 5. 2026-11-11 已加入標註跨程序鎖：每個 annotations 目錄的 OS advisory lock（`.revision.lock`）、鎖內以 `require_latest` 重新確認 parent、暫存檔 fsync 後改名的原子寫入；`save_pending` 與 GUI 複核保存都使用。限制：只保證同一台電腦的本機檔案系統（雲端同步資料夾、網路磁碟不適用，跨電腦多人仍須共享服務或分開工作區）；Windows `msvcrt` 路徑尚未在 Windows 實測；鎖不可重入；當機殘留的 `.tmp` 暫存檔不會被讀取，也不會自動刪除。
 6. 提交前檢查精確白名單與 diff；Push 前確認目標 Repository 可見性、權限與遠端分支進度。此次 GitHub metadata 查詢回 404，無法據此判定 Repository 不存在或是公開／私有。
