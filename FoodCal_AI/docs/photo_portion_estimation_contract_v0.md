@@ -140,5 +140,5 @@ assessment，不接受呼叫端提供的結論。PhotoNutritionBasis（封閉欄
 所有數值皆為測試用合成數字，不是該食材的量測或營養資料。
 
 下一步依序：(1) 取得合法、可依來源分組的秤重資料，提出真正估算方法並完成校準；
-(2) 新增 photo_calculation 用途的營養基準審查 profile；(3) 審查後才把 assessment／energy 區塊接入
+(2) 新增 photo_calculation 用途的營養基準審查 profile（設計提案：`photo_item_source_review_design_v0.md`）；(3) 審查後才把 assessment／energy 區塊接入
 diagnostic 輸出；(4) 定義剩食前後對比的食用量。
