@@ -18,7 +18,8 @@ class DraftFixture(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        # Canonical like production ROOT (resolve()); macOS temp dirs sit behind /var -> /private/var.
+        self.root = Path(self.temp.name).resolve()
         self.ws = self.root / 'work' / 'synthetic-pilot'
         (self.ws / 'annotations').mkdir(parents=True)
         self.spec_path = SPEC

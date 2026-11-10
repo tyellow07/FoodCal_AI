@@ -1,6 +1,7 @@
 """Mock live-mode integration: never loads model weights or performs YOLO inference."""
 from copy import deepcopy
 from hashlib import sha256
+import importlib.metadata
 import json
 from pathlib import Path
 import tempfile
@@ -38,7 +39,11 @@ class YoloDiagnosticTests(unittest.TestCase):
         self.detector = Mock();self.detector.detect_food.return_value = self.detection
 
     def call(self, fixture=False):
-        with patch('src.pipeline.yolo_diagnostic.FoodDetector', return_value=self.detector) as factory:
+        # The detector is mocked, so the optional ultralytics package must not be needed for its version record.
+        version = importlib.metadata.version
+        fake_version = lambda name: 'mock-ultralytics' if name == 'ultralytics' else version(name)
+        with patch('src.pipeline.yolo_diagnostic.FoodDetector', return_value=self.detector) as factory, \
+                patch.object(importlib.metadata, 'version', side_effect=fake_version):
             r = run_yolo_diagnostic(self.image, self.approval, fixture_recipes=fixture,
                                     model_path=self.weights, classes_path=self.classes, audit_root=self.root/'audit')
         return r, factory

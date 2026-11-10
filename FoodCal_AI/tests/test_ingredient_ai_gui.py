@@ -24,7 +24,9 @@ class AIGuiTests(DraftFixture):
             self.skipTest('Tk display unavailable: '+str(error))
         self.window.withdraw(); self.addCleanup(self.window.destroy)
         self.app = AnnotationApp(self.window, self.ws, 'synthetic-human', image_id='synthetic-001')
-        self.window.update()
+        # Withdrawn windows get no window-system events, so flush idle geometry/redraw only: a full
+        # update() on withdrawn windows can spin forever with Tk 8.6.13 on recent macOS.
+        self.window.update_idletasks()
 
     def select_ai(self, index):
         self.app.ai_list.selection_clear(0, 'end'); self.app.ai_list.selection_set(index)
@@ -32,7 +34,7 @@ class AIGuiTests(DraftFixture):
 
     def test_tk_import_edit_replace_add_reject_save_and_reopen(self):
         app = self.app; before = deepcopy(app.annotation); checks = [v.get() for v in app.checked]
-        app.import_draft(self.path); self.window.update()
+        app.import_draft(self.path); self.window.update_idletasks()
         self.assertEqual(app.annotation, before)
         self.assertEqual([v.get() for v in app.checked], checks)
         self.assertEqual(app.ai_list.size(), 3)
@@ -41,7 +43,7 @@ class AIGuiTests(DraftFixture):
         self.select_ai(1); app.coordinates[0].set('31'); app.apply_edit(); app.decide_candidate('add')
         self.select_ai(2); app.decide_candidate('reject')
         self.assertEqual(len(list((self.ws/'annotations').glob('*.json'))), 1)
-        app.save('pending'); self.window.update()
+        app.save('pending'); self.window.update_idletasks()
         self.error.assert_not_called()
         self.assertEqual(app.annotation['independent_review']['status'], 'pending')
         self.assertEqual(len(app.annotation['boxes']), 4)
