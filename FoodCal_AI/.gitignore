@@ -116,6 +116,14 @@
 !/tests/test_ingredient_ai_draft.py
 !/tests/test_ingredient_ai_gui.py
 
+# Photo portion estimation contract v0 (2026-11-11): code, docs and synthetic tests only; pending team review
+!/docs/photo_portion_estimation_contract_v0.md
+!/src/portion/__init__.py
+!/src/portion/contract.py
+!/src/portion/estimation.py
+!/src/portion/types.py
+!/tests/test_portion_estimation.py
+
 # Private data stays blocked even under future broad allow rules.
 **/data/
 **/runs/
