@@ -11,6 +11,7 @@ from uuid import uuid4
 from src.detection import FoodDetector, ModelConfigurationError, DetectionInferenceError, InvalidImageError
 from src.detection.model import DEFAULT_MODEL_PATH, DEFAULT_CLASSES_PATH
 from src.recipes import RecipeRetriever, InvalidDetectionResultError
+from src.portion import diagnostic_photo_energy
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -66,7 +67,7 @@ def run_yolo_diagnostic(image, approval_record, *, fixture_recipes=False, model_
               'review': {'status': 'not_requested'}, 'photo_portion_grams': None,
               'calorie_estimate': {'status': 'unavailable', 'value': None,
                                    'reasons': ['recipe_is_prior', 'photo_mass_unknown', 'nutrition_basis_unresolved']},
-              'evaluation': None, 'private_audit_id': None}
+              'photo_energy_estimate': None, 'evaluation': None, 'private_audit_id': None}
     audit = Path(audit_root) / uuid4().hex
     audit.mkdir(parents=True, exist_ok=False)
     result['private_audit_id'] = audit.name
@@ -150,6 +151,7 @@ def run_yolo_diagnostic(image, approval_record, *, fixture_recipes=False, model_
                                                       for c in o['candidates']]} for o in projected_retrieval['objects']],
                       evaluation=evaluation, image_sha256=protected[image], model_sha256=protected[model],
                       classes_sha256=protected[classes], elapsed_seconds=elapsed,
+                      photo_energy_estimate=diagnostic_photo_energy(detection, classes_path=classes),
                       library_version=_library_version('ultralytics'))
         result['stages']['detection'] = {'status': 'executed', 'kind': 'true_model_detection'}
         result['stages']['retrieval'] = {'status': 'executed', 'kind': result['recipe_kind'], 'result_status': retrieval['status']}

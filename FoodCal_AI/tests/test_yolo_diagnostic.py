@@ -61,6 +61,10 @@ class YoloDiagnosticTests(unittest.TestCase):
         self.assertEqual(r['stages']['parsing']['status'], 'blocked')
         self.assertIsNone(r['photo_portion_grams'])
         self.assertEqual(r['calorie_estimate']['status'], 'unavailable')
+        energy = r['photo_energy_estimate']
+        self.assertEqual((energy['status'], energy['energy']), ('unavailable', None))
+        self.assertTrue(all(i['reason'] == 'ingredient_level_semantics_unverified' and i['mass_g'] is None
+                            for i in energy['portion_assessment']['items']))
         self.assertEqual(r['library_version'], 'mock-ultralytics')
         self.assertNotIn(str(self.root), json.dumps(r))
         self.assertTrue((self.root/'audit'/r['private_audit_id']/'detection_raw.json').exists())
@@ -76,6 +80,7 @@ class YoloDiagnosticTests(unittest.TestCase):
         self.assertIsNone(r['library_version'])
         saved = json.loads((self.root/'audit'/r['private_audit_id']/'result.json').read_text(encoding='utf-8'))
         self.assertIsNone(saved['library_version'])
+        self.assertEqual(saved['photo_energy_estimate']['status'], 'unavailable')
 
     def test_fixture_recipes_explicit_but_not_parsed(self):
         r, _ = self.call(True)
@@ -88,6 +93,7 @@ class YoloDiagnosticTests(unittest.TestCase):
         r, factory = self.call()
         self.assertEqual(r['issues'][0]['code'], 'model_missing')
         factory.assert_not_called();self.detector.detect_food.assert_not_called()
+        self.assertIsNone(r['photo_energy_estimate'])
 
     def test_yaml_mismatch_blocks_before_model(self):
         v = yaml.safe_load(self.classes.read_text());v['names'][0] = 'wrong'

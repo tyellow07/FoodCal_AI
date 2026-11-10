@@ -2,7 +2,7 @@
 
 狀態：2026-11-11 離線 synthetic/test_only 契約原型。定義照片份量紀錄、校準紀錄、不確定性與
 營養串接閘門；**沒有**估算模型、校準資料、訓練或真實營養數值。未修改 Detection、Visual Ingredient、
-Parsing、Mapping、Review 契約或既有 diagnostic 輸出；`photo_portion_grams` 仍為 null。
+Parsing、Mapping、Review 契約；diagnostic 輸出之後只新增 `photo_energy_estimate` 區塊（見 §8），`photo_portion_grams` 仍為 null。
 
 核心原則：**Recipe candidates may explain hidden calories, but are not visual proof.**
 
@@ -129,7 +129,9 @@ assessment，不接受呼叫端提供的結論。PhotoNutritionBasis（封閉欄
 
 - 現行 nutrition review profile 只支援 recipe_declared_ingredient_reference，且 photo_consumed_mass 僅能
   not_applicable；尚無任何 photo_calculation basis，因此實際輸出維持 unavailable。
-- diagnostic_demo、yolo_diagnostic、Streamlit 與 Visual Ingredient envelope 未修改；
+- 2026-11-11 起 diagnostic_demo、yolo_diagnostic 與 Streamlit 上傳結果新增 `photo_energy_estimate`：`diagnostic_photo_energy`
+  由已驗證的 Detection 結果建立視覺證據 envelope，再呼叫 `estimate_photo_energy`，不提供任何份量紀錄或營養基準。
+  菜餚偵測沒有食材層級證據，因此每項為 `ingredient_level_semantics_unverified`。Visual Ingredient envelope 未修改；
   `photo_portion_grams=null`、`calorie_estimate=unavailable` 照舊。
 
 ## 9. 驗收與下一步
@@ -140,5 +142,5 @@ assessment，不接受呼叫端提供的結論。PhotoNutritionBasis（封閉欄
 所有數值皆為測試用合成數字，不是該食材的量測或營養資料。
 
 下一步依序：(1) 取得合法、可依來源分組的秤重資料，提出真正估算方法並完成校準；
-(2) 新增 photo_calculation 用途的營養基準審查 profile（設計提案：`photo_item_source_review_design_v0.md`）；(3) 審查後才把 assessment／energy 區塊接入
+(2) 新增 photo_calculation 用途的營養基準審查 profile（設計提案：`photo_item_source_review_design_v0.md`）；(3) 已完成：契約合併後於 2026-11-11 把 energy 區塊接入
 diagnostic 輸出；(4) 定義剩食前後對比的食用量。

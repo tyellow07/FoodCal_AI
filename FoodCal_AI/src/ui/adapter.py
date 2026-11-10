@@ -11,6 +11,7 @@ from PIL.WebPImagePlugin import WebPImageFile
 from src.detection import FoodDetector, ModelConfigurationError, DetectionInferenceError, InvalidImageError
 from src.recipes import RecipeRetriever, InvalidDetectionResultError
 from src.pipeline.diagnostic_demo import DEFAULT_FIXTURES, run_demo
+from src.portion import diagnostic_photo_energy
 
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -47,7 +48,7 @@ def fixture_demo():
 
 
 def analyze_upload(raw, *, enabled=False, fixture_recipes=False, detector_factory=FoodDetector):
-    """No file upload save, CLI audit, GT, parsing, portion or nutrient computation."""
+    """No file upload save, CLI audit, GT, parsing or nutrient values; the portion contract only reports gaps."""
     result = {'diagnostic_version': 1, 'mode': 'yolo_upload', 'usage': 'diagnostic/test_only',
               'status': 'blocked', 'detection_kind': 'not_executed',
               'recipe_kind': 'synthetic_fixture' if fixture_recipes else 'unavailable',
@@ -57,6 +58,7 @@ def analyze_upload(raw, *, enabled=False, fixture_recipes=False, detector_factor
                          'mapping': {'status': 'blocked', 'reason': 'no_trusted_parsing'},
                          'nutrition': {'status': 'blocked', 'reason': 'nutrition_basis_unresolved'}},
               'photo_portion_grams': None, 'calorie_estimate': {'status': 'unavailable', 'value': None},
+              'photo_energy_estimate': None,
               'review': {'status': 'not_requested'}, 'trust': {'nutrition_eligible': False,
                                                             'source_authentication': 'not_performed'}}
     if not enabled:
@@ -88,6 +90,7 @@ def analyze_upload(raw, *, enabled=False, fixture_recipes=False, detector_factor
                                                       for c in o['candidates']]} for o in retrieval['objects']])
         result['stages']['detection'] = {'status': 'executed', 'kind': 'true_model_detection'}
         result['stages']['retrieval'] = {'status': 'executed', 'result_status': retrieval['status']}
+        result['photo_energy_estimate'] = diagnostic_photo_energy(detection, classes_path=detector.classes_path)
         return result, image
     except FileNotFoundError:
         code = 'local_model_or_taxonomy_missing'

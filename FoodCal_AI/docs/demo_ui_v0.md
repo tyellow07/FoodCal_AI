@@ -27,7 +27,7 @@ python -m venv --system-site-packages work/demo_ui_venv
 - 真實模式重用本機 FoodDetector 的預設權重和 15 類 taxonomy；缺少權重或類別不符顯示 blocked。模型依使用者 session 延遲建立並重用；切換模式或清除會移除 session 中的模型引用。
 - 食譜合成先驗需另勾選 synthetic/test_only，預設關閉；沒有正式 catalog 時 Retrieval 回 unavailable。UI 不將食譜 fixture 原文套用為照片食材，真實模式的 Parsing/Mapping/Nutrition 維持 blocked。
 - 框線只來自 Detection Prediction，顯示 class_name、confidence 和 detection_id，表格保留 bounding_box。沒有偵測不代表沒有食物；confidence 不是食譜或食材真實機率。
-- Fixture 路徑保留既有 partial/needs_review/test_only、evidence/source/review/trust 診斷。熱量固定 unavailable，照片食用重量固定 null，營養資格固定 false。
+- Fixture 路徑保留既有 partial/needs_review/test_only、evidence/source/review/trust 診斷。熱量固定 unavailable，照片食用重量固定 null，營養資格固定 false。「照片份量與熱量」區塊（2026-11-11）顯示 Portion Contract v0 的 `photo_energy_estimate`：逐項列出無法估算照片重量的原因，不顯示任何重量或熱量數值。
 
 CLI 的 validation YOLO 路徑會寫入私有 audit 並要求 validation 核准紀錄，因此 UI 上傳模式不呼叫該落盤入口；它直接共用既有 Detection/Retrieval API。UI 上傳不是 GT 評估或 validation 通過聲明。
 
