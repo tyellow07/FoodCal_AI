@@ -1,63 +1,48 @@
-# FoodCal AI — team review snapshot
+# FoodCal AI — 開發交接版
 
-此副本供團隊審查與共同開發，沒有原專案 Git history、資料集、模型權重、真人圖片、人工標註、TFDA 原件或模型原始輸出。這不是正式營養估算產品，也不是已完成開源授權清理的發行版。
+更新：2026-11-08。此目錄整合原始專案經審查的最新工作樹（含未 Commit 的 AI 輔助標註），供既有團隊 Repository 使用。先讀本頁，再讀 `AGENTS.md`、`HANDOFF.md` 與 `INTEGRATION_REPORT.md`。Repository 根目錄 README、菜單與團隊歷史保持原樣。
 
-## 可展示的功能
+核心原則：**Recipe candidates may explain hidden calories, but are not visual proof.** 食譜候選只能提供隱藏食材／熱量的先驗；料理分類不能直接展開為照片食材，食譜份量不能當成照片重量。
 
-- Diagnostic CLI：synthetic/test_only Detection → Retrieval → Parsing／Nutrition 診斷。
-- Streamlit 本機 UI：預設合成示範；真實 YOLO 必須明確啟動並另行取得核准的本機權重與 taxonomy。
-- Recipe Parsing：Contract、Validator、Mock、受控 Ollama Adapter；預設示範不呼叫模型。
-- Nutrition：離線 Mapping、Source／Candidate Lookup、Review 原型；所有正式資格仍受阻，沒有真實熱量計算。
-- Visual Ingredient：料理標籤不展開成食材；合成食材證據與食譜推測分開；人工標註工具程式可審查，但私人 Pilot 不在此副本。
+## 現有能力
 
-所有示範保留 partial/needs_review/test_only；photo_portion_grams=null、calorie_estimate=unavailable。來源 metadata 通過檢查不等於來源已認證。
+- Photo Recognition：Detection API、受控 YOLO 診斷；無合法本機權重時安全阻擋。
+- Visual Ingredient Evidence：視覺證據 Adapter、逐樣本審查契約、合成 fixture；真實人工審查資料不隨庫分享。
+- Annotation：Tk 人工畫框、Bounding Box 欄位編輯、AI proposal 匯入、明確新增／替換／拒絕、來源事件紀錄、append-only revision 與獨立複核。匯入功能本身不呼叫 AI 模型。
+- Recipe Parsing：Schema、Validator、Mock 與選用 Ollama Adapter；Nutrition Mapping、來源查核與人工審查原型。
+- Streamlit Demo／CLI：合成資料離線展示；不是完整營養產品。
 
-## Python 3.12 / Windows
+Portion Estimation 與 Nutrition Estimation 尚未完成照片實證整合。正式輸出維持 `photo_portion_grams=null`、`calorie_estimate=unavailable`、營養資格 false；沒有可信照片重量或正式食譜來源時不得補造結果。
 
-先在 Clone 根目錄執行 `cd FoodCal_AI`，再從此 README 所在目錄執行，使用獨立環境，不更動團隊其他專案的依賴：
+## 換電腦啟動
+
+使用 Python 3.12，在 Clone 的 `FoodCal_AI` 目錄執行：
 
 ```powershell
+cd FoodCal_AI
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -B -m unittest discover -s tests -v
 .\.venv\Scripts\python.exe -B -m src.pipeline.diagnostic_demo
-.\.venv\Scripts\python.exe -B -m unittest discover -s tests -q
 ```
 
-使用 UI 另安裝選用依賴：
+選用 Streamlit：
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-ui.txt
 .\.venv\Scripts\python.exe -m streamlit run src/ui/app.py
 ```
 
-開啟 http://127.0.0.1:8501。預設 Fixture 不載入模型。未安裝 Streamlit 時，四項選用 UI 測試會 skip。GUI 標註工具需要 Python 的 Tk/Tcl 與 Pillow；私人工作集必須由權利允許的來源另行建立。
+UI 預設使用合成展示，服務位址以啟動輸出為準。Tk GUI 需要 Python 安裝的 Tk/Tcl 與 Pillow；用法見 `docs/ingredient_pilot_ai_import_v0.md`。沒有核准的本機圖片、manifest 與 workspace 時，先執行合成測試，不要建立假的私人資料以通過驗證。
 
-requirements 版本來自原本可執行環境；本輪在隔離副本驗證程式及371項測試，沒有從空白環境重新下載依賴，也沒有建立完整遞移依賴 lock。未來跨平台安裝仍須團隊 CI 驗證。
+依賴版本沿用既有分享版；本次未下載依賴、未驗證全新環境安裝或跨平台 lock。`requirements-model.txt` 為選用模型環境提示，使用前需確認第三方套件、權重與資料條款。
 
-## 真實推論與外部資源
+## 驗證與分享界線
 
-沒有權重時真實 YOLO 會 blocked，不下載或以別的模型假冒。可檢視 src/detection/README.md；原預設位置為 runs/detect/taiwanese_food_baseline_10ep/weights/best.pt 與 data/roboflow_taiwanese_food_detection/foodcal_data.yaml。資料/權重僅能由有權使用者放在本機 ignored 目錄；示範 taxonomy 在 examples/diagnostic_v0/classes.yaml，不能當成圖片或權重使用授權。
+本次離線測試共 398 項：386 passed、0 failures、0 errors、12 skipped。4 項缺 Streamlit；8 項無可用 Tcl/Tk 初始化環境。已執行的測試包含 19 項新增 AI 草稿邏輯測試；GUI 互動測試未算通過。完整範圍及未攜入的私有資料測試見 `HANDOFF.md`。
 
-requirements-model.txt 僅為選用版本提示；先審查 Ultralytics／模型及來源資料的使用條件，再決定是否安裝。此副本未執行 YOLO、ViT、Gemma、訓練或資料下載。沒有正式食譜來源時，synthetic catalog 只是測試先驗，不代表照片真實食材。
+不包含 data/runs/work、圖片、模型權重、人工 revisions、私人 manifest、TFDA 營養原件、模型原始輸出、API Keys、虛擬環境或 Codex sessions。資料與權重須另行取得合法使用權；此目錄不是完整私人工作資料備份。
 
-TFDA Source 與私人 Pilot 的原始快照缺席是刻意設計，相關本機流程須補齊各自核准的外部前置資料；不要用空檔案假裝取得資料。v1.1 真實逐樣本人工審查 metadata 也沒有納入。
+`.gitignore` 採精確白名單；新增檔須審查後加入，不使用 `git add -f`。既有 `SHARING_REPORT.md` 是 2026-10-19 歷史紀錄，當時測試數與分支流程不代表本輪。沒有新增開源 License，也未授予公開散布或第三方資料／模型權利。
 
-## 測試範圍與副本差異
-
-此套件不包含原本依賴真實保存輸出／人工標註／私有快照的五個測試模組：test_adapter_final_evaluation、test_visual_sample_review、test_recipe_retrieval、test_tfda_source_local_snapshot、test_nutrition_candidate_lookup_local_snapshot；也不含 tests/evaluation 歷史整合測試。371 passed 不是原專案全套測試數、不是模型準確率。
-
-唯一原測試程式調整是 tests/test_food_detection.py：將 taxonomy 指向已追蹤的合成15類 YAML，仍使用原 FakeTensor／backend 驗證，不修改正式 Detection API 或權重。src/detection/export_validation_review.py 作為 yolo_diagnostic 的 read_gt 程式依賴保留，沒有帶入任何真實GT內容。
-
-本輪新增README、依賴及.gitignore；其他選入來源檔案依檔案清單核對原始 SHA-256。忽略規則涵蓋 data/runs/work、圖片、模型與秘密檔案，但不是完整DLP保證。
-
-## 團隊 Repository 整合方式
-
-本目錄由已審查的105檔分享快照匯入團隊Repository的FoodCal_AI/，使用feature/add-foodcal-ai分支及Pull Request審查。保留團隊main與其既有歷史，不帶入FoodCal原專案的Git歷史；原專案和原分享副本未修改。
-
-所有指令請先cd FoodCal_AI；專案以本目錄為資源根目錄，請勿從Repository根目錄直接執行模組。根目錄README保留組員原內容。
-
-新增檔案預設被本目錄.gitignore忽略；新增可分享程式時需先審查，再將精確相對路徑加入白名單。不要用git add -f加入私人資料。
-
-SHARING_REPORT.md保留分享快照當時的審查記錄；其中無remote、空庫前置條件與初始main的敘述屬於歷史階段，不適用本次從既有main建立團隊feature分支的流程。
-
-未附資料集、模型權重、第三方套件本體或私人標註。本副本未新增開源License；私人團隊分享不代表授予公開散布、資料訓練或正式營養使用資格。選用Ultralytics與外部模型/資料仍需另行審查其適用條款。沒有重新驗證乾淨環境pip安裝或跨平台依賴鎖定。
+本次未 Commit、Push、Merge 或訓練。變更準備於 `feature/foodcal-ai-handoff`；遠端可見性與寫入權限尚未重新確認，詳本輪報告。
