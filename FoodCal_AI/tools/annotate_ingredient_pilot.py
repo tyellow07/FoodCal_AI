@@ -230,6 +230,7 @@ class AnnotationApp:
     def blocked(self,error):
         explanations={
             'stale_human_revision':'人工 revision 已更新或與草稿不同。請重新開圖；本 GUI 不會繞過舊草稿的 hash 綁定。',
+            'revision_lock_timeout':'另一個標註程式正在保存同一工作區；本次未寫入 revision，請稍後再保存。',
             'spec_hash_mismatch':'標註規範版本／hash 不符。',
             'image_hash_mismatch':'原圖內容與 manifest hash 不符。',
             'proposal_hash_mismatch':'載入後草稿檔已被修改，不能保存。',
@@ -331,7 +332,8 @@ class AnnotationApp:
                 for box in annotation['boxes']:box['semantic_review_status']='accepted_for_pilot_annotation'
                 result=validate_annotation(self.item,annotation)
                 if result['status']!='passed':messagebox.showerror('Blocked',str(result['issues']));return
-            write_revision(self.workspace/'annotations',annotation,self.parent_revision_sha256)
+            try:write_revision(self.workspace/'annotations',annotation,self.parent_revision_sha256,require_latest=True)
+            except (ValueError,OSError) as error:self.blocked(error);return
         else:
             try:
                 save_pending(self.workspace,annotation,self.draft,item=self.item,spec_path=SPEC,

@@ -65,6 +65,33 @@ class AIGuiTests(DraftFixture):
         self.assertIsNone(app.draft)
         self.assertEqual(len(list((self.ws/'annotations').glob('*.json'))), 1)
 
+    def review_app(self):
+        window = tk.Toplevel(self.window); window.withdraw(); self.addCleanup(window.destroy)
+        return AnnotationApp(window, self.ws, 'synthetic-reviewer', review=True)
+
+    def test_review_save_rechecks_the_parent_inside_the_lock(self):
+        import tools.annotate_ingredient_pilot as gui
+        from tools.ingredient_box_edit import write_revision
+        app, original = self.review_app(), gui.check_current
+
+        def check_then_concurrent_save(*args, **kwargs):
+            original(*args, **kwargs)
+            write_revision(self.ws/'annotations', self.annotation, self.parent_hash)  # another process saves now
+
+        with patch('tools.annotate_ingredient_pilot.check_current', side_effect=check_then_concurrent_save):
+            app.save('rejected')
+        self.assertIn('stale_human_revision', self.error.call_args.args[1])
+        self.info.assert_not_called()
+        self.assertEqual(len(list((self.ws/'annotations').glob('*.json'))), 2)
+
+    def test_review_save_lock_timeout_is_blocked_not_raised(self):
+        app = self.review_app()
+        with patch('tools.annotate_ingredient_pilot.write_revision', side_effect=TimeoutError('revision_lock_timeout')):
+            app.save('rejected')
+        self.assertIn('revision_lock_timeout', self.error.call_args.args[1])
+        self.info.assert_not_called()
+        self.assertEqual(len(list((self.ws/'annotations').glob('*.json'))), 1)
+
     def test_save_unresolved_blocked_and_cancel_navigation_preserves_session(self):
         self.app.import_draft(self.path)
         self.app.save('pending')

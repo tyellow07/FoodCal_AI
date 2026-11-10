@@ -12,7 +12,7 @@ Do not commit data/, runs/, work/, outputs/, models/, weights/, images, private 
 
 ## Validation
 
-Run `python -B -m unittest discover -s tests -v` and `python -B -m src.pipeline.diagnostic_demo`. For annotation changes run the four modules listed in HANDOFF.md. Use synthetic temporary images/workspaces for tests. Report pass/fail/error/skip counts and skip reasons separately. Missing private evidence is not a passing test; do not fabricate replacement evidence or silently relax validators. Optional Streamlit and Tk tests require their respective runtimes.
+Run `python -B -m unittest discover -s tests -v` and `python -B -m src.pipeline.diagnostic_demo`. For annotation changes run the annotation modules listed in HANDOFF.md. Use synthetic temporary images/workspaces for tests. Report pass/fail/error/skip counts and skip reasons separately. Missing private evidence is not a passing test; do not fabricate replacement evidence or silently relax validators. Optional Streamlit and Tk tests require their respective runtimes.
 
 ## Working rules
 

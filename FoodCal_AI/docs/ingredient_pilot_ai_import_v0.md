@@ -29,6 +29,6 @@ python -B -m tools.annotate_ingredient_pilot --workspace work/my_pilot --actor r
 
 匯入／保存核對 manifest、圖片 hash 與尺寸、spec、scope、最新 revision、proposal bytes、enum 與框座標。重複候選、未處理候選、未套用欄位及過期 revision 會阻擋；新 revision 不提升訓練或營養資格。hash 是一致性檢查，不是來源授權或模型身分認證。
 
-同時鐘刻度的 revision 檔名仍維持時間排序；沒有跨程序交易鎖。重疊框是否為同一物件仍需人工判斷。AI 輸入／接受不等於 GT；原圖語意及 bbox 正確性需另行人工驗收。
+同時鐘刻度的 revision 檔名仍維持時間排序。保存在每個 annotations 目錄的跨程序鎖（`.revision.lock`，OS advisory lock，持有者當掉時由系統釋放）內完成：鎖內重新確認最新 revision 仍是 parent，先寫暫存檔並 fsync，再改名為不覆寫的新檔名。同一 parent 的並行保存只會有一筆成功，其餘為 `stale_human_revision`，須重新開圖；鎖等待逾時為 `revision_lock_timeout`，不寫入任何檔案。此鎖只保證同一台電腦的本機檔案系統，雲端同步資料夾或未驗證的網路磁碟不適用。重疊框是否為同一物件仍需人工判斷。AI 輸入／接受不等於 GT；原圖語意及 bbox 正確性需另行人工驗收。
 
 測試只建立暫存合成圖片、proposal 與 revisions，不讀私人工作集；命令及本輪實際結果見 HANDOFF.md。

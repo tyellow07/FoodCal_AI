@@ -8,7 +8,7 @@
 
 - Photo Recognition：Detection API、受控 YOLO 診斷；無合法本機權重時安全阻擋。
 - Visual Ingredient Evidence：視覺證據 Adapter、逐樣本審查契約、合成 fixture；真實人工審查資料不隨庫分享。
-- Annotation：Tk 人工畫框、Bounding Box 欄位編輯、AI proposal 匯入、明確新增／替換／拒絕、來源事件紀錄、append-only revision 與獨立複核。匯入功能本身不呼叫 AI 模型。
+- Annotation：Tk 人工畫框、Bounding Box 欄位編輯、AI proposal 匯入、明確新增／替換／拒絕、來源事件紀錄、append-only revision 與獨立複核；保存使用跨程序鎖與原子寫入（限同一台電腦的本機檔案系統）。匯入功能本身不呼叫 AI 模型。
 - Recipe Parsing：Schema、Validator、Mock 與選用 Ollama Adapter；Nutrition Mapping、來源查核與人工審查原型。
 - Streamlit Demo／CLI：合成資料離線展示；不是完整營養產品。
 - Portion／Energy Contract v0：照片可見質量區間、秤重／校準方法、校準門檻、不確定性傳遞與 photo_calculation 營養串接閘門（`docs/photo_portion_estimation_contract_v0.md`）；沒有估算模型或校準資料，結果維持 unavailable。
@@ -40,7 +40,7 @@ UI 預設使用合成展示，服務位址以啟動輸出為準。Tk GUI 需要 
 
 ## 驗證與分享界線
 
-本次離線測試共 398 項：386 passed、0 failures、0 errors、12 skipped。4 項缺 Streamlit；8 項無可用 Tcl/Tk 初始化環境。已執行的測試包含 19 項新增 AI 草稿邏輯測試；GUI 互動測試未算通過。完整範圍及未攜入的私有資料測試見 `HANDOFF.md`。2026-11-11 在 macOS／Python 3.12.0 修正三個測試檔的可攜性問題後，398 項全數通過、0 skipped（含 Streamlit 4 項與 Tk 8 項）；加入 Portion Contract v0 後為 422 項全數通過，詳見 `HANDOFF.md`。
+本次離線測試共 398 項：386 passed、0 failures、0 errors、12 skipped。4 項缺 Streamlit；8 項無可用 Tcl/Tk 初始化環境。已執行的測試包含 19 項新增 AI 草稿邏輯測試；GUI 互動測試未算通過。完整範圍及未攜入的私有資料測試見 `HANDOFF.md`。2026-11-11 在 macOS／Python 3.12.0 修正三個測試檔的可攜性問題後，398 項全數通過、0 skipped（含 Streamlit 4 項與 Tk 8 項）；加入 Portion Contract v0 後為 422 項、再加入標註跨程序鎖後為 431 項，皆全數通過，詳見 `HANDOFF.md`。
 
 不包含 data/runs/work、圖片、模型權重、人工 revisions、私人 manifest、TFDA 營養原件、模型原始輸出、API Keys、虛擬環境或 Codex sessions。資料與權重須另行取得合法使用權；此目錄不是完整私人工作資料備份。
 

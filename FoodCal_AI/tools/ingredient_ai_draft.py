@@ -7,7 +7,7 @@ from pathlib import Path
 import uuid
 
 from PIL import Image
-from tools.ingredient_box_edit import edit_box, write_revision
+from tools.ingredient_box_edit import edit_box, latest_revision, write_revision
 from tools.ingredient_pilot import file_hash
 
 
@@ -16,8 +16,8 @@ FIELDS = ('class_id', 'bounding_box', 'visibility', 'occlusion', 'truncation',
 
 
 def latest_hash(workspace, image_id):
-    paths = sorted((Path(workspace) / 'annotations').glob(image_id + '-*.json'))
-    return file_hash(paths[-1]) if paths else None
+    path = latest_revision(Path(workspace) / 'annotations', image_id)
+    return file_hash(path) if path else None
 
 
 def check_current(workspace, item, spec_path, parent_hash):
@@ -220,4 +220,5 @@ def save_pending(workspace, annotation, draft, *, item, spec_path, parent_hash, 
     output['nutrition_eligible'] = False
     directory = Path(workspace) / 'annotations'
     directory.mkdir(exist_ok=True)
-    return write_revision(directory, output, parent_hash)
+    # check_current above ran before validation; recheck the parent inside the cross-process lock.
+    return write_revision(directory, output, parent_hash, require_latest=True)
