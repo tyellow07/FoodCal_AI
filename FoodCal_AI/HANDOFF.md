@@ -8,7 +8,7 @@
 |---|---|---|
 | Photo Recognition | src/detection/model.py；FoodDetector、detect_food | API 與受控 YOLO 流程存在；權重／taxonomy 須另外核准提供 |
 | Visual Ingredient Evidence | src/visual_ingredients/adapter.py、review.py | 視覺候選與 recipe prior 分離；SampleReviewContext 可驗證逐樣本綁定，私人實證不附帶 |
-| Annotation／AI-assisted | tools/annotate_ingredient_pilot.py、ingredient_ai_draft.py、ingredient_box_edit.py | 畫框、欄位編輯、AI 草稿逐項處理、來源追蹤、append-only revisions、獨立複核；不產生 AI proposal |
+| Annotation／AI-assisted | tools/annotate_ingredient_pilot.py、ingredient_ai_draft.py、ingredient_box_edit.py | 畫框、欄位編輯、AI 草稿逐項處理、來源追蹤、append-only revisions、獨立複核、跨程序鎖與原子寫入；不產生 AI proposal |
 | Annotation schema／inventory | examples/visual_ingredient_detection_v2/annotation_spec.json；tools/ingredient_pilot.py、inventory_ingredient_data_v2.py | 規範與驗證程式可分享；真實 manifest、標註與 inventory 結果私有 |
 | Recipe Retrieval | src/recipes/retrieval.py | 未提供核准 catalog 時 unavailable；synthetic catalog 僅供測試 |
 | Recipe Parsing | src/recipe_parsing/{schema,validator,mock,ollama}.py | 結構與來源證據檢查、離線 Mock、選用本機 Ollama；不自動呼叫服務 |
@@ -26,7 +26,7 @@
 
 ```powershell
 python -B -m unittest discover -s tests -v
-python -B -m unittest tests.test_ingredient_ai_draft tests.test_ingredient_ai_gui tests.test_ingredient_box_edit tests.test_ingredient_pilot -v
+python -B -m unittest tests.test_ingredient_ai_draft tests.test_ingredient_ai_gui tests.test_ingredient_box_edit tests.test_ingredient_pilot tests.test_ingredient_revision_lock -v
 python -B -m src.pipeline.diagnostic_demo
 ```
 
@@ -42,6 +42,7 @@ python -B -m src.pipeline.diagnostic_demo
 - 修正後：398 tests，398 passed，0 failures，0 errors，0 skipped；四個標註模組 42 項通過；diagnostic_demo exit 0、partial、photo_portion_grams null、calorie unavailable。
 - 仍未驗證：全新環境安裝（需下載套件）、真實模型推論、人工 GUI 操作驗收。
 - 加入 Portion Contract v0 後（同環境）：422 tests，422 passed，0 failures，0 errors，0 skipped（新增 tests/test_portion_estimation.py 24 項合成測試）；四個標註模組 42 項通過；diagnostic_demo exit 0，輸出不變。
+- 加入標註跨程序鎖後（同環境）：431 tests，431 passed，0 failures，0 errors，0 skipped（新增 tests/test_ingredient_revision_lock.py 7 項，含真實子程序競爭；GUI 複核保存 2 項）；標註相關五個模組 51 項通過；diagnostic_demo 輸出不變。舊流程對照：6 個程序從同一 parent 同時保存，修正前 5/5 輪皆 6 筆成功（分岔、遺失 5 筆修改），修正後 5/5 輪皆恰好 1 筆成功。
 
 ## 私有測試與缺席資源
 
@@ -63,7 +64,7 @@ python -B -m src.pipeline.diagnostic_demo
 2. 視覺食材模型／標註仍需合法資料、獨立語意複核、來源群組與 split 驗證；目前不具訓練資格。不得自動訓練或接受 AI proposal。
 3. 2026-11-11 已完成 Photo Portion Estimation Contract v0（契約、校準紀錄門檻、區間不確定性與 photo_calculation 串接閘門，見 docs/photo_portion_estimation_contract_v0.md）。仍待：合法且可依來源分組的秤重資料與真正估算方法／校準、photo_calculation 營養基準審查 profile、審查後接入 diagnostic 輸出、剩食前後對比。未完成前維持 null/unavailable。
 4. 完成 ingredient identity、nutrition basis、合法營養來源與 review 契約整合；Recipe prior 僅解釋可能隱藏食材，不可冒充視覺證據。
-5. 標註目前沒有跨程序交易鎖；hash 防過期不等於原子寫入。多人並行前需設計鎖定與測試。
+5. 2026-11-11 已加入標註跨程序鎖：每個 annotations 目錄的 OS advisory lock（`.revision.lock`）、鎖內以 `require_latest` 重新確認 parent、暫存檔 fsync 後改名的原子寫入；`save_pending` 與 GUI 複核保存都使用。限制：只保證同一台電腦的本機檔案系統（雲端同步資料夾、網路磁碟不適用，跨電腦多人仍須共享服務或分開工作區）；Windows `msvcrt` 路徑尚未在 Windows 實測；鎖不可重入；當機殘留的 `.tmp` 暫存檔不會被讀取，也不會自動刪除。
 6. 提交前檢查精確白名單與 diff；Push 前確認目標 Repository 可見性、權限與遠端分支進度。此次 GitHub metadata 查詢回 404，無法據此判定 Repository 不存在或是公開／私有。
 
 沒有攜入早期 src/pipeline/mvp_pipeline.py、recognition、portion placeholder、固定 nutrition/database.py 或訓練／資料集腳本：早期流程有語法錯誤與未驗證熱量假設，亦不符合目前視覺證據規則。不是遺失本輪成果；原始版本仍保留本機。

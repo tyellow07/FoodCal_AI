@@ -124,6 +124,9 @@
 !/src/portion/types.py
 !/tests/test_portion_estimation.py
 
+# Annotation cross-process revision lock (2026-11-11): synthetic temp-directory tests only; pending team review
+!/tests/test_ingredient_revision_lock.py
+
 # Private data stays blocked even under future broad allow rules.
 **/data/
 **/runs/
