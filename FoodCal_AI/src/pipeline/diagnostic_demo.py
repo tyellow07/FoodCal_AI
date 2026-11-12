@@ -13,6 +13,7 @@ from src.recipes import RecipeRetriever, InvalidDetectionResultError
 from src.recipe_parsing import MockRecipeParsingAdapter
 from src.nutrition.mapping import MockNutritionMappingAdapter
 from src.nutrition.candidate_lookup import review_ingredient_sources
+from src.portion import diagnostic_photo_energy
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -142,7 +143,8 @@ def run_demo(fixtures_dir=DEFAULT_FIXTURES, *, source_adapter=None):
                         'nutrition_eligible': False}, 'photo_portion_grams': None,
               'calorie_estimate': {'status': 'unavailable', 'value': None,
                                    'reasons': ['fixture_only', 'recipe_is_prior', 'photo_mass_unknown',
-                                               'nutrition_basis_unresolved']}}
+                                               'nutrition_basis_unresolved']},
+              'photo_energy_estimate': None}
     try:
         folder = Path(fixtures_dir)
         manifest = _load(folder / 'associations.json')
@@ -174,6 +176,8 @@ def run_demo(fixtures_dir=DEFAULT_FIXTURES, *, source_adapter=None):
                                           'path_projection': 'catalog path replaced with fixture URI; original not mutated'})
         result['stages']['detection'] = _reason('replayed', 'synthetic_fixture_not_image_inference')
         result['stages']['retrieval'] = _reason('executed', retrieval['status'])
+        # Portion Contract v0 over dish-level evidence: reports why photo mass is unavailable, invents nothing.
+        result['photo_energy_estimate'] = diagnostic_photo_energy(detection, classes_path=folder / 'classes.yaml')
         parser, mapper = MockRecipeParsingAdapter(), MockNutritionMappingAdapter()
         count = 0
         for obj in retrieval['objects']:

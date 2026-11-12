@@ -223,6 +223,17 @@ def _overlapping_same_ingredient(items):
     return False
 
 
+def diagnostic_photo_energy(detection_result, *, classes_path):
+    """photo_energy_estimate section for diagnostic outputs, built from a validated Detection schema 1 result.
+
+    Dish detections carry no ingredient-level evidence and no portion estimates are supplied, so every item
+    stays unavailable with its reason. Nothing is estimated, defaulted or taken from recipe candidates.
+    """
+    from src.visual_ingredients import VisualIngredientEvidenceAdapter
+    envelope = VisualIngredientEvidenceAdapter(classes_path=classes_path).from_detection(detection_result)
+    return estimate_photo_energy(envelope)
+
+
 def estimate_photo_energy(envelope, *, estimates=(), calibrations=(), nutrition_bases=(), consumption=None):
     """Visible-item energy intervals; a total needs every gate, every item and a consumption assertion.
 

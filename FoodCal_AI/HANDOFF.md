@@ -16,7 +16,7 @@
 | Nutrition review | src/nutrition/context_provider.py、bootstrap.py、review_validation.py、review_aggregation.py | 明確人工斷言／審查契約；不得自動提升正式資格 |
 | CLI／Streamlit | src/pipeline/diagnostic_demo.py、yolo_diagnostic.py；src/ui/app.py、adapter.py | 合成診斷可離線跑；真實 YOLO 另需明確啟動及合法資源 |
 | Portion Estimation | src/portion/contract.py、estimation.py；assess_portions | Contract v0（docs/photo_portion_estimation_contract_v0.md）：可見質量區間、秤重／校準方法、校準紀錄門檻與獨立複核；尚無估算模型或校準資料，預設 photo_mass_unknown，photo_portion_grams=null |
-| Nutrition Estimation | src/portion/estimation.py；estimate_photo_energy | photo_calculation 四 gate 全 passed、明示食用聲明才計算 Decimal 能量區間；目前無此用途核可基準，輸出 unavailable；診斷輸出未接入 |
+| Nutrition Estimation | src/portion/estimation.py；estimate_photo_energy | photo_calculation 四 gate 全 passed、明示食用聲明才計算 Decimal 能量區間；目前無此用途核可基準，輸出 unavailable；diagnostic／YOLO／Streamlit 結果以 `photo_energy_estimate` 呈現逐項原因 |
 
 核心規則：Recipe candidates may explain hidden calories, but are not visual proof. 模型 confidence、retrieval score、食譜文字 evidence、人工 review 與照片觀察是不同證據，不能互換。
 
@@ -43,6 +43,7 @@ python -B -m src.pipeline.diagnostic_demo
 - 仍未驗證：全新環境安裝（需下載套件）、真實模型推論、人工 GUI 操作驗收。
 - 加入 Portion Contract v0 後（同環境）：422 tests，422 passed，0 failures，0 errors，0 skipped（新增 tests/test_portion_estimation.py 24 項合成測試）；四個標註模組 42 項通過；diagnostic_demo exit 0，輸出不變。
 - 加入標註跨程序鎖後（同環境）：431 tests，431 passed，0 failures，0 errors，0 skipped（新增 tests/test_ingredient_revision_lock.py 7 項，含真實子程序競爭；GUI 複核保存 2 項）；標註相關五個模組 51 項通過；diagnostic_demo 輸出不變。舊流程對照：6 個程序從同一 parent 同時保存，修正前 5/5 輪皆 6 筆成功（分岔、遺失 5 筆修改），修正後 5/5 輪皆恰好 1 筆成功。
+- 加入份量／熱量診斷輸出與 YOLO 版本修正後（同環境）：435 tests，435 passed，0 failures，0 errors，0 skipped（新增 4 項，並在既有 UI／YOLO 測試補上新區塊斷言）；標註相關五個模組 51 項通過；diagnostic_demo exit 0，`photo_energy_estimate` 為 unavailable、既有欄位不變。`run_yolo_diagnostic` 在查不到 ultralytics 套件 metadata 時改記 `library_version=null` 並照常寫出 result.json 與核對受保護資源（原本直接拋出例外）。
 
 ## 私有測試與缺席資源
 
@@ -62,7 +63,7 @@ python -B -m src.pipeline.diagnostic_demo
 
 1. Streamlit 四項與 Tk 八項已於 2026-11-11 在 macOS 補跑通過（見「離線驗證」）。仍待：全新環境乾淨安裝、在 Windows／Linux 重跑修正後的 GUI 測試，以及依需求進行人工 GUI 驗收。
 2. 視覺食材模型／標註仍需合法資料、獨立語意複核、來源群組與 split 驗證；目前不具訓練資格。不得自動訓練或接受 AI proposal。
-3. 2026-11-11 已完成 Photo Portion Estimation Contract v0（契約、校準紀錄門檻、區間不確定性與 photo_calculation 串接閘門，見 docs/photo_portion_estimation_contract_v0.md）。仍待：合法且可依來源分組的秤重資料與真正估算方法／校準、photo_calculation 營養基準審查 profile（設計提案：docs/photo_item_source_review_design_v0.md，以照片食材為範圍、不經過食譜；待團隊確認第 10 節待決事項後實作）、審查後接入 diagnostic 輸出、剩食前後對比。未完成前維持 null/unavailable。
+3. 2026-11-11 已完成 Photo Portion Estimation Contract v0（契約、校準紀錄門檻、區間不確定性與 photo_calculation 串接閘門，見 docs/photo_portion_estimation_contract_v0.md）。仍待：合法且可依來源分組的秤重資料與真正估算方法／校準、photo_calculation 營養基準審查 profile（設計提案：docs/photo_item_source_review_design_v0.md，以照片食材為範圍、不經過食譜；待團隊確認第 10 節待決事項後實作）、剩食前後對比。diagnostic／YOLO／Streamlit 輸出已於 2026-11-11 接入 `photo_energy_estimate`。未完成前維持 null/unavailable。
 4. 完成 ingredient identity、nutrition basis、合法營養來源與 review 契約整合；Recipe prior 僅解釋可能隱藏食材，不可冒充視覺證據。
 5. 2026-11-11 已加入標註跨程序鎖：每個 annotations 目錄的 OS advisory lock（`.revision.lock`）、鎖內以 `require_latest` 重新確認 parent、暫存檔 fsync 後改名的原子寫入；`save_pending` 與 GUI 複核保存都使用。限制：只保證同一台電腦的本機檔案系統（雲端同步資料夾、網路磁碟不適用，跨電腦多人仍須共享服務或分開工作區）；Windows `msvcrt` 路徑尚未在 Windows 實測；鎖不可重入；當機殘留的 `.tmp` 暫存檔不會被讀取，也不會自動刪除。
 6. 提交前檢查精確白名單與 diff；Push 前確認目標 Repository 可見性、權限與遠端分支進度。此次 GitHub metadata 查詢回 404，無法據此判定 Repository 不存在或是公開／私有。

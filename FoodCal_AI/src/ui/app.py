@@ -81,6 +81,19 @@ def main():
     st.json(result['stages'])
     st.json({'review': result['review'], 'trust': result['trust'],
              'calorie_estimate': result['calorie_estimate'], 'photo_portion_grams': result['photo_portion_grams']})
+    st.subheader('照片份量與熱量')
+    energy = result.get('photo_energy_estimate')
+    if energy is None:
+        st.caption('尚未產生照片份量評估。')
+    else:
+        st.caption('Portion Contract v0：只計可見食材的照片質量，食譜候選不是視覺證據，不會加入熱量。'
+                   '沒有通過審查的食材層級證據與份量紀錄時，照片重量與熱量維持不可用。')
+        rows = [{'項目': index, '證據類型': item['evidence']['evidence_type'], '狀態': item['status'],
+                 '原因': item['reason']} for index, item in enumerate(energy['portion_assessment']['items'], 1)]
+        if rows:
+            st.dataframe(rows, hide_index=True)
+        st.json({key: energy[key] for key in ('status', 'reasons', 'scope', 'completeness',
+                                               'nutrition_eligible', 'production_eligible')})
     with st.expander('完整診斷 JSON（記憶體，無自動下載或保存）'):
         st.json(result)
 

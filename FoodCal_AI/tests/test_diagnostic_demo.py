@@ -74,6 +74,29 @@ class DiagnosticDemoTests(unittest.TestCase):
         self.assertIsNone(r['calorie_estimate']['value'])
         self.assertFalse(r['trust']['nutrition_eligible'])
 
+    def test_photo_energy_section_reports_dish_level_gaps_without_values(self):
+        r = run_demo(self.root)
+        energy = r['photo_energy_estimate']
+        self.assertEqual((energy['status'], energy['energy'], energy['unit']), ('unavailable', None, None))
+        self.assertEqual(energy['reasons'], ['visual_items_unavailable', 'consumption_basis_missing'])
+        items = energy['portion_assessment']['items']
+        self.assertEqual(len(items), len(r['detection_snapshot']['detections']))
+        self.assertTrue(all(i['reason'] == 'ingredient_level_semantics_unverified' and i['mass_g'] is None for i in items))
+        self.assertEqual((energy['nutrition_eligible'], energy['production_eligible']), (False, False))
+        self.assertIsNone(r['photo_portion_grams'])
+        self.assertEqual(r['calorie_estimate']['status'], 'unavailable')
+
+    def test_photo_energy_absent_when_fixture_fails(self):
+        (self.root / 'catalog.json').unlink()
+        self.assertIsNone(run_demo(self.root)['photo_energy_estimate'])
+
+    def test_photo_energy_has_no_items_without_detections(self):
+        d = self.read('detection.json');d.update(detections=[], status='no_detections')
+        self.write('detection.json', d)
+        energy = run_demo(self.root)['photo_energy_estimate']
+        self.assertEqual(energy['portion_assessment']['items'], [])
+        self.assertIn('no_visual_items', energy['reasons'])
+
     def test_half_optional_missing_and_group_steps_preserved(self):
         c = run_demo(self.root)['objects'][0]['recipe_candidates']
         self.assertEqual(c[2]['parsing_snapshot']['ingredients'][1]['quantity'], 0.5)

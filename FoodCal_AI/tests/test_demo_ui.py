@@ -31,6 +31,7 @@ class UIAdapterTests(unittest.TestCase):
         self.assertEqual(result['issues'][0]['code'], 'explicit_start_required')
         factory.assert_not_called()
         self.assertIsNone(image)
+        self.assertIsNone(result['photo_energy_estimate'])
 
     def test_upload_prediction_preserved_and_no_persistent_writes(self):
         detected = run_demo()['detection_snapshot']
@@ -58,6 +59,10 @@ class UIAdapterTests(unittest.TestCase):
         self.assertFalse(result['trust']['nutrition_eligible'])
         self.assertNotIn('PRIVATE', str(result))
         self.assertEqual(result['stages']['parsing']['status'], 'blocked')
+        energy = result['photo_energy_estimate']
+        self.assertEqual((energy['status'], energy['energy']), ('unavailable', None))
+        self.assertTrue(all(i['reason'] == 'ingredient_level_semantics_unverified'
+                            for i in energy['portion_assessment']['items']))
 
     def test_fixture_priors_explicit_and_unparsed(self):
         detector = Mock(classes_path=DEFAULT_FIXTURES/'classes.yaml')
@@ -152,6 +157,7 @@ class StreamlitOfflineTests(unittest.TestCase):
         self.assertEqual(app.session_state['result']['mode'], 'fixture_offline')
         self.assertTrue(app.warning)
         self.assertTrue(app.json)
+        self.assertIn('照片份量與熱量', [s.value for s in app.subheader])
 
     def test_switch_to_yolo_does_not_infer_and_clears_fixture(self):
         app = self.app()
