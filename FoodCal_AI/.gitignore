@@ -130,6 +130,9 @@
 # Photo item source review design proposal (2026-11-11): documentation only; pending team review
 !/docs/photo_item_source_review_design_v0.md
 
+# Photo item source review v0 (2026-11-13): shared review helpers, code and synthetic tests only; pending team review
+!/src/nutrition/review_common.py
+
 # Private data stays blocked even under future broad allow rules.
 **/data/
 **/runs/
