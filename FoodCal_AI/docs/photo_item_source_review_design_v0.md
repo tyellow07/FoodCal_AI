@@ -1,7 +1,9 @@
-# Photo Item Source Review Design v0（提案）
+# Photo Item Source Review Design v0（提案＋v0 實作）
 
-日期：2026-11-11。**設計提案，尚無型別、Validator、審查引擎或測試實作**；團隊確認第 10 節待決事項後才實作。
-不修改 Review Contract v1、Prototype Profile v0、Portion Contract v0、Local Context Provider 或任何既有程式。
+日期：2026-11-11 設計；2026-11-13 依第 10 節**建議預設**完成 v0 實作（第 12 節）。第 10 節仍**待團隊確認**，
+確認結果與暫定值不同時須同步修改程式與測試。
+不修改 Review Contract v1 語意、Prototype Profile v0、Portion Contract v0 或 Local Context Provider；
+`review_validation.py` 只把共用 helper 移到 `review_common.py`，行為不變。
 目的：讓 Portion Contract v0 的 `photo_calculation` 營養基準（`PhotoNutritionBasis`）能由受控人工審查產生，
 且全程不經過食譜。用途固定 `diagnostic/test_only`，`nutrition_eligible=false`。
 
@@ -163,3 +165,55 @@ source_use 須由人核對 TFDA 資料集條款中的使用、標示與再散布
 抽出共用 helper（既有測試不改即通過）；照片審查的型別、Validator、Aggregator、gate 紀錄與
 `build_photo_nutrition_basis`；明標 synthetic/test_only 的合成 fixture；第 9 節驗收案例。
 不改 Review v1 語意、不核發真實核可、不讀被 Git 忽略的私人資料或真實人工審查紀錄。
+
+## 12. v0 實作紀錄（2026-11-13，暫定）
+
+程式：`src/nutrition/review_common.py`（共用 helper）、`photo_review_types.py`、`photo_review.py`；
+測試：`tests/test_photo_item_source_review.py`（全部為合成 test_only 資料，不讀私人資料或真實審查紀錄）。
+
+```python
+from src.nutrition.photo_review import validate_photo_review, aggregate_photo_review, build_photo_nutrition_basis
+build = build_photo_nutrition_basis(review_input, attribute_results, gate_records,
+                                    context=owner_context, trust_anchor=owner_anchor, energy_nutrient='熱量')
+# build['status'] built|unavailable；build['basis'] 直接作為 estimate_photo_energy(nutrition_bases=[...]) 的輸入
+```
+
+每次呼叫都重新完整驗證，不接受呼叫端的結論；`nutrition_eligible`、`production_eligible` 恆為 false。
+驗證 invalid／blocked 不產生 basis；驗證通過但 gate 未全 passed 時仍產生 basis，`reasons` 列 `gate_<name>_<status>`，
+下游 `estimate_photo_energy` 以 `nutrition_basis_unresolved` 阻擋。其他原因碼：`energy_nutrient_not_reviewed`、
+`energy_observation_missing`、`energy_value_unreported`、`energy_unit_not_supported`。
+
+### 12.1 第 10 節暫定決策（依建議預設）
+
+| # | 暫定實作 |
+| --- | --- |
+| 1 | contract `foodcal.photo_item_source_review`、schema_version 0；ledger profile `foodcal.photo_review_context.v0`。共用 helper 抽出後，Review v1 既有測試未修改即通過；另以 176,490 筆變異輸入比對新舊 validator，狀態、錯誤碼與路徑全部相同 |
+| 2 | `foodcal.photo_visual_review.v0` 封閉欄位：profile、photo_scope、reviewer_ref、reviewed_at、image_access、judgments、usage；judgment 為 {value_state, value, region}，known 的 region 須與證據框同 format／coordinate_space 且落在框內。審查者不得等於視覺證據的 `evidence_source.annotator`、份量 producer 或 measured_by。**誰有資格撰寫**未實作，留給第 7 項的 registry grants |
+| 3 | `decimal_interval` 只限 photo_consumed_mass 的 photo 端 claim（該 claim 也只能用它）：{low, high, coverage}、unit `g`，須與份量紀錄 mass_g 完全相同 |
+| 4 | recipe_declared_mass 只接受 controlled_rule `photo_item_excludes_recipe_mass_v1` 的 NA，證據須含 photo_portion_record；其他狀態 `invalid_recipe_mass_review`；不得對它提出 claim |
+| 5 | gate 紀錄 `foodcal.source_gate_record.v0`（第 7 節欄位＋profile）；passed／failed 須 reviewer_ref、reviewed_at 與等於 ledger `policy_revision` 的整數；passed 另須 evidence_locator；pending 不得帶審查欄位。integrity **不接受固定快照代替官方版次**：官方版次 null（`integrity_version_unknown`）或 data_version 未 verified（`integrity_requires_verified_version`）時 passed 為 invalid。誰核對 TFDA 8543 條款仍待指定，目前沒有任何真實 gate 紀錄 |
+| 6 | 標註類別不能 verified food：identity 五項的 photo 端 claim 必須引用同名 judgment（pointer `/judgments/<name>/value`）且值相同（`photo_visual_review_required`、`photo_claim_judgment_mismatch`）；edible_portion 引用 edible_fraction_visible，weight_basis 引用 state |
+| 7 | Local Context Provider 的照片 profile 與照片審查者 grants **尚未實作**（下一步） |
+| 8 | 不提供能量成分區間：basis `energy.interval=null`，涵蓋率下界維持 null |
+
+### 12.2 實作時補上的規則（原文未明訂）
+
+- 視覺證據的 `evidence_source.image_sha256` 必須等於 photo_scope.image_sha256（`photo_image_unbound`），且須記錄
+  `evidence_source.annotator`（`visual_evidence_producer_unrecorded`），否則無法核對獨立性。標註規範與 reviewed
+  prediction 已有 image_sha256，但現行 adapter 輸出沒有 annotator，因此 `fixture_demo`／`from_reviewed_detection`
+  的證據目前還不能進入照片審查，須上游補記錄者後才能使用。
+- 只屬於官方紀錄的屬性（reference_measure、data_version、nutrient_units、nutrient_definition）mismatch 只需官方證據與
+  source claim；identity、edible_portion、weight_basis 與 photo_consumed_mass 的 mismatch 仍需雙邊證據。
+- statement_role 綁定來源：photo_evidence_record／photo_visual_review → photo_observation，photo_portion_record →
+  photo_mass，官方來源只能用來源角色，caller_assertion／unverified_claim 只能 caller_claim。photo 端 claim 只能引用照片
+  來源，source 端只能引用官方來源；低信任來源兩端都可引用，但不能支持 verified／mismatch。
+- 整份 ledger attachment_catalog（含未被引用的項目）都必須是同一組 photo_scope／candidate_scope，origin 屬於封閉清單；
+  recipe 開頭的 origin 或帶 recipe_scope 的項目為 `recipe_evidence_not_allowed`。
+- basis_id 為 `photo-basis:` 加 canonical hash（context pin、estimate_id、food_id、能量營養素）；identity／basis gate 的
+  evidence_ref 為 `photo-review-context:sha256:<pin>#<gate>`；reviewer_ref 為逐屬性結果審查者（排序後以逗號分隔）。
+
+### 12.3 驗收
+
+第 9 節 14 案各有一個測試；另有 48 個攻擊案例表與證據邊界、ledger／gate、輸入不變測試，共 30 項。
+逐一停用 `photo_review.py` 的 82 個 require 檢查，除一個多重防護檢查（其他規則已使它不可能單獨觸發）外，
+每個都會讓至少一項測試失敗。下一步：第 10 節團隊確認、Provider 照片 profile／grants、上游視覺證據補 annotator。

@@ -132,6 +132,9 @@
 
 # Photo item source review v0 (2026-11-13): shared review helpers, code and synthetic tests only; pending team review
 !/src/nutrition/review_common.py
+!/src/nutrition/photo_review.py
+!/src/nutrition/photo_review_types.py
+!/tests/test_photo_item_source_review.py
 
 # Private data stays blocked even under future broad allow rules.
 **/data/
