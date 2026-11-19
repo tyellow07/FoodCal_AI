@@ -50,6 +50,7 @@ python -B -m src.pipeline.diagnostic_demo
 - 加入 Portion Contract v0 後（同環境）：422 tests，422 passed，0 failures，0 errors，0 skipped（新增 tests/test_portion_estimation.py 24 項合成測試）；四個標註模組 42 項通過；diagnostic_demo exit 0，輸出不變。
 - 加入標註跨程序鎖後（同環境）：431 tests，431 passed，0 failures，0 errors，0 skipped（新增 tests/test_ingredient_revision_lock.py 7 項，含真實子程序競爭；GUI 複核保存 2 項）；標註相關五個模組 51 項通過；diagnostic_demo 輸出不變。舊流程對照：6 個程序從同一 parent 同時保存，修正前 5/5 輪皆 6 筆成功（分岔、遺失 5 筆修改），修正後 5/5 輪皆恰好 1 筆成功。
 - 加入份量／熱量診斷輸出與 YOLO 版本修正後（同環境）：435 tests，435 passed，0 failures，0 errors，0 skipped（新增 4 項，並在既有 UI／YOLO 測試補上新區塊斷言）；標註相關五個模組 51 項通過；diagnostic_demo exit 0，`photo_energy_estimate` 為 unavailable、既有欄位不變。`run_yolo_diagnostic` 在查不到 ultralytics 套件 metadata 時改記 `library_version=null` 並照常寫出 result.json 與核對受保護資源（原本直接拋出例外）。
+- 2026-11-19 晚間（分支 tyellow-reference-card-pipeline，逐一推上 main）：階段指標與紅線稽核、易用性工具包、支援食物說明與 CLI 摘要、PhotoContextProvider、標準函式庫涵蓋率工具；523 tests 全過（在涵蓋率工具內執行時，巢狀的涵蓋率測試會自行 skip）。
 - 2026-11-19 校園餐工作流程與學生證框（分支 tyellow-reference-card-pipeline）：新增標註卡片框驗證／保存／GUI 測試 4 項與校園餐端到端 4 項（照片 → 工作區 → 標註 → 校準匯出 → 擬合 → 核可 → 估計 → 複核 → 熱量 → 評估）；全部合成資料。
 - 2026-11-19 增補後（同環境，分支 tyellow-mvp-usability，自 tyellow-photo-item-review 分出）：491 tests，491 passed，0 failures，0 errors，0 skipped（新增 26 項：UI 方向 1、中文摘要 6、標註→證據 2、學生證比例尺份量 10、整餐評估 7；Streamlit AppTest 補摘要斷言）；diagnostic_demo exit 0，輸出與修改前逐位元組相同；Streamlit 實際啟動 health check 回 ok。合成資料端到端可算出熱量；所有數值皆為測試用合成數字。未取得或使用任何真實秤重、照片或 TFDA 資料。
 - 2026-11-13 加入照片食材來源審查 v0 後（同環境，分支 tyellow-photo-item-review）：465 tests，465 passed，0 failures，0 errors，0 skipped（新增 tests/test_photo_item_source_review.py 30 項，含第 9 節 14 個驗收案例與 48 個攻擊案例子測試）；Review v1／Context Provider／bootstrap 既有 72 項未修改即通過；標註相關五個模組 51 項通過；diagnostic_demo exit 0，輸出與修改前逐位元組相同。共用 helper 抽出另以 176,490 筆變異輸入比對新舊 validator，狀態、錯誤碼與路徑 0 差異。
@@ -80,6 +81,9 @@ python -B -m src.pipeline.diagnostic_demo
 沒有攜入早期 src/pipeline/mvp_pipeline.py、recognition、portion placeholder、固定 nutrition/database.py 或訓練／資料集腳本：早期流程有語法錯誤與未驗證熱量假設，亦不符合目前視覺證據規則。不是遺失本輪成果；原始版本仍保留本機。
 
 ## 2026-11-19 之後的優先順序
+
+完整評分表、目前自評（約 21.5／100）與「分數從哪裡來」見 `docs/project_rubric_v0.md`。測試涵蓋率用 `python -B -m tools.measure_coverage`（標準函式庫，src/ 約 87.4%）。
+
 
 1. 收真實資料（不能用程式取代）：依 `docs/meal_evaluation_protocol_v0.md` 建 ≥ 30 餐秤重測試集，另依 `docs/portion_calibration_protocol_v0.md`
    在不同天收校準樣本（白飯、麵、煎蛋各 ≥ 30 筆）。兩者不能混用。
