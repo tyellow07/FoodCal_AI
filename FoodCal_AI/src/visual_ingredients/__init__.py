@@ -1,5 +1,6 @@
 """Offline visual evidence boundary; never derive ingredients from dish labels."""
-from .adapter import VisualIngredientEvidenceAdapter, recipe_assisted_hidden_ingredients
+from .adapter import VisualIngredientEvidenceAdapter, ingredient_annotation_envelope, recipe_assisted_hidden_ingredients
 from .review import SampleReviewContext
 
-__all__ = ['VisualIngredientEvidenceAdapter', 'recipe_assisted_hidden_ingredients', 'SampleReviewContext']
+__all__ = ['VisualIngredientEvidenceAdapter', 'ingredient_annotation_envelope', 'recipe_assisted_hidden_ingredients',
+           'SampleReviewContext']

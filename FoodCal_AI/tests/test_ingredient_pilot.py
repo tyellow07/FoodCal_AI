@@ -1,6 +1,8 @@
 from copy import deepcopy
 import unittest
-from tools.ingredient_pilot import select_records,validate_annotation,validate_splits
+from tools.ingredient_pilot import select_records,validate_annotation,validate_splits,visual_evidence_from_annotation
+from src.portion import assess_portions, evidence_identity
+from src.portion.contract import evidence_blocker
 
 
 class PilotTests(unittest.TestCase):
@@ -45,6 +47,33 @@ class PilotTests(unittest.TestCase):
         self.assertIn('box_semantics_unaccepted',validate_annotation(self.item,a)['issues'])
         a['boxes']=[] # Explicit synthetic reviewed-negative example, not a real annotation.
         self.assertEqual(validate_annotation(self.item,a)['status'],'passed')
+
+    def test_accepted_annotation_becomes_bindable_visual_evidence(self):
+        before=deepcopy(self.annotation)
+        envelope=visual_evidence_from_annotation(self.item,self.annotation)
+        self.assertEqual(self.annotation,before)
+        self.assertEqual(envelope['status'],'partial')
+        self.assertEqual(envelope['recipe_assisted_hidden_ingredients'],[])
+        [item]=envelope['visual_ingredient_evidence']
+        self.assertEqual(item['ingredient_candidate'],'visible_fried_egg')
+        self.assertIsNone(evidence_blocker(item))
+        source=item['evidence_source']
+        self.assertEqual((source['annotator'],source['reviewer'],source['image_sha256']),
+                         ('synthetic-annotator','synthetic-reviewer','a'*64))
+        self.assertEqual(evidence_identity(item)['evidence_id'],'a1')
+        self.assertEqual(item['image_region']['x_max'],50)
+        # Admissible evidence now reaches the portion stage: the remaining gap is the mass itself.
+        assessment=assess_portions(envelope)
+        self.assertEqual(assessment['items'][0]['reason'],'photo_mass_unknown')
+        self.assertIsNone(envelope['photo_portion_grams'])
+
+    def test_blocked_or_empty_annotation_yields_no_evidence(self):
+        a=deepcopy(self.annotation);a['independent_review']['status']='pending'
+        envelope=visual_evidence_from_annotation(self.item,a)
+        self.assertEqual((envelope['status'],envelope['reason']),('unavailable','pilot_annotation_not_accepted'))
+        self.assertEqual(envelope['visual_ingredient_evidence'],[])
+        a=deepcopy(self.annotation);a['boxes']=[]
+        self.assertEqual(visual_evidence_from_annotation(self.item,a)['reason'],'reviewed_no_target_ingredient_boxes')
 
     def test_unresolved_and_cross_group_split(self):
         self.assertEqual(validate_splits([self.item])['status'],'blocked')

@@ -148,6 +148,38 @@ def validate_annotation(item, annotation, *, for_training=False):
             'training_eligible':for_training and not issues}
 
 
+def visual_evidence_from_annotation(item, annotation):
+    """Accepted pilot annotation -> Visual Ingredient envelope of ingredient_annotation items.
+
+    Each box keeps its annotation_id, image_sha256, annotator and independent reviewer so the
+    portion contract and the photo item source review can bind to it. A blocked annotation yields
+    an empty, unavailable envelope; nothing is inferred from dish labels or recipes. Training
+    eligibility is unchanged (usage stays private/review_only).
+    """
+    from src.visual_ingredients import ingredient_annotation_envelope
+    validation=validate_annotation(item,annotation)
+    if validation['status']!='passed':
+        return ingredient_annotation_envelope([],reason='pilot_annotation_not_accepted')
+    spec=json.loads(SPEC.read_text(encoding='utf-8'))
+    visual=[]
+    for box in annotation['boxes']:
+        x1,y1,x2,y2=box['bounding_box']
+        visual.append({'ingredient_candidate':spec['classes'][box['class_id']]['name'],
+            'evidence_source':{'kind':'pilot_annotation','annotation_id':box['annotation_id'],
+                'pilot_image_id':annotation['pilot_image_id'],'image_sha256':annotation['image_sha256'],
+                'source_id':annotation['source_id'],'spec_version':annotation['spec_version'],
+                'annotator':annotation['annotator'],'reviewer':annotation['independent_review']['reviewer'],
+                'review_status':'accepted','visibility':box['visibility'],'occlusion':box['occlusion'],
+                'truncation':box['truncation'],'usage':'private/review_only',
+                'source_authentication':'not_performed'},
+            'evidence_type':'ingredient_annotation','confidence':None,
+            'image_region':{'format':'xyxy','coordinate_space':'original_image_pixels',
+                            'x_min':x1,'y_min':y1,'x_max':x2,'y_max':y2},
+            'status':'observed_candidate','reason':'human_annotation_review_only'})
+    return ingredient_annotation_envelope(visual,reason='human_annotation_review_only' if visual
+                                          else 'reviewed_no_target_ingredient_boxes')
+
+
 def validate_splits(items):
     issues=[];seen={}
     for item in items:

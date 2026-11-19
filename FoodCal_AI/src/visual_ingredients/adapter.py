@@ -35,6 +35,14 @@ def _envelope(visual, hidden, *, status, reason):
             'nutrition_eligible': False}
 
 
+def ingredient_annotation_envelope(visual, *, reason):
+    """Envelope for caller-built, human-reviewed ingredient_annotation items (no recipe hypotheses)."""
+    if not isinstance(visual, list) or not all(isinstance(v, dict) and v.get('evidence_type') == 'ingredient_annotation'
+                                               for v in visual):
+        raise ValueError('ingredient_annotation_items_required')
+    return _envelope(visual, [], status='partial' if visual else 'unavailable', reason=reason)
+
+
 def recipe_assisted_hidden_ingredients(recipe, names):
     """Explicit caller-selected recipe hypotheses, not visually observed ingredients.
 
