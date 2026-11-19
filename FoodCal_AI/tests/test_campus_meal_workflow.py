@@ -176,6 +176,8 @@ class CampusMealWorkflowTests(unittest.TestCase):
         self.assertEqual(results['e2']['status'], 'unavailable')
         self.assertIn('visual_items_unavailable', results['e2']['reasons'])
         self.assertEqual(results['e3'], {'status': 'unavailable', 'reasons': ['not_annotated']})
+        from src.evaluation import audit_results
+        self.assertEqual(audit_results(results), {})
         statuses = {p['meal_id']: p['status'] for p in predictions}
         self.assertEqual(statuses, {'e1': 'computed', 'e2': 'unavailable', 'e3': 'unavailable'})
         refs = [{'meal_id': m, 'source_group': 'g', 'subset': 'main', 'reference_kcal': '360'} for m in statuses]

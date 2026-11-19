@@ -53,4 +53,24 @@ predictions.csv: meal_id,status,low_kcal,high_kcal            # status = compute
 - 全部拒答時 3c 必得滿分、3b 為 0，所以拒答不會被當成準確。
 - 測試集未達第 2 節規模時，報告會附註「items 1-2 not valid」。
 
-第 2 項（各階段準確度）、紅線稽核、易用性、工程與展示需要人工或流程證據，不在這支程式內。
+易用性、工程與展示需要人工或流程證據，不在程式內；第 2 項與紅線稽核見第 5 節。
+
+## 5. 各階段指標與紅線稽核（評分表第 2 項 15 分、第 3a 項 5 分）
+
+```bash
+.venv/bin/python -B -m tools.evaluate_stages --detection-gt gt.csv --detection-pred pred.csv \
+  --model-classes <類別 YAML> --portion portion.csv --mapping mapping.csv --audit-results <results.json>
+```
+
+| 子項 | 輸入與算法 | 給分 |
+| --- | --- | --- |
+| 2a 辨識（5） | 人工框 vs 模型框；同類別、IoU ≥ 0.5、信心高者先配對、一對一；算 F1。模型類別外的食物算漏抓，另報 taxonomy_coverage | F1 ≥0.80：5；≥0.65：3；≥0.50：1 |
+| 2b 份量（5） | 每個可見食材的重量區間 vs 秤重克數；unavailable 只降低作答率 | MAPE ≤20% 且涵蓋率 ≥80%：5；MAPE ≤30% 且涵蓋率 ≥70%：3；MAPE ≤45%：1 |
+| 2c 營養對應（5） | 系統選的 TFDA 每 100 g 熱量 vs 兩人選定的黃金條目；沒對應算錯 | 差 ≤10% 的比例 ≥90%：5；≥75%：3；≥50%：1 |
+
+- 報告沒有附「換真值分析」（把份量、營養對應分別換成真值重算 1a）時，第 2 項上限 10 分；附了才加 `--oracle-report-attached`。
+- `detection_rows(image_id, detection_result)` 可把 Detection API 輸出轉成 pred.csv 的列。
+- 紅線稽核 `audit_energy_result`：R1 食譜候選出現在可見項目或總和不等於可見項目加總；R2 份量來源不是秤重或校準估計；
+  R3 無法估算卻顯示數字、或 `photo_portion_grams` 被填；R4 有數字的項目缺估計 ID、營養基準 ID 或證據 ID；
+  以及 nutrition_eligible／production_eligible 被改成 true。`run_meal_pipeline energy` 會自動寫出 `red_line_audit.json`。
+  任何違規時第 1、3 項記 0（評分表規則）。

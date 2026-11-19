@@ -157,6 +157,9 @@
 !/tests/test_campus_meal_workflow.py
 !/tools/meal_workspace.py
 !/tools/run_meal_pipeline.py
+!/src/evaluation/stage_metrics.py
+!/tests/test_stage_metrics.py
+!/tools/evaluate_stages.py
 
 # Private data stays blocked even under future broad allow rules.
 **/data/

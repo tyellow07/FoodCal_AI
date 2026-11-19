@@ -75,6 +75,7 @@
   --out work/meals/energy_v0
 ```
 
+- `energy` 同時寫出 `red_line_audit.json`（紅線稽核，應為空）。
 - 一餐只要有任何一個可見食材沒有估計（例如沒畫卡片、食材不在校準範圍、複核未接受、沒有營養基準），整餐就是 unavailable，原因寫在 `results.json`。
 - 照片審查會綁定估計的 hash，所以**先完成份量複核再做營養審查**；複核改變估計內容後，舊的審查不再適用。
 
@@ -85,7 +86,7 @@
 .venv/bin/python -B -m tools.evaluate_meals --references <references.csv> --predictions work/meals/energy_v0/predictions.csv
 ```
 
-輸出評分表第 1、3b、3c 項的分數；其他項目見 `meal_evaluation_protocol_v0.md` 第 4 節。
+輸出評分表第 1、3b、3c 項的分數；第 2 項與紅線稽核用 `tools.evaluate_stages`（`meal_evaluation_protocol_v0.md` 第 5 節）。
 
 ## 6. 目前限制
 

@@ -3,7 +3,7 @@
 estimate  accepted annotations + reference card + calibration -> portion estimates (review not_requested)
 review    apply an independent reviewer's decisions CSV -> reviewed estimates (new file)
 energy    reviewed estimates + photo-calculation nutrition bases + consumption assertion
-          -> per-meal photo_energy_estimate and predictions.csv for tools.evaluate_meals
+          -> per-meal photo_energy_estimate, predictions.csv for tools.evaluate_meals and the red-line audit
 
 Every gate stays in force: a meal gets a calorie interval only when every visible item has an approved,
 in-scope calibrated estimate, an accepted independent review and a fully passed nutrition basis.
@@ -15,7 +15,7 @@ import csv
 import json
 from pathlib import Path
 
-from src.evaluation import prediction_from_energy_estimate
+from src.evaluation import audit_results, prediction_from_energy_estimate
 from src.portion import canonical_sha256, estimate_photo_energy, validate_portion_estimate
 from src.portion.reference_card import estimate_with_reference_card
 from tools.ingredient_pilot import ROOT, visual_evidence_from_annotation
@@ -164,11 +164,14 @@ def main(argv=None, *, root=ROOT / 'work'):
                                             consumption_evidence=args.consumption_evidence)
         out = _new_path(args.out, root)
         _write_json(out / 'results.json', results, root)
+        violations = audit_results(results)
+        _write_json(out / 'red_line_audit.json', {'meals_with_violations': violations}, root)
         with (out / 'predictions.csv').open('w', encoding='utf-8', newline='') as handle:
             writer = csv.DictWriter(handle, PREDICTION_COLUMNS)
             writer.writeheader()
             writer.writerows(predictions)
         summary = {'meals': len(predictions), 'computed': sum(p['status'] == 'computed' for p in predictions),
+                   'red_line_violations': len(violations),
                    'next': 'python -m tools.evaluate_meals --references <refs.csv> --predictions <out>/predictions.csv'}
     print(json.dumps(summary, ensure_ascii=False))
     return 0
