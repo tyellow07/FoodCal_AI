@@ -1,6 +1,6 @@
 # FoodCal AI agent instructions
 
-Scope: this directory only. Read README.md, HANDOFF.md and INTEGRATION_REPORT.md before changes. Run commands from FoodCal_AI, not the team repository root. Preserve other teammates' files and existing changes. Inspect branch and git status before editing; the handoff branch is feature/foodcal-ai-handoff.
+Scope: this directory only. Read README.md, HANDOFF.md and INTEGRATION_REPORT.md before changes. Run commands from FoodCal_AI, not the team repository root. Preserve other teammates' files and existing changes. Inspect branch and git status before editing; the original handoff branch was feature/foodcal-ai-handoff and later work uses tyellow-* feature branches. On macOS/Linux there may be no `python` on PATH: use `.venv/bin/python`.
 
 ## Evidence boundary
 
