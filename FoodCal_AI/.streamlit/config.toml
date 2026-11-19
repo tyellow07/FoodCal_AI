@@ -5,3 +5,7 @@ maxUploadSize = 10
 
 [browser]
 gatherUsageStats = false
+
+[client]
+# Hide developer-only toolbar items such as "Deploy" for demo viewers.
+toolbarMode = "viewer"

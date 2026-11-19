@@ -125,6 +125,18 @@ class UIAdapterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             draw_predictions(Image.new('RGB', (10, 10)), result)
 
+    def test_overlapping_boxes_get_separate_labels(self):
+        from PIL import ImageDraw, ImageFont
+        from src.ui.adapter import label_layout
+        result, image = fixture_demo()  # the two synthetic boxes overlap almost completely
+        detections = result['detection_snapshot']['detections']
+        layout = label_layout(ImageDraw.Draw(image.copy()), ImageFont.load_default(size=16), image.size, detections)
+        (first_text, a), (second_text, b) = layout
+        self.assertEqual((first_text, second_text), ('#1 cold_noodle 0.80', '#2 turkey_rice 0.80'))
+        self.assertFalse(a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3])
+        self.assertTrue(all(0 <= r[1] and r[3] <= image.height for r in (a, b)))
+        draw_predictions(image, result)  # still renders
+
     def test_label_has_dark_background_white_text_and_stays_at_top_edge(self):
         result, image = fixture_demo()
         result['detection_snapshot']['detections'] = result['detection_snapshot']['detections'][:1]
@@ -161,18 +173,18 @@ class StreamlitOfflineTests(unittest.TestCase):
         with patch('src.detection.model._load_yolo') as load:
             app = self.app()
         self.assertFalse(app.exception)
-        self.assertEqual(app.radio[0].value, 'Fixture Demo')
+        self.assertEqual(app.radio[0].value, '合成展示（不需模型）')
         load.assert_not_called()
         self.assertNotIn('result', app.session_state)
 
     def test_fixture_click_renders_diagnostics(self):
         app = self.app()
-        next(b for b in app.button if b.label == '顯示 Fixture 診斷').click().run()
+        next(b for b in app.button if b.label == '顯示展示結果').click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.session_state['result']['mode'], 'fixture_offline')
         self.assertTrue(app.warning)
         self.assertTrue(app.json)
-        self.assertIn('照片份量與熱量', [s.value for s in app.subheader])
+        self.assertIn('各項目的份量狀態', [e.label for e in app.expander])
         self.assertIn('結果摘要', [s.value for s in app.subheader])
         self.assertTrue(any('熱量：目前無法估算熱量' in m.value for m in app.markdown))
         self.assertTrue(any('整道菜' in m.value for m in app.markdown))
@@ -180,17 +192,17 @@ class StreamlitOfflineTests(unittest.TestCase):
 
     def test_switch_to_yolo_does_not_infer_and_clears_fixture(self):
         app = self.app()
-        next(b for b in app.button if b.label == '顯示 Fixture 診斷').click().run()
+        next(b for b in app.button if b.label == '顯示展示結果').click().run()
         with patch('src.detection.model._load_yolo') as load:
-            app.radio[0].set_value('真實 YOLO').run()
+            app.radio[0].set_value('上傳照片辨識（需要模型權重）').run()
         self.assertFalse(app.exception)
         load.assert_not_called()
         self.assertNotIn('result', app.session_state)
-        self.assertTrue(next(b for b in app.button if b.label == '開始 YOLO 推論').disabled)
+        self.assertTrue(next(b for b in app.button if b.label == '開始辨識').disabled)
 
     def test_clear_discards_session_results(self):
         app = self.app()
-        next(b for b in app.button if b.label == '顯示 Fixture 診斷').click().run()
+        next(b for b in app.button if b.label == '顯示展示結果').click().run()
         next(b for b in app.button if b.label == '清除本次圖片與結果').click().run()
         self.assertFalse(app.exception)
         self.assertNotIn('result', app.session_state)

@@ -64,7 +64,7 @@ REASONS = {
     'mixed_energy_units': '營養資料的熱量單位不一致（kcal／kJ）。',
     'overlapping_same_ingredient_regions': '同一種食材的框重疊，可能重複計算。',
     # UI / pipeline issues
-    'explicit_start_required': '請先選圖片，再按「開始 YOLO 推論」。',
+    'explicit_start_required': '請先選照片，再按「開始辨識」。',
     'local_model_or_taxonomy_missing': '這台電腦沒有模型權重或類別檔，無法執行真實辨識。',
     'model_taxonomy_mismatch': '模型權重和類別檔不一致。',
     'invalid_upload_or_configuration': '圖片無法讀取，或設定不正確。',
@@ -74,9 +74,9 @@ REASONS = {
 
 NEXT_STEPS = {
     'ingredient_level_semantics_unverified': '要算熱量，需要在照片上標出食材區塊（例如白飯、麵、煎蛋），並用秤重資料校準份量。',
-    'local_model_or_taxonomy_missing': '請先使用「Fixture Demo」，或向組員取得模型權重與類別檔。',
+    'local_model_or_taxonomy_missing': '請先使用「合成展示」，或向組員取得模型權重與類別檔。',
     'invalid_upload_or_configuration': '請換一張 PNG／JPEG／WEBP 圖片（10 MB 以內）。',
-    'explicit_start_required': '選好圖片後按「開始 YOLO 推論」。',
+    'explicit_start_required': '選好照片後按「開始辨識」。',
     'no_detections_does_not_establish_ingredient_absence': '請把整個餐盤拍進畫面、光線充足再試一次；模型目前只認得 15 種台灣小吃。',
     'photo_mass_unknown': '份量需要「秤重校準過的估算方法」或實際秤重紀錄。',
 }

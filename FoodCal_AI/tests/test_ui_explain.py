@@ -29,7 +29,7 @@ class ExplainTests(unittest.TestCase):
                              'detection_snapshot': None, 'photo_energy_estimate': None})
         self.assertEqual(summary['level'], 'error')
         self.assertIn(REASONS['local_model_or_taxonomy_missing'], summary['reasons'])
-        self.assertTrue(any('Fixture Demo' in step for step in summary['next_steps']))
+        self.assertTrue(any('合成展示' in step for step in summary['next_steps']))
         self.assertFalse(summary['synthetic'])
 
     def test_no_detection_is_not_absence(self):

@@ -23,8 +23,8 @@ python -m venv --system-site-packages work/demo_ui_venv
 
 ## 操作與資料邊界
 
-- 預設 Fixture Demo：按「顯示 Fixture 診斷」，顯示合成畫布、合成辨識框及既有 run_demo() 的完整結果。沒有權重也能運作。
-- 真實 YOLO：明確選此模式、上傳 PNG/JPEG/WEBP，再按「開始 YOLO 推論」。選圖、切換模式或瀏覽頁面不觸發模型。單次按鈕只呼叫一次 FoodDetector.detect_food，無自動重試。
+- 預設「合成展示（不需模型）」：按「顯示展示結果」，顯示合成畫布、合成辨識框及既有 run_demo() 的完整結果。沒有權重也能運作（2026-11-20 前名稱為 Fixture Demo／顯示 Fixture 診斷）。
+- 「上傳照片辨識（需要模型權重）」（原「真實 YOLO」）：明確選此模式、上傳 PNG/JPEG/WEBP，再按「開始辨識」（原「開始 YOLO 推論」）。本機沒有權重或類別檔時，頁面直接說明並停用按鈕。選圖、切換模式或瀏覽頁面不觸發模型。單次按鈕只呼叫一次 FoodDetector.detect_food，無自動重試。
 - 真實模式重用本機 FoodDetector 的預設權重和 15 類 taxonomy；缺少權重或類別不符顯示 blocked。模型依使用者 session 延遲建立並重用；切換模式或清除會移除 session 中的模型引用。
 - 食譜合成先驗需另勾選 synthetic/test_only，預設關閉；沒有正式 catalog 時 Retrieval 回 unavailable。UI 不將食譜 fixture 原文套用為照片食材，真實模式的 Parsing/Mapping/Nutrition 維持 blocked。
 - 框線只來自 Detection Prediction，顯示 class_name、confidence 和 detection_id，表格保留 bounding_box。沒有偵測不代表沒有食物；confidence 不是食譜或食材真實機率。
@@ -71,3 +71,13 @@ CLI 的 validation YOLO 路徑會寫入私有 audit 並要求 validation 核准�
 - 頁首「這個模型認得哪些食物？」展開區列出 15 類台灣小吃（中文名）、校園餐多半不在類別內的說明，以及可估份量的三種食材。
 - CLI：`python -B -m src.pipeline.diagnostic_demo --summary` 印出同樣的中文摘要（預設仍輸出 JSON，內容不變）。
 - 手機測試：設定檔維持只接受本機；需要時依 `usability_test_v0.md` 第 4 節暫時以 `--server.address 0.0.0.0` 在可信任網路執行。
+
+## 瀏覽器實測與版面修正（2026-11-20）
+
+在 Chrome 實際操作（合成展示、上傳模式、展開區、清除、窄視窗）後修正：
+- 標題改為「FoodCal AI · 餐點熱量估算」；模式、按鈕與提示全部改成中文，測試用食譜候選移到「進階選項」。
+- 結果改為左圖右表（窄螢幕自動上下排列，606 px 寬無水平捲動；Chrome 視窗無法縮到 390 px，手機仍需實機確認）。
+- 重疊的辨識框標籤自動往下錯開（`label_layout`），標籤改為「#編號 類別 分數」；合成畫布說明字移到左下角。
+- 上傳模式先檢查本機有沒有權重與類別檔，沒有時直接說明並停用「開始辨識」；上傳預覽固定 360 px 寬，手機直拍照片方向正確。
+- 「各項目的份量狀態」改為展開區；`.streamlit/config.toml` 設 `toolbarMode = "viewer"` 隱藏 Deploy 等開發者選單。
+- 瀏覽器 console 無錯誤。這台電腦沒有 YOLO 權重（GitHub 所有分支與歷史也沒有），真實辨識無法在本機實測。

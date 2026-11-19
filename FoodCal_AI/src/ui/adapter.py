@@ -45,7 +45,9 @@ def fixture_demo():
     result = run_demo()
     snapshot = result['detection_snapshot']
     image = Image.new('RGB', (snapshot['image']['width'], snapshot['image']['height']), '#f2eee5')
-    ImageDraw.Draw(image).text((15, 10), 'SYNTHETIC CANVAS - not a food photograph', fill='#453d32')
+    # Bottom-left, so detection labels drawn at the top never hide this notice.
+    ImageDraw.Draw(image).text((15, image.height - 30), 'SYNTHETIC CANVAS - not a food photograph', fill='#453d32',
+                               font=ImageFont.load_default(size=18))
     return result, image
 
 
@@ -106,6 +108,26 @@ def analyze_upload(raw, *, enabled=False, fixture_recipes=False, detector_factor
     return result, None
 
 
+def label_layout(draw, font, size, detections):
+    """[(text, (left, top, right, bottom))] per detection; later labels move down instead of covering earlier ones."""
+    width_limit, height_limit = size
+    placed = []
+    for prediction in detections:
+        box = prediction['bounding_box']
+        label = f"#{prediction['detection_id']} {prediction['class_name']} {prediction['confidence']:.2f}"
+        bounds = draw.textbbox((0, 0), label, font=font, anchor='lt')
+        width, height = bounds[2] + 8, bounds[3] + 8
+        left = max(0, min(box['x_min'], width_limit - width))
+        top = max(0, min(box['y_min'] - height, height_limit - height))
+        for _ in range(len(placed) + 1):
+            hits = [r for _, r in placed if left < r[2] and r[0] < left + width and top < r[3] and r[1] < top + height]
+            if not hits:
+                break
+            top = min(max(r[3] for r in hits), height_limit - height)
+        placed.append((label, (left, top, left + width, top + height)))
+    return placed
+
+
 def draw_predictions(image, result):
     """Draw only Detection predictions. GT/evaluation fields are deliberately ignored."""
     canvas = image.copy()
@@ -114,15 +136,11 @@ def draw_predictions(image, result):
     snapshot = result.get('detection_snapshot') or {}
     if snapshot.get('image', {}).get('width') != image.width or snapshot.get('image', {}).get('height') != image.height:
         raise ValueError('display_coordinate_mismatch')
-    for prediction in snapshot.get('detections', []):
+    detections = snapshot.get('detections', [])
+    for prediction in detections:
         box = prediction['bounding_box']
-        rect = tuple(box[k] for k in ('x_min', 'y_min', 'x_max', 'y_max'))
-        draw.rectangle(rect, outline='#e36c25', width=3)
-        label = f"{prediction['detection_id']}: {prediction['class_name']} {prediction['confidence']:.3f}"
-        bounds = draw.textbbox((0, 0), label, font=font, anchor='lt')
-        width, height = bounds[2] + 8, bounds[3] + 8
-        left = max(0, min(rect[0], image.width - width))
-        top = max(0, min(rect[1] - height, image.height - height))
-        draw.rectangle((left, top, left + width - 1, top + height - 1), fill='#171717')
+        draw.rectangle(tuple(box[k] for k in ('x_min', 'y_min', 'x_max', 'y_max')), outline='#e36c25', width=3)
+    for label, (left, top, right, bottom) in label_layout(draw, font, image.size, detections):
+        draw.rectangle((left, top, right - 1, bottom - 1), fill='#171717')
         draw.text((left + 4, top + 4), label, font=font, anchor='lt', fill='white')
     return canvas
