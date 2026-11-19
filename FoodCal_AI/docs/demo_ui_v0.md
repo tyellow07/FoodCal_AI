@@ -68,3 +68,6 @@ CLI 的 validation YOLO 路徑會寫入私有 audit 並要求 validation 核准�
 - 頁首說明「估計值僅供參考，不是醫療或營養建議」；原本常駐的 unavailable／null／false 英文提示移除，資訊仍在開發者細節。
 - `decode_upload` 先依 EXIF Orientation 轉正再清除 metadata：手機直拍照片的預覽、YOLO 輸入與框線座標一致。
 - 測試：`tests/test_ui_explain.py` 6 項；`tests/test_demo_ui.py` 新增方向測試與摘要斷言。
+- 頁首「這個模型認得哪些食物？」展開區列出 15 類台灣小吃（中文名）、校園餐多半不在類別內的說明，以及可估份量的三種食材。
+- CLI：`python -B -m src.pipeline.diagnostic_demo --summary` 印出同樣的中文摘要（預設仍輸出 JSON，內容不變）。
+- 手機測試：設定檔維持只接受本機；需要時依 `usability_test_v0.md` 第 4 節暫時以 `--server.address 0.0.0.0` 在可信任網路執行。

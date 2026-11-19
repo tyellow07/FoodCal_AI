@@ -82,6 +82,21 @@ NEXT_STEPS = {
 }
 
 
+DETECTION_CLASSES = ('Over-easy egg', 'bawan', 'beef_noodles', 'braised_napa_cabbage', 'braised_pork_over_rice',
+                     'chicken_mushroom_soup', 'chinese_pickled_cucumber', 'cold_noodle', 'deep-fried_chicken_cutlets',
+                     'egg_pancake_roll', 'fried-spanish_mackerel_thick_soup', 'fried_instant_noodles',
+                     'fried_rice_noodles', 'loofah', 'turkey_rice')
+
+
+def supported_foods_markdown():
+    """What the current models and annotation spec can and cannot cover, in plain language."""
+    dishes = '、'.join(FOOD_NAMES[c] for c in DETECTION_CLASSES)
+    return ('**辨識模型（整道菜，15 類台灣小吃）**：' + dishes + '。\n\n'
+            '校園餐廳常見的漢堡、吐司、丼飯、便當大多不在這 15 類裡，辨識不到是正常的。\n\n'
+            '**可以估算份量的食材（需人工標註＋學生證比例尺＋秤重校準）**：熟米飯、熟麵條、煎蛋。\n\n'
+            '模型只辨識整道菜，不會自己找出食材，所以上傳照片目前不會直接算出熱量。')
+
+
 def food_name(name):
     if not isinstance(name, str):
         return '（未知）'

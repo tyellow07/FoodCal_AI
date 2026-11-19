@@ -54,6 +54,10 @@
 | chinese_reasons_and_next_steps | 無法估算與錯誤時，畫面有中文原因與下一步 |
 | phone_width_t1_without_side_scroll | 手機（約 390 px 寬）連到同一網路的 Streamlit，完成 T1 不需左右捲動 |
 
+手機連線：`.streamlit/config.toml` 預設只接受本機（127.0.0.1）。測試時在**可信任的網路**上暫時執行
+`.venv/bin/python -m streamlit run src/ui/app.py --server.address 0.0.0.0`，手機開 `http://<電腦 IP>:8501`，測完立刻 Ctrl+C。
+服務沒有登入保護，不要在公共網路開放；設定檔本身不要改。
+
 ## 5. 給分（同評分表）
 
 | 子項 | 給分 |

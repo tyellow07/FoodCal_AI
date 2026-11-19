@@ -176,6 +176,7 @@ class StreamlitOfflineTests(unittest.TestCase):
         self.assertIn('結果摘要', [s.value for s in app.subheader])
         self.assertTrue(any('熱量：目前無法估算熱量' in m.value for m in app.markdown))
         self.assertTrue(any('整道菜' in m.value for m in app.markdown))
+        self.assertIn('這個模型認得哪些食物？', [e.label for e in app.expander])
 
     def test_switch_to_yolo_does_not_infer_and_clears_fixture(self):
         app = self.app()

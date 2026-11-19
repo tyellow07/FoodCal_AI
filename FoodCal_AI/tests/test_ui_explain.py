@@ -3,7 +3,8 @@ from copy import deepcopy
 import unittest
 
 from src.pipeline.diagnostic_demo import run_demo
-from src.ui.explain import FOOD_NAMES, REASONS, food_name, reason_text, summarize
+from src.ui.explain import (DETECTION_CLASSES, FOOD_NAMES, REASONS, food_name, reason_text, summarize,
+                            supported_foods_markdown)
 
 
 class ExplainTests(unittest.TestCase):
@@ -59,6 +60,29 @@ class ExplainTests(unittest.TestCase):
         self.assertIn('gate_identity_pending', reason_text('gate_identity_pending'))
         self.assertEqual(food_name('mystery_dish'), 'mystery_dish')
         self.assertEqual(len(FOOD_NAMES), 18)
+
+
+    def test_supported_foods_match_the_taxonomy_fixture(self):
+        import yaml
+        from pathlib import Path
+        names = yaml.safe_load((Path(__file__).resolve().parents[1] / 'examples/diagnostic_v0/classes.yaml')
+                               .read_text(encoding='utf-8'))['names']
+        self.assertEqual(list(DETECTION_CLASSES), names)
+        text = supported_foods_markdown()
+        self.assertTrue(all(FOOD_NAMES[c] in text for c in names))
+        self.assertIn('漢堡', text)
+
+    def test_cli_summary_mode_is_plain_chinese(self):
+        import io
+        from contextlib import redirect_stderr, redirect_stdout
+        from src.pipeline.diagnostic_demo import main
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(io.StringIO()):
+            self.assertEqual(main(['--summary']), 0)
+        text = out.getvalue()
+        self.assertIn('熱量：目前無法估算熱量', text)
+        self.assertIn('涼麵', text)
+        self.assertNotIn('{', text)
 
 
 if __name__ == '__main__':

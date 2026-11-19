@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import streamlit as st
 from src.ui.adapter import fixture_demo, decode_upload, analyze_upload, draw_predictions
-from src.ui.explain import reason_text, summarize
+from src.ui.explain import reason_text, summarize, supported_foods_markdown
 from src.detection import FoodDetector
 
 
@@ -15,6 +15,8 @@ def main():
     st.title('FoodCal AI · Diagnostic Demo')
     st.caption('本機展示 · 只有在證據足夠時才顯示熱量 · 估計值僅供參考，不是醫療或營養建議')
     mode = st.radio('模式', ['Fixture Demo', '真實 YOLO'], horizontal=True)
+    with st.expander('這個模型認得哪些食物？'):
+        st.markdown(supported_foods_markdown())
     if st.session_state.get('mode') != mode:
         for key in ('result', 'image', 'input_key', 'detector'):
             st.session_state.pop(key, None)

@@ -231,6 +231,7 @@ def main(argv=None):
     parser.add_argument('--image', type=Path)
     parser.add_argument('--approval-record', type=Path)
     parser.add_argument('--fixture-recipes', action='store_true', help='YOLO mode: show synthetic recipe priors only, never parse them')
+    parser.add_argument('--summary', action='store_true', help='print a plain-language Chinese summary instead of JSON')
     args = parser.parse_args(argv)
     if args.mode == 'yolo':
         if args.image is None or args.approval_record is None:
@@ -244,7 +245,17 @@ def main(argv=None):
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, 'reconfigure'):
             stream.reconfigure(encoding='utf-8')
-    print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+    if args.summary:
+        from src.ui.explain import summarize
+        summary = summarize(result)
+        lines = [summary['headline'], '熱量：' + summary['energy_text']]
+        lines += ['辨識：' + f"#{f['編號']} {f['辨識結果']}（模型分數 {f['模型分數']}）" for f in summary['foods']]
+        lines += ['原因：' + text for text in summary['reasons']]
+        lines += ['下一步：' + text for text in summary['next_steps']]
+        lines += ['註：' + text for text in summary['notes']]
+        print('\n'.join(lines))
+    else:
+        print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
     count = sum(c['parsing_snapshot'] is not None for o in result['objects'] for c in o['recipe_candidates'])
     kind = 'TRUE MODEL DETECTION' if args.mode == 'yolo' else 'SYNTHETIC FIXTURE ONLY'
     print(f"{kind} | {result['status']} | objects={len(result['objects'])} parsed={count} | calories unavailable", file=sys.stderr)
