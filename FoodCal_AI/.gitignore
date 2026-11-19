@@ -138,8 +138,13 @@
 
 # MVP usability, annotation bridge, reference-card portion method and meal evaluation (2026-11-19):
 # code, docs, header-only CSV template and synthetic tests only; no weighing data; pending team review
+!/docs/examples/portion_weighing_template.csv
+!/docs/portion_calibration_protocol_v0.md
+!/src/portion/reference_card.py
 !/src/ui/explain.py
+!/tests/test_portion_reference_card.py
 !/tests/test_ui_explain.py
+!/tools/build_portion_calibration.py
 
 # Private data stays blocked even under future broad allow rules.
 **/data/
