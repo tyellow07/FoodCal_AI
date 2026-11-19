@@ -1,13 +1,16 @@
 """Fit the reference-card portion calibration from a private weighing CSV (see docs/portion_calibration_protocol_v0.md).
 
-Reads directly weighed samples, writes a draft calibration record, the fitted model and diagnostics under the
-Git-ignored work/ directory. Never approves the record, downloads data or trains a neural model.
+Default: read directly weighed samples and write a draft calibration record, the fitted model and diagnostics
+under the Git-ignored work/ directory. `approve` records an explicit human approval (approver must differ from
+the producer) as a separate approved_record.json; the draft is kept. Nothing is downloaded or trained.
 """
 import argparse
+from copy import deepcopy
 import csv
 import json
 from pathlib import Path
 
+from src.portion import calibration_blockers, validate_calibration
 from src.portion.reference_card import fit_reference_card_calibration
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,7 +52,43 @@ def write_calibration(out_dir, record, model, diagnostics, *, root=ROOT / 'work'
     return out_dir
 
 
+def approve_calibration(record, *, approver_ref, approved_at):
+    """Approved copy of a valid draft; refuses self-approval and never lowers the contract floors."""
+    if validate_calibration(record) or record['status'] != 'draft':
+        raise ValueError('valid_draft_record_required')
+    approved = deepcopy(record)
+    approved.update(status='approved', approval={'status': 'approved', 'approver_ref': approver_ref,
+                                                 'approved_at': approved_at})
+    issues = validate_calibration(approved)
+    if issues:
+        raise ValueError('approval_invalid:' + ','.join(i['code'] for i in issues))
+    return approved, calibration_blockers(approved)
+
+
+def approve_main(argv):
+    parser = argparse.ArgumentParser(prog='build_portion_calibration approve')
+    parser.add_argument('--calibration', type=Path, required=True, help='directory written by the fit step')
+    parser.add_argument('--approver', required=True, help='a different person from the producer')
+    parser.add_argument('--date', required=True, help='approval date, e.g. 2026-11-20')
+    args = parser.parse_args(argv)
+    folder = args.calibration.resolve()
+    if not folder.is_relative_to((ROOT / 'work').resolve()):
+        raise ValueError('calibration_must_be_under_ignored_work')
+    target = folder / 'approved_record.json'
+    if target.exists():
+        raise ValueError('approved_record_already_exists_no_overwrite')
+    record = json.loads((folder / 'calibration_record.json').read_text(encoding='utf-8'))
+    approved, blockers = approve_calibration(record, approver_ref=args.approver, approved_at=args.date)
+    target.write_text(json.dumps(approved, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print(json.dumps({'approved_record': str(target), 'remaining_blockers': blockers}, ensure_ascii=False))
+    return 0
+
+
 def main(argv=None):
+    import sys
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ['approve']:
+        return approve_main(argv[1:])
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--samples', type=Path, required=True, help='private weighing CSV (columns: see template)')
     parser.add_argument('--out', type=Path, required=True, help='new directory under work/')

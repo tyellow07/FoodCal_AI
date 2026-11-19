@@ -27,7 +27,7 @@
 | 來源組 | 每一組＝一間餐廳的一天（例如 `2026-11-20-水木`）；至少 2 組（契約下限），建議 ≥ 3 組 |
 | 樣本數 | 每種食材 ≥ 30 筆可在組外評估的樣本（契約下限）；目前標註規範只有 `visible_fried_egg`、`cooked_rice_region`、`cooked_noodle_region` |
 | 拍照 | 手機俯拍、整個餐盤入鏡、卡片平放在餐盤旁 |
-| 框 | 食材框依 `annotation_spec.json`（緊貼可見範圍）；卡片框用任何能讀像素座標的工具量 |
+| 框 | 食材框依 `annotation_spec.json`（緊貼可見範圍）；卡片框在標註 GUI 用「學生證／悠遊卡框模式」畫（`reference_card`，2026-11-19） |
 | 秤重 | 只秤這個框內的食材；秤的解析度 ≤ 1 g；扣容器重量 |
 | 隔離 | 校準資料不能同時當評估測試集（見 `meal_evaluation_protocol_v0.md`） |
 
@@ -43,11 +43,15 @@ CSV 欄位見 `docs/examples/portion_weighing_template.csv`（只有表頭，沒
 ```
 
 輸出 `calibration_record.json`（status=draft）、`reference_card_model.json`、`diagnostics.json`，只能寫到 `work/` 底下、
-不覆寫既有目錄。工具不會核可紀錄。
+不覆寫既有目錄。秤重 CSV 可由 `tools.meal_workspace export-calibration` 從已接受的標註與秤重紀錄產生，
+完整步驟見 `campus_meal_workflow_v0.md`。
+
+核可：`python -m tools.build_portion_calibration approve --calibration <目錄> --approver <核可者> --date <日期>`
+另存 `approved_record.json`（draft 保留），拒絕自己核可，並印出仍未通過的契約門檻。
 
 ## 4. 從紀錄到熱量
 
-1. 另一位成員（不是執行校準的人）檢查 diagnostics 後，把紀錄改成 `status=approved` 並填 `approval`。
+1. 另一位成員（不是執行校準的人）檢查 diagnostics 後執行 `approve`。
    核可改變紀錄 hash，所以**估計要在核可之後產生**；引用 draft hash 的估計會得到 `calibration_hash_mismatch`。
 2. `estimate_with_reference_card(evidence_item, card_px, model=..., record=..., estimate_id=..., producer_ref=...)`
    產生 PortionEstimate（review=not_requested）。evidence_item 來自 `tools.ingredient_pilot.visual_evidence_from_annotation`。

@@ -187,6 +187,16 @@ class AIDraftTests(DraftFixture):
             self.save(self.annotation, self.load())
         self.assertEqual(len(list((self.ws/'annotations').glob('*.json'))), 1)
 
+    def test_save_keeps_valid_reference_card_and_rejects_invalid(self):
+        annotation = deepcopy(self.annotation)
+        annotation['reference_card'] = {'object': 'iso_id1_card_85.60x53.98mm', 'bounding_box': [1, 1, 20, 12]}
+        path = self.save(annotation, None)
+        self.assertEqual(json.loads(path.read_text(encoding='utf-8'))['reference_card'], annotation['reference_card'])
+        self.parent_hash = file_hash(path)
+        annotation['reference_card'] = {'object': 'iso_id1_card_85.60x53.98mm', 'bounding_box': [1, 1, 9999, 12]}
+        with self.assertRaisesRegex(ValueError, 'invalid_reference_card'):
+            self.save(annotation, None)
+
     def test_saved_pending_reopens_with_provenance_and_no_training_upgrade(self):
         annotation, draft = self.finish(); path = self.save(annotation, draft)
         reopened = json.loads(path.read_text(encoding='utf-8'))

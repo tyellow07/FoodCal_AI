@@ -11,6 +11,21 @@ from tools.inventory_ingredient_data_v2 import CANDIDATES, file_hash
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = ROOT/'examples/visual_ingredient_detection_v2/annotation_spec.json'
+# Portion scale reference (docs/portion_calibration_protocol_v0.md); not an ingredient class.
+REFERENCE_CARD_OBJECT = 'iso_id1_card_85.60x53.98mm'
+
+
+def reference_card_issue(annotation, dimensions):
+    """None when the optional reference_card box is absent or valid, else 'invalid_reference_card'."""
+    card=annotation.get('reference_card')
+    if card is None:return None
+    if not isinstance(card,dict) or set(card)!={'object','bounding_box'} or card['object']!=REFERENCE_CARD_OBJECT:
+        return 'invalid_reference_card'
+    rect=card['bounding_box']
+    if (not isinstance(rect,list) or len(rect)!=4 or
+        any(type(v) not in (int,float) or not math.isfinite(v) for v in rect)):return 'invalid_reference_card'
+    w,h=dimensions
+    return None if 0<=rect[0]<rect[2]<=w and 0<=rect[1]<rect[3]<=h else 'invalid_reference_card'
 
 
 def select_records(candidates, limit=20):
@@ -112,6 +127,7 @@ def validate_annotation(item, annotation, *, for_training=False):
         if annotation.get(key)!=item.get(key):issue('scope_mismatch_'+key)
     if annotation.get('spec_version')!=spec['spec_version']:issue('spec_version_mismatch')
     if not isinstance(annotation.get('annotator'),str) or not annotation['annotator'].strip():issue('missing_annotator')
+    if reference_card_issue(annotation,item['dimensions']):issue('invalid_reference_card')
     checked=annotation.get('classes_checked')
     if not isinstance(checked,list) or checked!=[0,1,2] or any(type(c) is not int for c in checked):issue('incomplete_target_class_review')
     review=annotation.get('independent_review',{})

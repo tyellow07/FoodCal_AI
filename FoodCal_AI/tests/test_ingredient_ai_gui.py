@@ -65,6 +65,31 @@ class AIGuiTests(DraftFixture):
         self.assertIsNone(app.draft)
         self.assertEqual(len(list((self.ws/'annotations').glob('*.json'))), 1)
 
+    def test_card_mode_draws_one_scale_reference_not_an_ingredient_box(self):
+        app = self.app
+        boxes = deepcopy(app.annotation['boxes'])
+        event = lambda x, y: type('Event', (), {'x': x, 'y': y})()
+        app.card_mode.set(True)
+        app.press(event(10, 10)); app.release(event(60, 40))
+        app.press(event(20, 20)); app.release(event(90, 70))  # redraw replaces, never adds a second card
+        self.assertEqual(app.annotation['boxes'], boxes)
+        card = app.annotation['reference_card']
+        self.assertEqual(card['object'], 'iso_id1_card_85.60x53.98mm')
+        self.assertEqual(card['bounding_box'], [20 / app.scale, 20 / app.scale, 90 / app.scale, 70 / app.scale])
+        self.assertTrue(any(app.canvas.itemcget(i, 'outline') == '#33dd66' for i in app.canvas.find_all()
+                            if app.canvas.type(i) == 'rectangle'))
+        app.save('pending'); self.window.update_idletasks()
+        self.error.assert_not_called()
+        self.assertEqual(app.annotation['reference_card'], card)  # reloaded from the new revision
+        self.assertFalse(app.card_mode.get())
+        app.clear_card()
+        self.assertNotIn('reference_card', app.annotation)
+        review = self.review_app()
+        self.assertEqual(review.annotation['reference_card'], card)
+        review.card_mode.set(True)
+        review.press(event(1, 1)); review.release(event(30, 30)); review.clear_card()
+        self.assertEqual(review.annotation['reference_card'], card)
+
     def review_app(self):
         window = tk.Toplevel(self.window); window.withdraw(); self.addCleanup(window.destroy)
         return AnnotationApp(window, self.ws, 'synthetic-reviewer', review=True)

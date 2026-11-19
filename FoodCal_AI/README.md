@@ -19,6 +19,7 @@
   - 整餐熱量評估程式 `tools/evaluate_meals.py`（`docs/meal_evaluation_protocol_v0.md`）：MAPE、區間涵蓋率、寬度、B0 基準線、作答率、拒答正確率與評分表點數。
   - Streamlit 主畫面改為中文摘要（原因代碼翻成中文、下一步建議、免責聲明），技術細節收進「開發者細節」；手機直拍照片依 EXIF 方向轉正後才辨識。
   - 合成資料可端到端算出熱量（標註 → 校準估計 → 複核 → 營養基準 → 能量）；真實資料仍缺，正式輸出照舊 unavailable。
+  - 校園餐實測流程（`docs/campus_meal_workflow_v0.md`）：照片建工作區、GUI 畫學生證框、秤重匯出校準、核可、估計／複核／熱量批次執行、輸出評分用 predictions.csv。
 
 Portion Estimation 與 Nutrition Estimation 尚未完成照片實證整合。正式輸出維持 `photo_portion_grams=null`、`calorie_estimate=unavailable`、營養資格 false；沒有可信照片重量或正式食譜來源時不得補造結果。
 

@@ -75,6 +75,17 @@ class PilotTests(unittest.TestCase):
         a=deepcopy(self.annotation);a['boxes']=[]
         self.assertEqual(visual_evidence_from_annotation(self.item,a)['reason'],'reviewed_no_target_ingredient_boxes')
 
+    def test_reference_card_is_optional_but_must_be_valid(self):
+        a=deepcopy(self.annotation)
+        a['reference_card']={'object':'iso_id1_card_85.60x53.98mm','bounding_box':[60,50,99,79]}
+        self.assertEqual(validate_annotation(self.item,a)['status'],'passed')
+        self.assertEqual(len(visual_evidence_from_annotation(self.item,a)['visual_ingredient_evidence']),1)
+        for card in ({'object':'coin','bounding_box':[0,0,10,10]},{'object':'iso_id1_card_85.60x53.98mm','bounding_box':[0,0,101,10]},
+                     {'object':'iso_id1_card_85.60x53.98mm','bounding_box':[5,5,5,9]},'card',
+                     {'object':'iso_id1_card_85.60x53.98mm','bounding_box':[0,0,float('inf'),9]}):
+            a['reference_card']=card
+            self.assertIn('invalid_reference_card',validate_annotation(self.item,a)['issues'])
+
     def test_unresolved_and_cross_group_split(self):
         self.assertEqual(validate_splits([self.item])['status'],'blocked')
         a=dict(self.item,source_group_id='verified-group',source_group_status='verified',split='train')

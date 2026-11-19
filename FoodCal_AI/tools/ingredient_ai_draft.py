@@ -8,7 +8,7 @@ import uuid
 
 from PIL import Image
 from tools.ingredient_box_edit import edit_box, latest_revision, write_revision
-from tools.ingredient_pilot import file_hash
+from tools.ingredient_pilot import file_hash, reference_card_issue
 
 
 FIELDS = ('class_id', 'bounding_box', 'visibility', 'occlusion', 'truncation',
@@ -187,6 +187,8 @@ def save_pending(workspace, annotation, draft, *, item, spec_path, parent_hash, 
             raise ValueError('annotation_scope_mismatch')
     if output.get('spec_version') != spec['spec_version']:
         raise ValueError('spec_hash_mismatch')
+    if reference_card_issue(output, item['dimensions']):
+        raise ValueError('invalid_reference_card')
     ids = [b['annotation_id'] for b in output['boxes']]
     if len(ids) != len(set(ids)):
         raise ValueError('duplicate_annotation_id')

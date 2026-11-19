@@ -8,7 +8,7 @@ from tkinter import ttk, messagebox, filedialog
 import uuid
 from PIL import ImageTk
 from PIL.JpegImagePlugin import JpegImageFile
-from tools.ingredient_pilot import ROOT, SPEC, file_hash, validate_annotation
+from tools.ingredient_pilot import REFERENCE_CARD_OBJECT, ROOT, SPEC, file_hash, validate_annotation
 from tools.ingredient_box_edit import edit_box, write_revision
 from tools.ingredient_ai_draft import (load_draft, edit_candidate, decide, record_box_change,
                                       save_pending, check_current)
@@ -67,6 +67,11 @@ class AnnotationApp:
             ttk.Checkbutton(checks,text=f'已逐一檢查 class {i}（含不存在）',variable=var,
                             state='disabled' if review else 'normal',command=self.mark_dirty).pack(anchor='w')
         ttk.Label(panel,text='只畫可見食材，不補被遮住的部分。權利與 split 尚未核可。',wraplength=560).pack()
+        self.card_mode=tk.BooleanVar(value=False)
+        card_row=ttk.Frame(panel);card_row.pack(fill='x')
+        ttk.Checkbutton(card_row,text='學生證／悠遊卡框模式（拖曳畫出整張卡片；每張照片一個，綠色虛線）',
+                        variable=self.card_mode,state='disabled' if review else 'normal').pack(side='left')
+        if not review:ttk.Button(card_row,text='清除卡片框',command=self.clear_card).pack(side='left')
         ttk.Label(panel,text='複核理由' if review else '不確定原因（人工修改後須按「套用修改」）').pack()
         self.note=tk.StringVar();ttk.Entry(panel,textvariable=self.note).pack(fill='x')
         self.coordinates=[tk.StringVar() for _ in range(4)]
@@ -112,6 +117,7 @@ class AnnotationApp:
             'independent_review':{'status':'pending','reviewer':None}}
         self.parent_revision_sha256=file_hash(revisions[-1]) if revisions else None
         self.target_id.set('')
+        self.card_mode.set(False)
         self.show_details('')
         self.new_box_mode()
         for i,var in enumerate(self.checked):var.set(i in self.annotation['classes_checked'])
@@ -130,6 +136,11 @@ class AnnotationApp:
             color='#00ffff' if box['annotation_id']==self.selected_id else '#ffcc00'
             self.canvas.create_rectangle(*coords,outline=color,width=3)
             self.draw_label(coords[0],coords[1],f'#{index} class {box["class_id"]}',color)
+        card=self.annotation.get('reference_card')
+        if card:
+            coords=[v*self.scale for v in card['bounding_box']]
+            self.canvas.create_rectangle(*coords,outline='#33dd66',width=3,dash=(3,3))
+            self.draw_label(coords[0],coords[1],'學生證（比例尺）','#33dd66')
         if hasattr(self,'target_combo'):
             self.target_combo['values']=[b['annotation_id'] for b in self.annotation['boxes'] if not b.get('ai_origin')]
         self.ai_list.delete(0,'end')
@@ -239,6 +250,7 @@ class AnnotationApp:
             'duplicate_box_use_replace':'已有同類同座標框，請使用明確替換。',
             'replacement_target_required':'請先從替換對象選單選擇人工框 ID。',
             'apply_edits_first':'欄位有未套用修改，請先按「套用修改」。',
+            'invalid_reference_card':'學生證框必須完整落在照片內。',
             'uncertainty_reason_required':'不確定的框需保留或填寫人工判斷理由。'}
         messagebox.showerror('操作已阻擋',explanations.get(str(error),'資料不符，未保存。')+'\n'+str(error))
 
@@ -289,12 +301,20 @@ class AnnotationApp:
         rect=[max(0,min(x,event.x)/self.scale),max(0,min(y,event.y)/self.scale),
               min(self.image.width,max(x,event.x)/self.scale),min(self.image.height,max(y,event.y)/self.scale)]
         if rect[2]<=rect[0] or rect[3]<=rect[1]:return
+        if self.card_mode.get():
+            # Scale reference only: never an ingredient box, never sent to the visual evidence adapter.
+            self.annotation['reference_card']={'object':REFERENCE_CARD_OBJECT,'bounding_box':rect}
+            self.dirty=True;self.render();return
         self.annotation['boxes'].append({'annotation_id':uuid.uuid4().hex,'class_id':self.cls.get(),
             'bounding_box':rect,'granularity':self.spec['classes'][self.cls.get()]['granularity'],
             **{k:v.get() for k,v in self.flags.items()},'uncertainty_reason':self.note.get(),
             'semantic_review_status':'pending'})
         self.dirty=True
         self.render()
+
+    def clear_card(self):
+        if self.review or not self.annotation.get('reference_card'):return
+        del self.annotation['reference_card'];self.dirty=True;self.render()
 
     def undo(self):
         if self.review:return

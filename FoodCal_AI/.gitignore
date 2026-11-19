@@ -151,6 +151,13 @@
 !/tools/build_portion_calibration.py
 !/tools/evaluate_meals.py
 
+# Campus meal workflow and annotation reference card (2026-11-19): code, docs and synthetic tests only;
+# no photos, weights or annotations; pending team review
+!/docs/campus_meal_workflow_v0.md
+!/tests/test_campus_meal_workflow.py
+!/tools/meal_workspace.py
+!/tools/run_meal_pipeline.py
+
 # Private data stays blocked even under future broad allow rules.
 **/data/
 **/runs/
