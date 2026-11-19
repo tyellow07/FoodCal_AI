@@ -31,10 +31,11 @@ def show_result(result):
     {'success': st.success, 'warning': st.warning, 'error': st.error}[summary['level']](summary['headline'])
     st.markdown(f"### 熱量：{summary['energy_text']}")
     image = st.session_state.get('image')
-    has_image = image is not None and result.get('detection_snapshot')
+    has_image = image is not None and bool(result.get('detection_snapshot'))
     left, right = st.columns([3, 2], gap='large') if has_image else (None, st.container())
     if has_image:
-        caption = '辨識框（合成展示的畫布與框都是測試用）' if summary['synthetic'] else '辨識框與模型分數'
+        caption = ('辨識框（合成展示的畫布與框都是測試用）' if summary['synthetic'] else
+                   '辨識框與模型分數' if summary['foods'] else '上傳的照片（沒有辨識到食物，所以沒有框）')
         left.image(draw_predictions(image, result), caption=caption, width='stretch')
     with right:
         if summary['foods']:

@@ -37,6 +37,10 @@ class ExplainTests(unittest.TestCase):
                              'detection_snapshot': {'status': 'no_detections', 'detections': []}})
         self.assertEqual(summary['headline'], '沒有辨識到食物')
         self.assertIn(REASONS['no_detections_does_not_establish_ingredient_absence'], summary['reasons'])
+        energy = {'status': 'unavailable', 'items': [], 'reasons': ['no_visual_items', 'consumption_basis_missing']}
+        summary = summarize({'mode': 'yolo_upload', 'issues': [], 'photo_energy_estimate': energy,
+                             'detection_snapshot': {'status': 'no_detections', 'detections': []}})
+        self.assertEqual(summary['reasons'], [REASONS['no_detections_does_not_establish_ingredient_absence']])
 
     def test_computed_range_rounds_outward_and_flags_hidden_calories(self):
         energy = {'status': 'computed', 'unit': 'kcal', 'energy': {'low': '512.9', 'high': '690.01'},

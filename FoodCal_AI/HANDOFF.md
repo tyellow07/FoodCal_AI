@@ -80,6 +80,16 @@ python -B -m src.pipeline.diagnostic_demo
 
 沒有攜入早期 src/pipeline/mvp_pipeline.py、recognition、portion placeholder、固定 nutrition/database.py 或訓練／資料集腳本：早期流程有語法錯誤與未驗證熱量假設，亦不符合目前視覺證據規則。不是遺失本輪成果；原始版本仍保留本機。
 
+## 本機模型環境（2026-11-20）
+
+- 權重來自 GitHub 分支 `codex/project-sync-audit`（組員 commit，未合併進 main）：`best.pt` 5,393,221 bytes、
+  SHA-256 `89e75f89…a43f`，靜態檢查為 detect、15 類、名稱與 `examples/diagnostic_v0/classes.yaml` 逐字相同、Ultralytics 8.4.174；
+  `models/yolo26n.pt` 是 COCO 80 類訓練起點，推論不需要。兩者皆標示 AGPL-3.0。
+- 本機把 `best.pt` 放在預設路徑（Git 忽略），`data/roboflow_taiwanese_food_detection/foodcal_data.yaml` 是**暫用的只含 names 版本**；
+  原始檔（SHA-256 `a96e7994…eefbb9`）仍需向組員取得，重新訓練或驗證前必須換回。
+- `.venv` 已安裝 `requirements-model.txt`（ultralytics 8.4.174、torch 2.15.0，原有鎖定版本不變），Ultralytics 匿名統計已關閉（`yolo settings sync=False`）。
+- 真實推論在網頁與 `tools/measure_latency.py` 跑通：CPU 首次載入約 1.5 秒，之後 p95 0.045 秒；只用過合成測試圖，尚未用校園餐照片。
+
 ## 2026-11-19 之後的優先順序
 
 完整評分表、目前自評（約 21.5／100）與「分數從哪裡來」見 `docs/project_rubric_v0.md`。測試涵蓋率用 `python -B -m tools.measure_coverage`（標準函式庫，src/ 約 87.4%）。

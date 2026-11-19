@@ -138,6 +138,8 @@ def summarize(result):
         codes += item.get('blocking_reasons') or []
     codes += energy.get('reasons') or []
     if snapshot.get('status') == 'no_detections':
+        # With nothing detected, the follow-on totals reasons only repeat the same fact; keep the real one.
+        codes = [c for c in codes if c not in ('no_visual_items', 'visual_items_unavailable', 'consumption_basis_missing')]
         codes.append('no_detections_does_not_establish_ingredient_absence')
     codes = _unique(codes)
 
