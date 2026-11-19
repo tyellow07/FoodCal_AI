@@ -2,12 +2,13 @@
 
 基準：24423f5c80cee8627684756a4b377c23de6b8be6。UI 重用 Diagnostic Fixture、FoodDetector 與 RecipeRetriever，不改變既有 CLI 或資料契約。
 
-## Windows 啟動
+## 啟動
 
-從專案根目錄執行；本輪已在 Git 忽略的 work/demo_ui_venv 安裝 Streamlit 1.65.0：
+2026-11-19 起使用專案 `.venv`（README「換電腦啟動」已安裝 requirements-ui.txt）；舊版 `work/demo_ui_venv` 已不存在：
 
-```powershell
-.\work\demo_ui_venv\Scripts\python.exe -m streamlit run src/ui/app.py
+```bash
+.venv/bin/python -m streamlit run src/ui/app.py          # macOS / Linux
+.\.venv\Scripts\python.exe -m streamlit run src/ui/app.py  # Windows
 ```
 
 瀏覽 http://127.0.0.1:8501。服務預設只綁定 loopback，關閉 Streamlit usage telemetry，限制上傳 10 MB。
@@ -59,3 +60,11 @@ CLI 的 validation YOLO 路徑會寫入私有 audit 並要求 validation 核准�
 標籤改為不透明深色底、白字及較大字型，靠近圖片上緣/右緣時將標籤移回畫布內；Prediction 座標、類別、confidence 不變。新增對比與邊界回歸測試。下一個主要任務是取得第一個可追溯、授權可用的真實食譜原文快照，建立明確來源 ID/hash → Gemma Parsing 的受控單例整合；尚未開始實作，不能用 synthetic candidates 取代真實來源。
 
 修正後 UI 測試 15 passed；完整主測試 377 passed、2 skipped；實驗離線測試 33 passed。合成標籤預覽已人工檢視，預覽僅存於忽略的 work/ 目錄，不包含私人圖片。此 checkpoint 僅收錄 UI 程式、測試、設定、依賴清單及本文件；不收錄圖片、模型、私有 audit 或 TFDA 原始證據，禁止 Push，既有 Git 歷史隱私風險仍在。
+
+## 中文摘要與照片方向（2026-11-19）
+
+- 主畫面先顯示「結果摘要」：標題、熱量（只有 `photo_energy_estimate` computed 時才顯示 kcal 範圍，向外取整數）、辨識項目中文名稱、
+  中文原因與下一步建議（`src/ui/explain.py`）。流程狀態、食譜候選與完整 JSON 收進「開發者細節」展開區。
+- 頁首說明「估計值僅供參考，不是醫療或營養建議」；原本常駐的 unavailable／null／false 英文提示移除，資訊仍在開發者細節。
+- `decode_upload` 先依 EXIF Orientation 轉正再清除 metadata：手機直拍照片的預覽、YOLO 輸入與框線座標一致。
+- 測試：`tests/test_ui_explain.py` 6 項；`tests/test_demo_ui.py` 新增方向測試與摘要斷言。

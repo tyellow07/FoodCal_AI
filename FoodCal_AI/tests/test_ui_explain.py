@@ -1,0 +1,65 @@
+"""Plain-language UI summary: presentation only, never invents or narrows numbers."""
+from copy import deepcopy
+import unittest
+
+from src.pipeline.diagnostic_demo import run_demo
+from src.ui.explain import FOOD_NAMES, REASONS, food_name, reason_text, summarize
+
+
+class ExplainTests(unittest.TestCase):
+    def test_fixture_summary_is_chinese_warning_without_numbers(self):
+        result = run_demo()
+        before = deepcopy(result)
+        summary = summarize(result)
+        self.assertEqual(result, before)
+        self.assertTrue(summary['synthetic'])
+        self.assertEqual(summary['level'], 'warning')
+        self.assertEqual(summary['energy_text'], '目前無法估算熱量')
+        self.assertIn(REASONS['ingredient_level_semantics_unverified'], summary['reasons'])
+        self.assertIn(REASONS['consumption_basis_missing'], summary['reasons'])
+        self.assertEqual(len(summary['reasons']), len(set(summary['reasons'])))
+        self.assertTrue(summary['next_steps'])
+        self.assertEqual([f['編號'] for f in summary['foods']], [1, 2])
+        self.assertIn('涼麵', summary['foods'][0]['辨識結果'])
+        self.assertNotRegex(summary['energy_text'], r'[0-9]')
+
+    def test_issue_summary_is_error_with_next_step(self):
+        summary = summarize({'mode': 'yolo_upload', 'issues': [{'code': 'local_model_or_taxonomy_missing'}],
+                             'detection_snapshot': None, 'photo_energy_estimate': None})
+        self.assertEqual(summary['level'], 'error')
+        self.assertIn(REASONS['local_model_or_taxonomy_missing'], summary['reasons'])
+        self.assertTrue(any('Fixture Demo' in step for step in summary['next_steps']))
+        self.assertFalse(summary['synthetic'])
+
+    def test_no_detection_is_not_absence(self):
+        summary = summarize({'mode': 'yolo_upload', 'issues': [], 'photo_energy_estimate': None,
+                             'detection_snapshot': {'status': 'no_detections', 'detections': []}})
+        self.assertEqual(summary['headline'], '沒有辨識到食物')
+        self.assertIn(REASONS['no_detections_does_not_establish_ingredient_absence'], summary['reasons'])
+
+    def test_computed_range_rounds_outward_and_flags_hidden_calories(self):
+        energy = {'status': 'computed', 'unit': 'kcal', 'energy': {'low': '512.9', 'high': '690.01'},
+                  'completeness': 'incomplete_hidden_ingredients_unquantified', 'coverage_lower_bound': None,
+                  'items': [], 'reasons': []}
+        summary = summarize({'mode': 'yolo_upload', 'issues': [], 'detection_snapshot': None,
+                             'photo_energy_estimate': energy})
+        self.assertEqual(summary['level'], 'success')
+        self.assertEqual(summary['energy_text'], '約 512–691 kcal（只含照片中看得到的食物）')
+        self.assertTrue(any('油' in note for note in summary['notes']))
+
+    def test_kj_is_never_converted(self):
+        energy = {'status': 'computed', 'unit': 'kJ', 'energy': {'low': '2000', 'high': '2500'}, 'items': [],
+                  'reasons': []}
+        summary = summarize({'issues': [], 'detection_snapshot': None, 'photo_energy_estimate': energy})
+        self.assertIn('kJ', summary['energy_text'])
+        self.assertNotIn('kcal', summary['energy_text'])
+
+    def test_unknown_codes_and_names_fall_back_visibly(self):
+        self.assertIn('brand_new_code', reason_text('brand_new_code'))
+        self.assertIn('gate_identity_pending', reason_text('gate_identity_pending'))
+        self.assertEqual(food_name('mystery_dish'), 'mystery_dish')
+        self.assertEqual(len(FOOD_NAMES), 18)
+
+
+if __name__ == '__main__':
+    unittest.main()

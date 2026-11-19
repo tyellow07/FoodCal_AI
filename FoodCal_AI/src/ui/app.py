@@ -6,13 +6,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import streamlit as st
 from src.ui.adapter import fixture_demo, decode_upload, analyze_upload, draw_predictions
+from src.ui.explain import reason_text, summarize
 from src.detection import FoodDetector
 
 
 def main():
     st.set_page_config(page_title='FoodCal AI Demo', page_icon='🍽️', layout='wide')
     st.title('FoodCal AI · Diagnostic Demo')
-    st.caption('本機展示 · 候選與證據診斷 · 沒有正式熱量估算')
+    st.caption('本機展示 · 只有在證據足夠時才顯示熱量 · 估計值僅供參考，不是醫療或營養建議')
     mode = st.radio('模式', ['Fixture Demo', '真實 YOLO'], horizontal=True)
     if st.session_state.get('mode') != mode:
         for key in ('result', 'image', 'input_key', 'detector'):
@@ -23,7 +24,6 @@ def main():
             st.session_state.pop(key, None)
         st.session_state['upload_generation'] = st.session_state.get('upload_generation', 0) + 1
         st.rerun()
-    st.info('熱量：unavailable　｜　照片食用重量：null　｜　營養資格：false')
     if mode == 'Fixture Demo':
         st.warning('SYNTHETIC / TEST_ONLY：畫布、辨識與食譜關聯都是合成協定案例，不是真實圖片分析或食譜推薦。')
         if st.button('顯示 Fixture 診斷'):
@@ -58,45 +58,57 @@ def main():
     if not result:
         st.caption('選擇模式並按下對應按鈕，結果才會出現在這裡。')
         return
-    st.subheader('診斷結果')
-    st.write('流程狀態：', result['status'])
-    for issue in result.get('issues', []):
-        st.error(issue['code'] + '：' + issue['message'])
+    summary = summarize(result)
+    st.subheader('結果摘要')
+    {'success': st.success, 'warning': st.warning, 'error': st.error}[summary['level']](summary['headline'])
+    st.markdown(f"### 熱量：{summary['energy_text']}")
     image = st.session_state.get('image')
     if image is not None and result.get('detection_snapshot'):
-        st.image(draw_predictions(image, result), caption='Pred 框／類別／confidence；Fixture 模式是合成框。未顯示 GT。', width='stretch')
-        st.dataframe(result['detection_snapshot']['detections'], hide_index=True)
-    st.subheader('食譜候選與來源')
-    for obj in result.get('objects', []):
-        st.write(f"物件 #{obj['detection_id']} · {obj['retrieval_status']} · {obj.get('reason') or ''}")
-        for candidate in obj['recipe_candidates']:
-            recipe = candidate['recipe']
-            with st.expander(recipe['name'] + ' · SYNTHETIC / TEST_ONLY'):
-                st.warning('這是合成食譜先驗，不代表照片實際食材。')
-                st.json({'source': recipe['source'], 'retrieval_score': recipe['retrieval_score'],
-                         'status': candidate['status'], 'reason': candidate.get('reason'),
-                         'parsing': candidate['parsing_snapshot'], 'mapping': candidate['mapping_snapshot'],
-                         'source_diagnostic': candidate.get('source_diagnostic')})
-    st.subheader('Parsing / Mapping / Nutrition')
-    st.json(result['stages'])
-    st.json({'review': result['review'], 'trust': result['trust'],
-             'calorie_estimate': result['calorie_estimate'], 'photo_portion_grams': result['photo_portion_grams']})
+        st.image(draw_predictions(image, result), caption='辨識框與模型分數（Fixture 模式是合成框）', width='stretch')
+    if summary['foods']:
+        st.dataframe(summary['foods'], hide_index=True)
+    if summary['reasons']:
+        st.markdown('**為什麼沒有算出熱量／需要注意的地方**')
+        st.markdown('\n'.join('- ' + text for text in summary['reasons']))
+    if summary['next_steps']:
+        st.markdown('**下一步可以怎麼做**')
+        st.markdown('\n'.join('- ' + text for text in summary['next_steps']))
+    for note in summary['notes']:
+        st.caption(note)
     st.subheader('照片份量與熱量')
     energy = result.get('photo_energy_estimate')
     if energy is None:
         st.caption('尚未產生照片份量評估。')
     else:
-        st.caption('Portion Contract v0：只計可見食材的照片質量，食譜候選不是視覺證據，不會加入熱量。'
-                   '沒有通過審查的食材層級證據與份量紀錄時，照片重量與熱量維持不可用。')
-        rows = [{'項目': index, '證據類型': item['evidence']['evidence_type'], '狀態': item['status'],
-                 '原因': item['reason']} for index, item in enumerate(energy['portion_assessment']['items'], 1)]
+        st.caption('只計照片中看得到的食材；食譜候選不是視覺證據，不會加入熱量。')
+        rows = [{'項目': index, '狀態': '已估算' if item['status'] == 'estimated' else '無法估算',
+                 '原因': reason_text(item['reason']) if item['reason'] else '—'}
+                for index, item in enumerate(energy['portion_assessment']['items'], 1)]
         if rows:
             st.dataframe(rows, hide_index=True)
-        st.json({key: energy[key] for key in ('status', 'reasons', 'scope', 'completeness',
-                                               'nutrition_eligible', 'production_eligible')})
-    with st.expander('完整診斷 JSON（記憶體，無自動下載或保存）'):
-        st.json(result)
-
+    with st.expander('開發者細節：流程狀態、食譜候選與完整 JSON（記憶體，無自動下載或保存）'):
+        st.write('流程狀態：', result['status'])
+        for issue in result.get('issues', []):
+            st.error(issue['code'] + '：' + issue['message'])
+        if result.get('detection_snapshot'):
+            st.dataframe(result['detection_snapshot']['detections'], hide_index=True)
+        st.markdown('**食譜候選與來源**（合成食譜先驗，不代表照片實際食材）')
+        for obj in result.get('objects', []):
+            st.write(f"物件 #{obj['detection_id']} · {obj['retrieval_status']} · {obj.get('reason') or ''}")
+            for candidate in obj['recipe_candidates']:
+                recipe = candidate['recipe']
+                st.write(recipe['name'] + ' · SYNTHETIC / TEST_ONLY')
+                st.json({'source': recipe['source'], 'retrieval_score': recipe['retrieval_score'],
+                         'status': candidate['status'], 'reason': candidate.get('reason'),
+                         'parsing': candidate['parsing_snapshot'], 'mapping': candidate['mapping_snapshot'],
+                         'source_diagnostic': candidate.get('source_diagnostic')}, expanded=False)
+        st.json({'stages': result['stages'], 'review': result['review'], 'trust': result['trust'],
+                 'calorie_estimate': result['calorie_estimate'], 'photo_portion_grams': result['photo_portion_grams']},
+                expanded=False)
+        if energy is not None:
+            st.json({key: energy[key] for key in ('status', 'reasons', 'scope', 'completeness',
+                                                   'nutrition_eligible', 'production_eligible')}, expanded=False)
+        st.json(result, expanded=False)
 
 if __name__ == '__main__':
     main()

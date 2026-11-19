@@ -4,7 +4,7 @@ from copy import deepcopy
 from hashlib import sha256
 from io import BytesIO, StringIO
 
-from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 from PIL.PngImagePlugin import PngImageFile
 from PIL.JpegImagePlugin import JpegImageFile
 from PIL.WebPImagePlugin import WebPImageFile
@@ -32,7 +32,9 @@ def decode_upload(raw):
             if source.width * source.height > MAX_PIXELS:
                 raise ValueError('unsupported_or_large_image')
             source.load()
-            image = source.convert('RGB')
+            # Phone photos store rotation in EXIF; apply it before EXIF is discarded so the display,
+            # the detector input and the drawn boxes all use the upright image the user took.
+            image = ImageOps.exif_transpose(source).convert('RGB')
             image.info.clear()  # Do not carry user EXIF or filenames into the display object.
             return image
     except (OSError, SyntaxError) as error:

@@ -136,6 +136,11 @@
 !/src/nutrition/photo_review_types.py
 !/tests/test_photo_item_source_review.py
 
+# MVP usability, annotation bridge, reference-card portion method and meal evaluation (2026-11-19):
+# code, docs, header-only CSV template and synthetic tests only; no weighing data; pending team review
+!/src/ui/explain.py
+!/tests/test_ui_explain.py
+
 # Private data stays blocked even under future broad allow rules.
 **/data/
 **/runs/

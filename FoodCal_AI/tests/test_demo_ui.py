@@ -96,6 +96,21 @@ class UIAdapterTests(unittest.TestCase):
                 decode_upload(b'\x89PNG\r\n\x1a\ncorrupt')
             fallback.assert_not_called()
 
+    def test_phone_exif_orientation_applied_then_metadata_dropped(self):
+        source = Image.new('RGB', (400, 300), 'white')
+        source.paste((255, 0, 0), (0, 0, 40, 40))  # red marker at stored top-left
+        exif = Image.Exif()
+        exif[0x0112] = 6  # stored sideways; viewers rotate 90 degrees clockwise
+        buffer = BytesIO()
+        source.save(buffer, format='JPEG', exif=exif.tobytes(), quality=95)
+        decoded = decode_upload(buffer.getvalue())
+        self.assertEqual(decoded.size, (300, 400))
+        red = decoded.getpixel((decoded.width - 10, 10))  # top-left moves to top-right
+        self.assertGreater(red[0], 200)
+        self.assertLess(red[1], 80)
+        self.assertNotIn('exif', decoded.info)
+        self.assertEqual(len(decoded.getexif()), 0)
+
     def test_overlay_only_predictions_not_gt(self):
         result, image = fixture_demo()
         result['evaluation'] = {'gt': [{'box': [0, 0, 640, 480]}]}
@@ -158,6 +173,9 @@ class StreamlitOfflineTests(unittest.TestCase):
         self.assertTrue(app.warning)
         self.assertTrue(app.json)
         self.assertIn('照片份量與熱量', [s.value for s in app.subheader])
+        self.assertIn('結果摘要', [s.value for s in app.subheader])
+        self.assertTrue(any('熱量：目前無法估算熱量' in m.value for m in app.markdown))
+        self.assertTrue(any('整道菜' in m.value for m in app.markdown))
 
     def test_switch_to_yolo_does_not_infer_and_clears_fixture(self):
         app = self.app()
