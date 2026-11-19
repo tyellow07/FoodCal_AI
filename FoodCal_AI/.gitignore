@@ -160,6 +160,13 @@
 !/src/evaluation/stage_metrics.py
 !/tests/test_stage_metrics.py
 !/tools/evaluate_stages.py
+!/docs/usability_test_v0.md
+!/docs/examples/usability_sus_template.csv
+!/docs/examples/usability_tasks_template.csv
+!/src/evaluation/usability.py
+!/tests/test_usability.py
+!/tools/measure_latency.py
+!/tools/score_usability.py
 
 # Private data stays blocked even under future broad allow rules.
 **/data/

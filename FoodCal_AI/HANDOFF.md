@@ -19,6 +19,7 @@
 | Annotation → Visual evidence | tools/ingredient_pilot.py visual_evidence_from_annotation；src/visual_ingredients ingredient_annotation_envelope | 2026-11-19：通過 validate_annotation 的人工標註轉成 ingredient_annotation 證據，保留 annotation_id、image_sha256、annotator、reviewer，可進入份量契約與照片審查；不改訓練資格 |
 | Campus meal workflow | tools/meal_workspace.py、run_meal_pipeline.py；標註 `reference_card` | 2026-11-19：校園餐照片建立校準／評估兩種工作區（不可混用）、GUI 學生證框模式、由標註＋秤重匯出校準 CSV、校準核可、估計→份量複核→熱量→predictions.csv（docs/campus_meal_workflow_v0.md）；只有合成測試 |
 | Stage metrics／red-line audit | src/evaluation/stage_metrics.py；tools/evaluate_stages.py | 2026-11-19：辨識 F1（IoU ≥ 0.5）與類別涵蓋率、份量 MAPE／涵蓋率、營養對應 ±10%、第 2 項點數；紅線 R1–R4 稽核（run_meal_pipeline energy 自動輸出）；只有合成測試 |
+| Usability study | src/evaluation/usability.py；tools/score_usability.py、measure_latency.py | 2026-11-19：測試流程、中文 SUS、任務成功標準、記錄範本（docs/usability_test_v0.md）、SUS／成功率／p95 反應時間與第 4 項點數；尚未找人測試 |
 | Meal evaluation | src/evaluation/meal_metrics.py；tools/evaluate_meals.py | 2026-11-19：整餐參考熱量對照（docs/meal_evaluation_protocol_v0.md），計算 MAPE、涵蓋率、寬度、B0、作答率、拒答正確率與評分表點數；沒有真實測試集 |
 | Portion Estimation | src/portion/contract.py、estimation.py、reference_card.py；assess_portions、estimate_with_reference_card | Contract v0（docs/photo_portion_estimation_contract_v0.md）：可見質量區間、秤重／校準方法、校準紀錄門檻與獨立複核。2026-11-19 新增估算方法 reference_card_area_ratio v0 與 tools/build_portion_calibration.py（docs/portion_calibration_protocol_v0.md）；沒有真實秤重資料或校準紀錄，預設 photo_mass_unknown，photo_portion_grams=null |
 | Nutrition Estimation | src/portion/estimation.py；estimate_photo_energy | photo_calculation 四 gate 全 passed、明示食用聲明才計算 Decimal 能量區間；basis 可由 build_photo_nutrition_basis 從照片審查產生（合成資料端到端可算），但沒有真實審查、份量紀錄或 gate 紀錄，實際輸出仍 unavailable；diagnostic／YOLO／Streamlit 結果以 `photo_energy_estimate` 呈現逐項原因 |
@@ -85,4 +86,4 @@ python -B -m src.pipeline.diagnostic_demo
 2. 團隊決策：照片審查第 10 節八項、TFDA 條款核對者、校準核可者與份量複核者。
 3. 辨識類別：現有 15 類是台灣小吃，三份校園菜單（漢堡、吐司、丼飯、便當）大多不在類別內；需決定補資料重訓或限縮展示範圍（訓練需另行授權）。
 4. 已完成（2026-11-19）：標註記錄可選的 `reference_card` 框（不是食材類別，未改 annotation_spec），GUI 有學生證框模式；校園餐工作流程見 `docs/campus_meal_workflow_v0.md`。
-5. 找 ≥ 5 位非組員做易用性測試（SUS 與任務成功率）。
+5. 找 ≥ 5 位非組員做易用性測試：流程、問卷、範本與計分已備妥（`docs/usability_test_v0.md`）。
