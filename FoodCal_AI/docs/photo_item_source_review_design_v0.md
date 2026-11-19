@@ -193,7 +193,7 @@ build = build_photo_nutrition_basis(review_input, attribute_results, gate_record
 | 4 | recipe_declared_mass 只接受 controlled_rule `photo_item_excludes_recipe_mass_v1` 的 NA，證據須含 photo_portion_record；其他狀態 `invalid_recipe_mass_review`；不得對它提出 claim |
 | 5 | gate 紀錄 `foodcal.source_gate_record.v0`（第 7 節欄位＋profile）；passed／failed 須 reviewer_ref、reviewed_at 與等於 ledger `policy_revision` 的整數；passed 另須 evidence_locator；pending 不得帶審查欄位。integrity **不接受固定快照代替官方版次**：官方版次 null（`integrity_version_unknown`）或 data_version 未 verified（`integrity_requires_verified_version`）時 passed 為 invalid。誰核對 TFDA 8543 條款仍待指定，目前沒有任何真實 gate 紀錄 |
 | 6 | 標註類別不能 verified food：identity 五項的 photo 端 claim 必須引用同名 judgment（pointer `/judgments/<name>/value`）且值相同（`photo_visual_review_required`、`photo_claim_judgment_mismatch`）；edible_portion 引用 edible_fraction_visible，weight_basis 引用 state |
-| 7 | Local Context Provider 的照片 profile 與照片審查者 grants **尚未實作**（下一步） |
+| 7 | 2026-11-19 暫定實作：`src/nutrition/photo_context_provider.py` 的 `PhotoContextProvider`（registry profile `foodcal.local_photo_review_registry.v0`），grants 以 photo_scope 取代 recipe_scope；每筆屬性結果需 active 審查者與涵蓋該屬性、規則與 process_ref 的 grant，每筆已決定的 source_use／integrity gate 需 `['gate', <名稱>, null]` 權限；之後由 `build_photo_nutrition_basis` 重新驗證。未修改既有 LocalContextProvider。仍待團隊確認 |
 | 8 | 不提供能量成分區間：basis `energy.interval=null`，涵蓋率下界維持 null |
 
 ### 12.2 實作時補上的規則（原文未明訂）

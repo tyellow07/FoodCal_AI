@@ -67,7 +67,7 @@
 # 份量複核者填 work/meals/run_v0/review_decisions_template.csv 的 status（accepted／rejected）、reviewer_ref、reviewed_at
 .venv/bin/python -B -m tools.run_meal_pipeline review --estimates work/meals/run_v0/estimates.json \
   --decisions <填好的 decisions.csv> --out work/meals/run_v0/reviewed_estimates.json
-# 營養審查：對每筆已接受的估計做照片食材來源審查（src/nutrition/photo_review.py），把產生的 PhotoNutritionBasis 存成 JSON 清單
+# 營養審查：對每筆已接受的估計做照片食材來源審查，經 PhotoContextProvider（已登記審查者與 grants）產生 PhotoNutritionBasis，存成 JSON 清單
 .venv/bin/python -B -m tools.run_meal_pipeline energy --workspace work/meals/evaluation_v0 \
   --record work/meals/calibration/rice-v0/approved_record.json \
   --estimates work/meals/run_v0/reviewed_estimates.json --bases <bases.json> \
@@ -92,4 +92,4 @@
 
 - 標註規範只有白飯、麵、煎蛋三類；肉類、蔬菜、醬汁需要先擴充規範並經團隊審查。
 - 現有 YOLO 是台灣小吃 15 類的「整道菜」偵測，不會自動產生食材框；這條流程靠人工標註。
-- 營養審查（照片審查 v0）的第 10 節決策仍待團隊確認，Local Context Provider 的照片 profile 尚未實作。
+- 營養審查（照片審查 v0）的第 10 節決策仍待團隊確認；PhotoContextProvider 為暫定實作，需要 TFDA 快照與已登記的審查者才能產生真實基準。

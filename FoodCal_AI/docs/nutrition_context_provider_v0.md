@@ -156,3 +156,13 @@ python -B -m unittest discover -s experiments/recipe_parsing_gemma -p test_*.py 
 本輪實際結果：Provider 25 項與既有 Review 27 項全部通過；主測試 318 項執行，
 316 通過、2 項外部快照測試按既有預設跳過；Gemma 實驗離線測試 33 項通過。
 沒有執行模型推論，也沒有用未完成的設計案例代替實際測試結果。
+
+## 照片審查 profile（2026-11-19，暫定）
+
+`src/nutrition/photo_context_provider.py` 的 `PhotoContextProvider` 沿用本文件的信任前提與生命週期，差異：
+registry profile 為 `foodcal.local_photo_review_registry.v0`；grants 與 contexts 用 `photo_scope`（綁定圖片、視覺證據與份量估計 hash）
+取代 `recipe_scope`；已決定的 source_use／integrity gate 紀錄也需要已登記審查者與 `['gate', <名稱>, null]` 權限；
+ledger 的 policy_revision 必須等於 bootstrap revision。`review_registered(context_id, expected_photo_scope=…,
+expected_candidate_scope=…, basis_target=…, energy_nutrient=…)` 授權通過後呼叫 `build_photo_nutrition_basis`，
+回傳 `PhotoProviderResult`（`build` 內含 PhotoNutritionBasis 或 unavailable 原因），nutrition／production eligible 恆為 false。
+測試：`tests/test_photo_context_provider.py` 6 項（合成資料）。

@@ -167,6 +167,8 @@
 !/tests/test_usability.py
 !/tools/measure_latency.py
 !/tools/score_usability.py
+!/src/nutrition/photo_context_provider.py
+!/tests/test_photo_context_provider.py
 
 # Private data stays blocked even under future broad allow rules.
 **/data/
