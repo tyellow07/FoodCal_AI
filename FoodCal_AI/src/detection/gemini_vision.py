@@ -17,7 +17,9 @@ from PIL import ImageDraw
 from src.portion.rough_volume import FOOD_TEMPLATES
 from .claude_vision import CONFIDENCE, CONTAINERS, GRID, RecognitionError, items_from_answer, jpeg_bytes
 
-MODELS = ('gemini-flash-latest', 'gemini-2.5-flash')  # tried in order; the alias follows Google's current Flash
+# Tried in order. Free-tier quotas are per model (2026-11-20, AI Studio): Flash models 5 requests/minute and
+# 20/day each, Flash Lite models 15/minute and 500/day, so a used-up Flash falls through to Flash Lite.
+MODELS = ('gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash')
 
 SCHEMA = {
     'type': 'object',
@@ -125,7 +127,8 @@ def recognize_foods_gemini(image, *, clients, models=MODELS):
                     last = 'gemini_model_unavailable'
                     continue  # try the next model name
                 if code == 429 or 'resource_exhausted' in text or 'quota' in text:
-                    raise RecognitionError('gemini_quota_exceeded') from None
+                    last = 'gemini_quota_exceeded'
+                    continue  # quotas are per model: try the next one
                 if code in (400, 401, 403) and ('api key' in text or 'api_key' in text or 'permission' in text
                                                 or 'unauthenticated' in text or code in (401, 403)):
                     last = 'gemini_key_invalid'

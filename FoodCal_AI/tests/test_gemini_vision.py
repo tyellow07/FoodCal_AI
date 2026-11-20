@@ -71,7 +71,7 @@ class GeminiVisionTests(unittest.TestCase):
     def test_falls_back_across_model_names_and_endpoints(self):
         missing = FakeClient(client_error(404, 'models/gemini-flash-latest is not found'), reply(food()))
         result = recognize_foods_gemini(self.image, clients=[('gemini_api', missing)])
-        self.assertEqual([c['model'] for c in missing.calls], list(MODELS))
+        self.assertEqual([c['model'] for c in missing.calls], list(MODELS[:2]))
         wrong_endpoint = FakeClient(client_error(400, 'API key not valid. Please pass a valid API key.'))
         vertex = FakeClient(reply(food()))
         result = recognize_foods_gemini(self.image, clients=[('gemini_api', wrong_endpoint), ('vertex_express', vertex)])
@@ -81,8 +81,14 @@ class GeminiVisionTests(unittest.TestCase):
         self.assertEqual(str(caught.exception), 'gemini_key_invalid')
 
     def test_quota_blocks_and_bad_answers_raise_readable_codes(self):
-        for outcome, code in ((client_error(429, 'Resource has been exhausted (e.g. check quota).'), 'gemini_quota_exceeded'),
-                              (reply(block='SAFETY'), 'gemini_blocked'),
+        exhausted = client_error(429, 'Resource has been exhausted (e.g. check quota).')
+        with self.assertRaises(RecognitionError) as caught:
+            recognize_foods_gemini(self.image, clients=[('gemini_api', FakeClient(*[exhausted] * len(MODELS)))])
+        self.assertEqual(str(caught.exception), 'gemini_quota_exceeded')
+        lite = FakeClient(exhausted, reply(food()))
+        self.assertEqual(len(recognize_foods_gemini(self.image, clients=[('gemini_api', lite)])['items']), 1)
+        self.assertEqual([c['model'] for c in lite.calls], list(MODELS[:2]))  # a used-up Flash falls through
+        for outcome, code in ((reply(block='SAFETY'), 'gemini_blocked'),
                               (reply(finish='SAFETY'), 'gemini_blocked'),
                               (reply(finish='MAX_TOKENS'), 'gemini_answer_truncated'),
                               (reply(text='not json'), 'gemini_answer_unreadable'),

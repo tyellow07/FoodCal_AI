@@ -24,8 +24,12 @@
 
 ## 2. 模型與金鑰
 
-- **模型**：依序試 `gemini-flash-latest`（Google 目前的 Flash 版本）和 `gemini-2.5-flash`。
-  第一個不存在時，自動換下一個。
+- **模型**：依序試 `gemini-flash-latest`、`gemini-flash-lite-latest`、`gemini-2.5-flash`。
+  前一個不存在或當天額度用完，就換下一個。
+- **免費額度**（2026-11-20 在 AI Studio「Rate Limit」頁面看到的，每個模型分開計算）：
+  - Flash 系列：每分鐘 5 次、每天 20 次。
+  - Flash Lite 系列：每分鐘 15 次、每天 500 次。
+  - 所以每天前約 20 張用 Flash，之後自動改用 Flash Lite。
 - **連線方式**：依序試 Gemini API（AI Studio 金鑰）和 Vertex AI express mode，用的是同一把金鑰。
   第一個不接受這把金鑰時，自動換下一個。
 - **金鑰位置**：寫在 `FoodCal_AI/.streamlit/secrets.toml` 的 `GEMINI_API_KEY = "..."`，或設定環境變數 `GEMINI_API_KEY`。
