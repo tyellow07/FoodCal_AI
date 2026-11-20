@@ -71,7 +71,7 @@ def portion_rows(items, card_box, reference, user_grams):
         name = detection.get('display_name')
         nutrition = nutrition_of(detection)
         row = {'id': detection_id, 'class_name': class_name,
-               'name': f'{name}（{class_name}）' if name else food_name(class_name),
+               'name': name or food_name(class_name),
                'volume_ml': None, 'grams': None, 'grams_source': None, 'kcal': None, 'hidden_kcal': None,
                'nutrition': nutrition, 'notes': []}
         if card_box is None:
@@ -103,7 +103,7 @@ def portion_rows(items, card_box, reference, user_grams):
             row['notes'] = [n for n in row['notes'] if n not in ('card_missing', 'density_missing', 'no_shape_template')]
         if row['grams'] is not None and row['kcal'] is None:
             row['notes'].append('kcal_missing')
-        if nutrition is not None and nutrition['known_share'] < 1:
+        if nutrition is not None and nutrition['known_share'] < Decimal('0.8'):
             row['notes'].append('composition_partly_unknown')
         rows.append(row)
     missing = [r['name'] for r in rows if r['kcal'] is None]

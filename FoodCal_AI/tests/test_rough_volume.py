@@ -50,6 +50,11 @@ class RoughVolumeTests(unittest.TestCase):
         self.assertEqual(volume['volume_ml'], {'low': Decimal(90), 'mid': Decimal(151), 'high': Decimal(255)})
         self.assertFalse(volume['coverage_validated'])
 
+    def test_container_seen_in_the_photo_wins_over_a_mismatched_key(self):
+        as_bowl = rough_volume('braised_napa_cabbage', [0, 0, 1000, 1000], CARD)
+        on_plate = rough_volume('braised_napa_cabbage', [0, 0, 1000, 1000], CARD, container='plate')
+        self.assertEqual((as_bowl['shape'], on_plate['shape']), ('bowl', 'plate'))
+
     def test_bowl_food_uses_rim_diameter_depth_and_fill(self):
         volume = rough_volume('beef_noodles', [0, 0, 1600, 1600], CARD)  # 16 cm bowl
         self.assertEqual(volume['assumptions']['rim_diameter_cm'], Decimal('16.0'))

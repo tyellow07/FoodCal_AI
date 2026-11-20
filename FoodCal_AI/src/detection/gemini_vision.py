@@ -64,15 +64,17 @@ SCHEMA = {
 INSTRUCTIONS = f"""You identify the foods visible in one photo of a meal from a Taiwanese university cafeteria.
 
 For every distinct food item you can see, report:
-- name_zh: its usual name in Traditional Chinese (for example 白飯, 滷肉飯, 燙青菜, 荷包蛋).
+- name_zh: the specific dish name a Taiwanese cafeteria would use when you can tell (for example 紫米飯, 炒高麗菜,
+  醬燒雞丁, 白斬雞, 滷肉飯, 荷包蛋), not just the main ingredient.
 - name_en: a short English name.
-- food_key: one of these keys when the item is that food, otherwise "other":
+- food_key: one of these keys only when the item is exactly that dish, otherwise "other":
 {chr(10).join(f'  {key}' for key in sorted(FOOD_TEMPLATES))}
   (cooked_rice_region is plain cooked rice, cooked_noodle_region plain noodles, visible_fried_egg a fried egg.)
 - container: "bowl" when the food is served in a bowl (soups, noodle soups, rice bowls), otherwise "plate".
 - box_2d: [ymin, xmin, ymax, xmax] of the tightest box around the food, normalised to 0-{GRID}; for bowl dishes,
   box the bowl opening.
-- visible_ingredients: only ingredients you can actually see.
+- visible_ingredients: only ingredients you can actually see, named in Traditional Chinese (for example 高麗菜, 紅蘿蔔,
+  雞肉, 薑絲).
 - confidence: high, medium or low.
 - components: what the item is made of, judged from what you see, as ingredient keys with your estimate of each
   one's share of the item's weight in percent (about 100 in total; count the broth of soups). Use "other" for
@@ -83,8 +85,10 @@ For every distinct food item you can see, report:
 
 Report only what is visible in the photo. Do not estimate weights, portions or calories, and do not add ingredients
 a recipe would usually contain but the photo does not show. Ignore plates, trays, cutlery, hands, the grey
-painted-over area and other non-food objects. Put a whole mixed dish (for example a rice bowl with toppings) in one
-item unless its parts sit apart. If there is no food, return an empty list. Use notes, in Traditional Chinese, for
+painted-over area and other non-food objects. A self-service (自助餐) plate holds separate dishes that touch each other: list every dish on its own, with
+its own box, components and cooking method; only a dish that is cooked or served as one (for example 滷肉飯, 炒飯,
+牛肉麵) is a single item. Boxes may overlap where dishes touch, but keep each one tight around its dish. If there is
+no food, return an empty list. Use notes, in Traditional Chinese, for
 anything uncertain."""
 
 BLOCKED = {'SAFETY', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII', 'IMAGE_SAFETY', 'RECITATION', 'LANGUAGE', 'OTHER'}
@@ -156,6 +160,11 @@ def models_for(endpoint, client):
     return (good,) + tuple(m for m in order if m != good) if good in order else order
 
 
+def _is_network_error(error):
+    root = type(error).__module__.split('.')[0]
+    return root in ('httpx', 'httpx2', 'httpcore', 'httpcore2') or isinstance(error, (ConnectionError, TimeoutError))
+
+
 def _answer_from(response):
     feedback = getattr(response, 'prompt_feedback', None)
     if feedback is not None and getattr(feedback, 'block_reason', None):
@@ -187,7 +196,6 @@ def _answer_from(response):
 def recognize_foods_gemini(image, *, clients, models=None):
     """{'items', 'notes', 'model', 'endpoint', 'usage', 'latency_s'} for one PIL image (already card-masked)."""
     from google.genai import errors, types
-    import httpx
     width, height = image.size
     contents = [types.Part.from_bytes(data=jpeg_bytes(image), mime_type='image/jpeg'),
                 'List the foods visible in this photo.']
@@ -219,8 +227,10 @@ def recognize_foods_gemini(image, *, clients, models=None):
             except errors.ServerError:
                 last = 'gemini_service_error'
                 continue  # overloaded or failing model: try the next one
-            except httpx.HTTPError:
-                raise RecognitionError('gemini_network_error') from None
+            except Exception as error:  # the SDK raises httpx or httpx2 connection errors, depending on its transport
+                if _is_network_error(error):
+                    raise RecognitionError('gemini_network_error') from None
+                raise
             latency = time.perf_counter() - started
             answer = _answer_from(response)
             if models is None:

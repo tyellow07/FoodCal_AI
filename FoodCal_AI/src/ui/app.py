@@ -12,7 +12,7 @@ from src.ui.adapter import fixture_demo, decode_upload, draw_predictions
 from src.ui.explain import reason_text, summarize
 from src.ui.portions import note_text, nutrition_of, portion_rows, range_text, read_food_reference_csv
 from src.portion.card_locator import load_card_reference, locate_card
-from src.portion.nutrition_model import COOKING_METHODS
+from src.portion.nutrition_model import COOKING_METHODS, INGREDIENTS
 from src.portion.rough_volume import FOOD_TEMPLATES, cm_per_px
 from src.ui.explain import food_name
 from src.detection.claude_vision import RecognitionError
@@ -246,7 +246,8 @@ def show_vision_result(result):
                    caption='藍框：Gemini 辨識（G）與手動加入（M）　綠框：學生證', width='stretch')
     if items:
         right.dataframe([{'編號': i['detection_id'], '食物': i['display_name'],
-                          '看得到的食材': '、'.join(i['visible_ingredients']) or '—',
+                          '看得到的食材': '、'.join(INGREDIENTS[v][0] if v in INGREDIENTS else v
+                                              for v in i['visible_ingredients'] if v != 'other') or '—',
                           '烹調': COOKING_METHODS.get(i.get('cooking_method'), ('—',))[0],
                           '把握': CONFIDENCE_TEXT.get(i['confidence'], i['confidence'])} for i in items],
                         hide_index=True, width='stretch')

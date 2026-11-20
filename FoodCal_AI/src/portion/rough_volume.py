@@ -128,7 +128,9 @@ def rough_volume(food, box_px, card_box_px, container=None):
 
     Foods without their own template use the generic plate or bowl template for the container given.
     """
-    template = FOOD_TEMPLATES.get(food) or GENERIC_TEMPLATES.get(container)
+    template = FOOD_TEMPLATES.get(food)
+    if container in GENERIC_TEMPLATES and (template is None or template[0] != container):
+        template = GENERIC_TEMPLATES[container]  # what the photo shows (plate or bowl) wins over a mismatched key
     if template is None:
         raise ValueError('no_shape_template: ' + str(food))
     scale = cm_per_px(card_box_px)

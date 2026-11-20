@@ -97,8 +97,7 @@ class ClaudeVisionTests(unittest.TestCase):
             food(name_zh='排骨湯', name_en='Pork rib soup', key='other', container='bowl', box=(500, 0, 900, 400))),
             4000, 4000)
         rows, total, missing = portion_rows(items, CARD, {}, {})
-        self.assertEqual([r['name'] for r in rows],
-                         ['白飯（cooked_rice_region）', '燙青菜（greens）', '排骨湯（pork_rib_soup）'])
+        self.assertEqual([r['name'] for r in rows], ['白飯', '燙青菜', '排骨湯'])  # the vision name, no internal key
         self.assertTrue(all(r['volume_ml'] is not None for r in rows))
         self.assertGreater(rows[2]['volume_ml']['mid'], rows[1]['volume_ml']['mid'])  # a 16 cm bowl beats a plate pile
         self.assertEqual(rows[1]['notes'], ['density_missing'])

@@ -130,6 +130,14 @@ class GeminiVisionTests(unittest.TestCase):
                 run(FakeClient(*outcomes), self.image)
             self.assertEqual(str(caught.exception), code)
 
+    def test_network_errors_from_either_http_library(self):
+        import httpx
+        import httpx2
+        for error in (httpx2.ConnectError('nodename nor servname provided'), httpx.ConnectError('dns'), ConnectionError('x')):
+            with self.assertRaises(RecognitionError) as caught:
+                run(FakeClient(error), self.image)
+            self.assertEqual(str(caught.exception), 'gemini_network_error')
+
     def test_total_time_budget_stops_trying(self):
         budget = gv.TOTAL_BUDGET_S
         gv.TOTAL_BUDGET_S = -1

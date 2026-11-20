@@ -143,11 +143,15 @@ def draw_predictions(image, result, card_box=None, manual_items=None):
     for label, (left, top, right, bottom) in label_layout(draw, font, image.size, detections):
         draw.rectangle((left, top, right - 1, bottom - 1), fill='#171717')
         draw.text((left + 4, top + 4), label, font=font, anchor='lt', fill='white')
+    big = ImageFont.load_default(size=max(16, image.width // 45))  # readable after the page scales the photo down
     for item in manual_items or []:
         box = item['bounding_box']
         draw.rectangle(tuple(box[k] for k in ('x_min', 'y_min', 'x_max', 'y_max')), outline='#2b6cb0',
                        width=max(3, image.width // 300))
-        draw.text((box['x_min'] + 4, box['y_min'] + 4), item['detection_id'], font=font, anchor='lt', fill='#2b6cb0')
+        left, top = box['x_min'] + 4, box['y_min'] + 4
+        x0, y0, x1, y1 = draw.textbbox((left, top), item['detection_id'], font=big, anchor='lt')
+        draw.rectangle((x0 - 4, y0 - 4, x1 + 4, y1 + 4), fill='#2b6cb0')
+        draw.text((left, top), item['detection_id'], font=big, anchor='lt', fill='white')
     if card_box is not None:
         if isinstance(card_box[0], (list, tuple)):  # detected outline TL, TR, BR, BL
             points = [tuple(p) for p in card_box]
