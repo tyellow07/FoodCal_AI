@@ -128,8 +128,8 @@ def label_layout(draw, font, size, detections):
     return placed
 
 
-def draw_predictions(image, result):
-    """Draw only Detection predictions. GT/evaluation fields are deliberately ignored."""
+def draw_predictions(image, result, card_box=None, manual_items=None):
+    """Draw Detection predictions plus the user's card box and hand-added foods. GT fields are deliberately ignored."""
     canvas = image.copy()
     draw = ImageDraw.Draw(canvas)
     font = ImageFont.load_default(size=max(16, min(32, image.width // 40)))
@@ -143,4 +143,12 @@ def draw_predictions(image, result):
     for label, (left, top, right, bottom) in label_layout(draw, font, image.size, detections):
         draw.rectangle((left, top, right - 1, bottom - 1), fill='#171717')
         draw.text((left + 4, top + 4), label, font=font, anchor='lt', fill='white')
+    for item in manual_items or []:
+        box = item['bounding_box']
+        draw.rectangle(tuple(box[k] for k in ('x_min', 'y_min', 'x_max', 'y_max')), outline='#2b6cb0',
+                       width=max(3, image.width // 300))
+        draw.text((box['x_min'] + 4, box['y_min'] + 4), item['detection_id'], font=font, anchor='lt', fill='#2b6cb0')
+    if card_box is not None:
+        draw.rectangle(tuple(card_box), outline='#1f9d55', width=max(3, image.width // 300))
+        draw.text((card_box[0] + 4, card_box[1] + 4), 'CARD', font=font, anchor='lt', fill='#1f9d55')
     return canvas

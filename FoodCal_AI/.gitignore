@@ -175,6 +175,11 @@
 !/docs/examples/food_density_template.csv
 !/src/portion/volume_density.py
 !/tests/test_portion_volume_density.py
+!/docs/rough_volume_estimation_v0.md
+!/docs/examples/food_reference_template.csv
+!/src/portion/rough_volume.py
+!/src/ui/portions.py
+!/tests/test_rough_volume.py
 
 # Private data stays blocked even under future broad allow rules.
 **/data/
