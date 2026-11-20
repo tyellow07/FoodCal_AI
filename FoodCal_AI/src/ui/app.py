@@ -1,6 +1,9 @@
-"""Streamlit page: synthetic demo, or a real photo recognised by Google Gemini with rough portions.
+"""Streamlit page: a real photo recognised by Google Gemini with rough portions, or the synthetic demo.
 
-User images and results stay in session memory; photos go to Gemini only after the user agrees.
+Layout follows the proposal deck: workflow steps and the KEY RULE banner on top, then three cards - your plate
+(photo with numbered tags, upload, samples, start), food recognition (numbered dishes with editable grams) and the
+nutrition panel (big kcal, macro bar, visible-vs-recipe split). User images and results stay in session memory;
+photos go to Gemini only after the user agrees, with the student card painted over.
 """
 import sys
 from pathlib import Path
@@ -8,19 +11,20 @@ from pathlib import Path
 # Streamlit executes this file as an entry script, from the documented project root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import streamlit as st
-from src.ui.adapter import fixture_demo, decode_upload, draw_predictions
-from src.ui.explain import reason_text, summarize
-from src.ui.portions import note_text, nutrition_of, portion_rows, range_text, read_food_reference_csv
+from src.ui import theme
+from src.ui.adapter import decode_upload, draw_items, draw_predictions, fixture_demo
+from src.ui.explain import food_name, reason_text, summarize
+from src.ui.portions import note_text, nutrition_of, portion_rows, read_food_reference_csv
 from src.portion.card_locator import load_card_reference, locate_card
-from src.portion.nutrition_model import COOKING_METHODS, INGREDIENTS
+from src.portion.nutrition_model import COOKING_METHODS, INGREDIENTS, macros_for_grams
 from src.portion.rough_volume import FOOD_TEMPLATES, cm_per_px
-from src.ui.explain import food_name
 from src.detection.claude_vision import RecognitionError
 from src.detection.gemini_vision import gemini_clients, mask_card, recognize_foods_gemini
 
-MODE_DEMO = '合成展示（不需模型）'
+ROOT = Path(__file__).resolve().parents[2]
 MODE_UPLOAD = '上傳照片辨識'
-CONFIDENCE_TEXT = {'high': '高', 'medium': '中', 'low': '低'}
+MODE_DEMO = '合成展示（不需模型）'
+CONFIDENCE_TEXT = {'high': '把握高', 'medium': '把握中', 'low': '把握低'}
 GEMINI_ERRORS = {
     'gemini_key_invalid': 'Gemini API 金鑰無效或沒有權限：到 Google AI Studio 確認金鑰，再更新 `.streamlit/secrets.toml`。',
     'gemini_model_unavailable': '這組金鑰目前用不了 Gemini Flash 模型，請到 Google AI Studio 確認。',
@@ -33,15 +37,20 @@ GEMINI_ERRORS = {
     'gemini_answer_unreadable': 'Gemini 的回答格式不對，請再試一次。',
     'gemini_bad_request': '送給 Gemini 的請求不被接受，請換一張照片再試。',
 }
-SESSION_KEYS = ('result', 'image', 'input_key', 'card_box', 'card_source', 'card_auto', 'manual_items')
+SESSION_KEYS = ('result', 'image', 'input_key', 'card_box', 'card_source', 'card_auto', 'manual_items', 'sample')
 PER_PHOTO_KEYS = ('result', 'image', 'card_box', 'card_source', 'card_auto', 'manual_items')
-FOOD_REFERENCE_PATH = Path(__file__).resolve().parents[2] / 'data/food_reference/food_reference.csv'
-CARD_REFERENCE_DIR = Path(__file__).resolve().parents[2] / 'data/card_reference'
+FOOD_REFERENCE_PATH = ROOT / 'data/food_reference/food_reference.csv'
+CARD_REFERENCE_DIR = ROOT / 'data/card_reference'
+SAMPLES_DIR = ROOT / 'data/samples'  # optional local sample photos (Git-ignored)
 
 
 def clear_session():
     for key in SESSION_KEYS:
         st.session_state.pop(key, None)
+
+
+def input_tag():
+    return str(st.session_state.get('input_key', ('none',))[0])[:12]
 
 
 def box_picker(image, key, name):
@@ -77,20 +86,6 @@ def box_picker(image, key, name):
     return None
 
 
-def auto_find_card(image):
-    """Look for the card once per photo, before the result image is drawn; a hand-drawn box always wins."""
-    if image is None or 'card_auto' in st.session_state:
-        return
-    reference = card_reference()
-    found = None
-    if reference is not None:
-        with st.spinner('找學生證中…'):
-            found = locate_card(image, reference)
-    st.session_state['card_auto'] = found or False
-    if found and st.session_state.get('card_box') is None:
-        st.session_state['card_box'], st.session_state['card_source'] = found['quad'], 'auto'
-
-
 def card_reference():
     """Logo template for automatic card finding, or None when it has not been set up on this computer."""
     try:
@@ -100,26 +95,206 @@ def card_reference():
         return None
 
 
-def show_portions(base_items):
-    """Rough volume x density per recognised food, or grams the user types in."""
+def gemini_key():
+    """Gemini API key from .streamlit/secrets.toml (git-ignored), else the GEMINI_API_KEY environment variable."""
+    import os
+    try:
+        key = st.secrets.get('GEMINI_API_KEY')
+    except Exception:  # no secrets file yet
+        key = None
+    return key or os.environ.get('GEMINI_API_KEY') or None
+
+
+def sample_photos():
+    if not SAMPLES_DIR.is_dir():
+        return []
+    return sorted(p for p in SAMPLES_DIR.iterdir() if p.suffix.lower() in ('.jpg', '.jpeg', '.png', '.webp'))[:4]
+
+
+def current_items(result):
+    """(base items left after exclusions, excluded items, items used for portions incl. hand-added ones)."""
+    tag = input_tag()
+    base = list(result.get('items', []))
+    skipped = [d for d in base if st.session_state.get(f"skip_{tag}_{d['detection_id']}")]
+    kept = [d for d in base if d not in skipped]
+    return kept, skipped, kept + st.session_state.get('manual_items', [])
+
+
+def compute(result):
+    """Portion rows, total and macros for the current photo, from session widget values."""
+    try:
+        reference = read_food_reference_csv(FOOD_REFERENCE_PATH)
+    except ValueError as error:
+        st.error('密度與熱量表格式不對：' + str(error))
+        reference = {}
+    _, _, items = current_items(result)
+    tag = input_tag()
+    typed = {item['detection_id']: st.session_state.get(f"grams_{tag}_{item['detection_id']}") for item in items}
+    rows, total, missing = portion_rows(items, st.session_state.get('card_box'), reference, typed)
+    macros = {'protein': 0, 'carb': 0, 'fat': 0}
+    for row in rows:
+        if row['nutrition'] is not None and row['grams'] is not None:
+            for name, value in macros_for_grams(row['grams'], row['nutrition']).items():
+                macros[name] += value
+    return items, rows, total, missing, macros, reference
+
+
+def start_recognition(raw, key):
+    image = decode_upload(raw)
+    reference, card = card_reference(), None
+    if reference is not None:
+        with st.spinner('找學生證中…'):
+            card = locate_card(image, reference)
+    outgoing = mask_card(image, card['quad']) if card else image
+    try:
+        with st.spinner('Gemini 辨識中…（通常 5–30 秒，免費版忙的時候會更久）'):
+            found = recognize_foods_gemini(outgoing, clients=gemini_clients(key))
+    except RecognitionError as error:
+        st.session_state['gemini_error'] = GEMINI_ERRORS.get(str(error), str(error))
+        return
+    for name in PER_PHOTO_KEYS:
+        st.session_state.pop(name, None)
+    st.session_state['card_auto'] = card or False
+    if card:
+        st.session_state['card_box'], st.session_state['card_source'] = card['quad'], 'auto'
+    st.session_state['result'] = {'engine': 'gemini', 'card_masked': bool(card), **found}
+    st.session_state['image'] = image
+
+
+def plate_card(result, raw, items, key):
     image = st.session_state.get('image')
-    input_tag = str(st.session_state.get('input_key', ('none',))[0])[:12]
-    st.subheader('份量與熱量（粗估）')
-    st.caption('用學生證當比例尺、依食物形狀估體積，再乘上密度得到重量。沒有用秤重資料驗證，'
-               '只是大概的數字；知道實際重量的話，直接在右邊填入。')
-    if image is not None:
-        reference = card_reference()
+    chip = '辨識完成' if result else '已選照片' if raw else '尚未上傳'
+    st.markdown(theme.card_head('Your plate · 你的餐盤', chip), unsafe_allow_html=True)
+    if result and image is not None:
+        show = st.checkbox('顯示框', value=True, key='show_boxes')
+        st.image(draw_items(image, items, st.session_state.get('card_box'), show), width='stretch')
+    elif raw:
+        try:
+            st.image(decode_upload(raw), caption='照片預覽（還沒開始辨識）', width='stretch')
+        except (ValueError, OSError):
+            st.error('圖片無法讀取，請換一張 PNG／JPEG／WEBP 照片。')
+    else:
+        st.markdown('<div class="fc-empty">上傳一張餐點照片。把學生證<b>背面朝上</b>平放在餐盤旁，'
+                    '程式會自動找到它來換算大小。</div>', unsafe_allow_html=True)
+    st.file_uploader('＋ 上傳照片', type=['png', 'jpg', 'jpeg', 'webp'],
+                     key=f"upload_{st.session_state.get('upload_generation', 0)}")
+    st.caption('JPG、PNG、WebP，最多 10 MB；照片和結果只留在這次的記憶體。')
+    samples = sample_photos()
+    if samples:
+        st.markdown('<span class="fc-label">Or try a sample · 或試試範例</span>', unsafe_allow_html=True)
+        columns = st.columns(len(samples))
+        for index, (column, path) in enumerate(zip(columns, samples), 1):
+            with column:
+                st.image(str(path), width='stretch')
+                if st.button(f'範例 {index}', key=f'sample_{index}', width='stretch'):
+                    st.session_state['sample'] = str(path)
+                    st.session_state['upload_generation'] = st.session_state.get('upload_generation', 0) + 1
+                    st.rerun()
+    if not key:
+        st.warning('還沒有設定 Gemini API 金鑰：在 `FoodCal_AI/.streamlit/secrets.toml` 加一行 '
+                   '`GEMINI_API_KEY = "你的金鑰"`，再重新整理這個頁面。')
+    consent = st.checkbox('我了解並同意把這張照片傳給 Google Gemini 辨識', key='gemini_consent')
+    st.caption('只送縮小過、沒有拍攝資訊（含 GPS）的照片，學生證會先自動塗掉。依 Google 免費版條款，'
+               '照片可能被用來改進產品並由人員審閱，請不要拍到人臉。')
+    if st.button('開始辨識 →', type='primary', disabled=not raw or not (consent and key), width='stretch'):
+        st.session_state.pop('gemini_error', None)
+        start_recognition(raw, key)
+        st.rerun()
+    if st.session_state.get('gemini_error'):
+        st.error(st.session_state['gemini_error'])
+    if result:
         auto = st.session_state.get('card_auto')
-        with st.expander('① 學生證（用來換算大小）', expanded=st.session_state.get('card_source') != 'auto'):
-            if st.session_state.get('card_source') == 'auto':
-                st.success(f"自動找到學生證（logo 配對分數 {auto['score']:.2f}），就是結果圖上的綠框。"
-                           '框得不對的話，在下面照片上拖曳重框。')
-            elif reference is None:
-                st.caption('還沒設定學生證 logo（`python -m tools.setup_card_reference`），所以要手動框。')
-            elif auto is False:
-                st.info('沒有自動找到學生證：要背面朝上、左下角的悠遊卡 logo 清楚入鏡。請在下面照片上拖曳框出學生證。')
-            st.caption('手動框：在照片上按住滑鼠拖曳，框住整張學生證；學生證要平放、邊緣大致和照片邊緣平行。')
-            picked = box_picker(image, key='card_picker_' + input_tag, name='card')
+        card_text = ('自動找到學生證（綠框）' if st.session_state.get('card_source') == 'auto' else
+                     '學生證：你手動框的（綠框）' if st.session_state.get('card_source') == 'manual' else
+                     '沒有找到學生證，到下方「修正工具」框出來')
+        masked = '，已在送出前塗掉' if result.get('card_masked') else ''
+        score = f"（配對 {auto['score']:.2f}）" if auto and st.session_state.get('card_source') == 'auto' else ''
+        usage = result.get('usage') or {}
+        st.caption(f"{card_text}{score}{masked}。模型 {result.get('model')} · {result.get('latency_s')} 秒 · "
+                   f"{usage.get('input_tokens')}/{usage.get('output_tokens')} tokens（免費額度）")
+    if st.button('清除本次圖片與結果', width='stretch'):
+        clear_session()
+        st.session_state.pop('gemini_error', None)
+        st.session_state['upload_generation'] = st.session_state.get('upload_generation', 0) + 1
+        st.rerun()
+
+
+def row_meta(row, item):
+    bits = []
+    if row['nutrition']:
+        parts = '、'.join(f'{name} {share}%' for name, share in row['nutrition']['parts'])
+        bits.append(f"{row['nutrition']['method']} · {parts}")
+    if item.get('confidence'):
+        bits.append(CONFIDENCE_TEXT.get(item['confidence'], item['confidence']))
+    if row['grams'] is not None:
+        source = '你填的' if row['grams_source'] == 'user' else f"約 {row['grams']['low']}–{row['grams']['high']} g"
+        bits.append(f"{source} · 看得到的約 {row['kcal']['mid'] if row['kcal'] else '—'} kcal")
+    bits += [note_text(code) for code in row['notes']]
+    return ' · '.join(bits)
+
+
+def recognition_card(result, rows, items):
+    tag = input_tag()
+    model = (result or {}).get('model')
+    st.markdown(theme.card_head('Food recognition · 食物辨識', model.replace('gemini-', '') if model else None),
+                unsafe_allow_html=True)
+    if not result:
+        st.markdown('<div class="fc-empty">按「開始辨識」後，Gemini 會列出照片裡的每道菜、看得到的食材和烹調方式。</div>',
+                    unsafe_allow_html=True)
+        return
+    names = '、'.join(i.get('display_name') or food_name(i['class_name']) for i in items) or '沒有找到食物'
+    st.markdown(f'<div class="fc-dish">{theme.escape(names)}</div>'
+                f'<div class="fc-sub">{theme.escape(result.get("notes") or "Gemini 看照片辨識；框的位置是大概的。")}</div>',
+                unsafe_allow_html=True)
+    st.markdown(theme.card_head('食材與份量', 'Grams'), unsafe_allow_html=True)
+    manual_ids = {i['detection_id'] for i in st.session_state.get('manual_items', [])}
+    for index, (row, item) in enumerate(zip(rows, items), 1):
+        left, right = st.columns([3.2, 1.3], vertical_alignment='center')
+        hidden = None
+        if row['hidden_kcal'] is not None and row['hidden_kcal']['high'] > 0:
+            hidden = f"＋ 看不到的油、糖約 {row['hidden_kcal']['mid']} kcal（依食譜估計）"
+        name = row['name'] + ('（手動加入）' if row['id'] in manual_ids else '')
+        left.markdown(theme.item_header(index, name, row_meta(row, item), hidden), unsafe_allow_html=True)
+        placeholder = f"約 {row['grams']['mid']}" if row['grams'] and row['grams_source'] == 'rough' else '克數'
+        right.number_input('克', min_value=0.0, max_value=5000.0, value=None, step=10.0, placeholder=placeholder,
+                           key=f"grams_{tag}_{row['id']}", label_visibility='collapsed')
+        if row['id'] not in manual_ids:
+            right.checkbox('認錯了', key=f"skip_{tag}_{row['id']}")
+    _, skipped, _ = current_items(result)
+    for item in skipped:
+        label = item.get('display_name') or item['class_name']
+        st.checkbox(f'已排除「{label}」（取消勾選就恢復）', key=f"skip_{tag}_{item['detection_id']}")
+    st.caption('克數框不填就用粗估；知道實際重量就直接填。')
+
+
+def nutrition_card(result, rows, total, missing, macros):
+    if not result:
+        st.markdown(theme.nutrition_panel(None, None, '', []), unsafe_allow_html=True)
+        return
+    if total is None:
+        reason = ('還沒有學生證可以換算大小：到下方「修正工具」框出學生證，或直接填每道菜的克數。'
+                  if st.session_state.get('card_box') is None else
+                  '還不能算合計：' + '、'.join(missing) + ' 沒有熱量數字，請填克數或排除。' if missing else
+                  '辨識後，熱量和營養素會顯示在這裡。')
+        st.markdown(theme.nutrition_panel(None, None, '', [], reason), unsafe_allow_html=True)
+        return
+    weight = sum(r['grams']['mid'] for r in rows if r['grams'] is not None)
+    per_dish = [(r['name'], r['kcal']['mid'], r['hidden_kcal']['mid'] if r['hidden_kcal'] else 0) for r in rows]
+    macros = {k: round(v, 1) for k, v in macros.items()}
+    st.markdown(theme.nutrition_panel(total, macros, f'約 {weight} g', per_dish), unsafe_allow_html=True)
+
+
+def tools_section(result):
+    """Card box and hand-added dishes, full width because the box pickers need room."""
+    image = st.session_state.get('image')
+    if not result or image is None:
+        return
+    tag = input_tag()
+    with st.expander('修正工具：重框學生證、手動加一道菜', expanded=st.session_state.get('card_box') is None):
+        card_tab, add_tab = st.tabs(['學生證（換算大小）', '手動加一道菜'])
+        with card_tab:
+            st.caption('在照片上按住滑鼠拖曳，框住整張學生證；學生證要平放、邊緣大致和照片邊緣平行。')
+            picked = box_picker(image, key='card_picker_' + tag, name='card')
             if picked is not None and picked != st.session_state.get('card_box'):
                 try:
                     cm_per_px(picked)
@@ -127,72 +302,24 @@ def show_portions(base_items):
                     st.warning(note_text(str(error)))
                 else:
                     st.session_state['card_box'], st.session_state['card_source'] = picked, 'manual'
-            if st.session_state.get('card_source') == 'manual':
-                st.success('已框出學生證（結果圖上的綠框）。要重框的話，直接再拖一次。')
-        manual = st.session_state.setdefault('manual_items', [])
-        with st.expander('② 沒辨識到或認錯？手動加一道菜', expanded=not base_items and not manual):
-            food = st.selectbox('哪一道菜', list(FOOD_TEMPLATES), format_func=food_name, key='manual_food_' + input_tag)
+                    st.rerun()
+        with add_tab:
+            manual = st.session_state.setdefault('manual_items', [])
+            food = st.selectbox('哪一道菜', list(FOOD_TEMPLATES), format_func=food_name, key='manual_food_' + tag)
             st.caption('在照片上拖曳，框住這道菜（碗裝的菜框整個碗口）。')
-            box = box_picker(image, key='food_picker_' + input_tag, name='food')
-            if st.button('加入這道菜', disabled=box is None, key='manual_add_' + input_tag):
+            box = box_picker(image, key='food_picker_' + tag, name='food')
+            if st.button('加入這道菜', disabled=box is None, key='manual_add_' + tag):
                 manual.append({'detection_id': f'M{len(manual) + 1}', 'class_name': food,
                                'bounding_box': dict(zip(('x_min', 'y_min', 'x_max', 'y_max'), box))})
                 st.rerun()
-            if manual and st.button('清除手動加入的菜', key='manual_clear_' + input_tag):
+            if manual and st.button('清除手動加入的菜', key='manual_clear_' + tag):
                 st.session_state['manual_items'] = []
                 st.rerun()
-    try:
-        reference = read_food_reference_csv(FOOD_REFERENCE_PATH)
-    except ValueError as error:
-        st.error('密度與熱量表格式不對：' + str(error))
-        reference = {}
-    detections = list(base_items)
-    skipped = {d['detection_id'] for d in detections if st.session_state.get(f"skip_{input_tag}_{d['detection_id']}")}
-    for detection in detections:
-        if detection['detection_id'] in skipped:
-            left, right = st.columns([3, 2], gap='large')
-            left.markdown(f"~~#{detection['detection_id']} {food_name(detection['class_name'])}~~（已排除，不算進合計）")
-            right.checkbox('辨識錯了，不要算', key=f"skip_{input_tag}_{detection['detection_id']}")
-    items = [d for d in detections if d['detection_id'] not in skipped] + st.session_state.get('manual_items', [])
-    unknown = [i.get('display_name') or i['class_name'] for i in items
-               if nutrition_of(i) is None and i['class_name'] not in reference]
-    if unknown:
-        st.info('、'.join(unknown) + ' 不在食材表裡，只能估體積；可以自己填重量，或把它加進 '
-                '`src/portion/nutrition_model.py` 的食材表。')
-    if not items:
-        st.caption('還沒有任何一道菜：用上面的「手動加一道菜」加入。')
-        return
-    typed = {item['detection_id']: st.session_state.get(f"grams_{input_tag}_{item['detection_id']}") for item in items}
-    rows, total, missing = portion_rows(items, st.session_state.get('card_box'), reference, typed)
-    manual_ids = {item['detection_id'] for item in st.session_state.get('manual_items', [])}
-    for row in rows:
-        left, right = st.columns([3, 2], gap='large')
-        with left:
-            st.markdown(f"**#{row['id']} {row['name']}**" + ('（手動加入）' if row['id'] in manual_ids else ''))
-            lines = []
-            if row['nutrition']:
-                parts = '、'.join(f'{name} {share}%' for name, share in row['nutrition']['parts'])
-                lines.append(f"- 組成：{parts} · 烹調：{row['nutrition']['method']}")
-            lines.append(f"- 體積：{range_text(row['volume_ml'], 'mL')}")
-            source = '（你填的）' if row['grams_source'] == 'user' else ''
-            lines.append(f"- 重量：{range_text(row['grams'], 'g')}{source}")
-            lines.append(f"- 熱量（看得到的食材）：{range_text(row['kcal'], 'kcal')}")
-            if row['hidden_kcal'] is not None and row['hidden_kcal']['high'] > 0:
-                lines.append(f"- 看不到的油、糖（依食譜估計，不是照片看到的）：{range_text(row['hidden_kcal'], 'kcal')}")
-            lines += ['- ' + note_text(code) for code in row['notes']]
-            st.markdown('\n'.join(lines))
-        with right:
-            st.number_input('自己填重量（克）', min_value=0.0, max_value=5000.0, value=None, step=10.0,
-                            key=f"grams_{input_tag}_{row['id']}", placeholder='不填就用粗估')
-            if row['id'] not in manual_ids:
-                st.checkbox('辨識錯了，不要算', key=f"skip_{input_tag}_{row['id']}")
-    if total is not None:
-        st.markdown(f"### 合計：{range_text(total, 'kcal')}")
-        st.caption(f"看得到的食材 {range_text(total['visible'], 'kcal')}；看不到的油、糖 "
-                   f"{range_text(total['hidden'], 'kcal')}（依烹調方式和食譜估計，不是照片看到的）。"
-                   '食材熱量來自衛福部食品營養成分資料庫。粗估值，僅供參考，不是醫療或營養建議。')
-    elif rows:
-        st.caption('還不能算合計：' + '、'.join(missing) + ' 沒有熱量數字。')
+    with st.expander('開發者細節（Gemini 原始回答；只在記憶體）'):
+        st.json({k: v for k, v in result.items() if k != 'items'}, expanded=False)
+        st.json(result.get('items', []), expanded=False)
+        st.caption('烹調方式代碼：' + '、'.join(f'{k}={v[0]}' for k, v in COOKING_METHODS.items()))
+        st.caption('食材代碼：' + '、'.join(f'{k}={v[0]}' for k, v in INGREDIENTS.items()))
 
 
 def show_developer_details(result):
@@ -222,51 +349,8 @@ def show_developer_details(result):
         st.json(result, expanded=False)
 
 
-def gemini_key():
-    """Gemini API key from .streamlit/secrets.toml (git-ignored), else the GEMINI_API_KEY environment variable."""
-    import os
-    try:
-        key = st.secrets.get('GEMINI_API_KEY')
-    except Exception:  # no secrets file yet
-        key = None
-    return key or os.environ.get('GEMINI_API_KEY') or None
-
-
-def show_vision_result(result):
-    """Gemini's foods with boxes, then the rough portion section."""
-    image = st.session_state.get('image')
-    auto_find_card(image)
-    items = result['items']
-    st.subheader('辨識結果（Google Gemini）')
-    left, right = st.columns([3, 2], gap='large')
-    if image is not None:
-        canvas = {'detection_snapshot': {'image': {'width': image.width, 'height': image.height}, 'detections': []}}
-        left.image(draw_predictions(image, canvas, st.session_state.get('card_box'),
-                                    items + st.session_state.get('manual_items', [])),
-                   caption='藍框：Gemini 辨識（G）與手動加入（M）　綠框：學生證', width='stretch')
-    if items:
-        right.dataframe([{'編號': i['detection_id'], '食物': i['display_name'],
-                          '看得到的食材': '、'.join(INGREDIENTS[v][0] if v in INGREDIENTS else v
-                                              for v in i['visible_ingredients'] if v != 'other') or '—',
-                          '烹調': COOKING_METHODS.get(i.get('cooking_method'), ('—',))[0],
-                          '把握': CONFIDENCE_TEXT.get(i['confidence'], i['confidence'])} for i in items],
-                        hide_index=True, width='stretch')
-    else:
-        right.warning('Gemini 沒有在照片裡找到食物。')
-    if result.get('notes'):
-        right.info(result['notes'])
-    usage = result.get('usage') or {}
-    right.caption(f"模型 {result.get('model')} · {result.get('latency_s')} 秒 · "
-                  f"輸入 {usage.get('input_tokens')} / 輸出 {usage.get('output_tokens')} tokens（免費額度）。"
-                  '框的位置是大概的；認錯的菜可以在下面排除，漏掉的可以手動加入。')
-    if result.get('card_masked'):
-        right.caption('學生證在照片送出前已經塗掉。')
-    else:
-        right.caption('送出前沒有找到學生證，所以這張照片的卡片沒有被塗掉。')
-    show_portions(items)
-
-
 def show_result(result):
+    """Synthetic demo of the strict pipeline (no model, no network)."""
     summary = summarize(result)
     st.subheader('結果摘要')
     {'success': st.success, 'warning': st.warning, 'error': st.error}[summary['level']](summary['headline'])
@@ -303,81 +387,75 @@ def show_result(result):
     show_developer_details(result)
 
 
+def photo_bytes():
+    """Raw bytes of the uploaded photo, else of the chosen sample; resets per-photo state when the photo changes."""
+    uploaded = st.session_state.get(f"upload_{st.session_state.get('upload_generation', 0)}")
+    raw = uploaded.getvalue() if uploaded else None
+    if raw:
+        st.session_state.pop('sample', None)
+    elif st.session_state.get('sample') and Path(st.session_state['sample']).is_file():
+        raw = Path(st.session_state['sample']).read_bytes()
+    if raw:
+        from hashlib import sha256
+        input_key = (sha256(raw).hexdigest(), False)
+        if st.session_state.get('input_key') != input_key:
+            for name in PER_PHOTO_KEYS:
+                st.session_state.pop(name, None)
+            st.session_state.pop('gemini_error', None)
+            st.session_state['input_key'] = input_key
+    else:
+        st.session_state.pop('result', None)
+        st.session_state.pop('image', None)
+    return raw
+
+
 def main():
     st.set_page_config(page_title='FoodCal AI 餐點熱量估算', page_icon='🍽️', layout='wide')
-    st.title('FoodCal AI · 餐點熱量估算')
-    st.caption('本機展示版 · 份量是粗估（體積 × 密度），也可以自己填 · 估計值僅供參考，不是醫療或營養建議')
-    mode = st.radio('模式', [MODE_DEMO, MODE_UPLOAD], horizontal=True)
-    with st.expander('這個模型認得哪些食物？'):
-        st.markdown('上傳的照片用 **Google Gemini**（免費 API）辨識，大部分常見食物都認得，包括白飯、燙青菜這類單一食材。'
-                    '認錯的菜可以排除，漏掉的可以手動加入。合成展示只用測試資料，不會連網。')
+    st.markdown(theme.CSS, unsafe_allow_html=True)
+    st.markdown(theme.header(), unsafe_allow_html=True)
+    mode = st.radio('模式', [MODE_UPLOAD, MODE_DEMO], horizontal=True, label_visibility='collapsed')
     if st.session_state.get('mode') != mode:
         clear_session()
         st.session_state['mode'] = mode
+    steps_slot = st.empty()
+    st.markdown(theme.key_rule(), unsafe_allow_html=True)
     if mode == MODE_DEMO:
+        steps_slot.markdown(theme.steps(5 if st.session_state.get('result') else 0), unsafe_allow_html=True)
         st.info('合成展示：畫布、辨識框與食譜都是測試用案例，不是真實照片分析，也不是食譜推薦。')
         if st.button('顯示展示結果', type='primary'):
             st.session_state['result'], st.session_state['image'] = fixture_demo()
-    else:
-        key = gemini_key()
-        st.info('按「開始辨識」後，照片會傳給 Google 的 Gemini 免費 API 辨識。只送縮小過、沒有拍攝資訊（含 GPS）的照片，'
-                '學生證會先自動塗掉。依 Google 免費版條款，照片和結果可能被 Google 用來改進產品，也可能由人員審閱，'
-                '所以不要拍到人臉或其他個人資料。')
-        if not key:
-            st.warning('還沒有設定 Gemini API 金鑰：在 `FoodCal_AI/.streamlit/secrets.toml` 加一行 '
-                       '`GEMINI_API_KEY = "你的金鑰"`，再重新整理這個頁面。')
-        ready = st.checkbox('我了解並同意把這張照片傳給 Google Gemini 辨識', key='gemini_consent') and bool(key)
-        uploaded = st.file_uploader('選擇餐點照片（PNG / JPEG / WEBP，最多 10 MB）',
-                                    type=['png', 'jpg', 'jpeg', 'webp'],
-                                    key=f"upload_{st.session_state.get('upload_generation', 0)}")
-        synthetic = False
-        raw = uploaded.getvalue() if uploaded else None
-        if raw:
-            from hashlib import sha256
-            input_key = (sha256(raw).hexdigest(), synthetic)
-            if st.session_state.get('input_key') != input_key:
-                for key in PER_PHOTO_KEYS:
-                    st.session_state.pop(key, None)
-                st.session_state['input_key'] = input_key
-            try:
-                st.image(decode_upload(raw), caption='照片預覽（還沒開始辨識）', width=360)
-            except (ValueError, OSError):
-                st.error('圖片無法讀取，請換一張 PNG／JPEG／WEBP 照片。')
+        if st.button('清除本次圖片與結果'):
+            clear_session()
+            st.rerun()
+        result = st.session_state.get('result')
+        if result:
+            show_result(result)
         else:
-            st.session_state.pop('result', None)
-            st.session_state.pop('image', None)
-        if st.button('開始辨識', type='primary', disabled=not raw or not ready):
-            image = decode_upload(raw)
-            reference, card = card_reference(), None
-            if reference is not None:
-                with st.spinner('找學生證中…'):
-                    card = locate_card(image, reference)
-            outgoing = mask_card(image, card['quad']) if card else image
-            try:
-                with st.spinner('Gemini 辨識中…（通常 5–30 秒，免費版忙的時候會更久）'):
-                    found = recognize_foods_gemini(outgoing, clients=gemini_clients(key))
-            except RecognitionError as error:
-                st.error(GEMINI_ERRORS.get(str(error), str(error)))
-            else:
-                for name in PER_PHOTO_KEYS:
-                    st.session_state.pop(name, None)
-                st.session_state['card_auto'] = card or False
-                if card:
-                    st.session_state['card_box'], st.session_state['card_source'] = card['quad'], 'auto'
-                st.session_state['result'] = {'engine': 'gemini', 'card_masked': bool(card), **found}
-                st.session_state['image'] = image
-    if st.button('清除本次圖片與結果'):
-        clear_session()
-        st.session_state['upload_generation'] = st.session_state.get('upload_generation', 0) + 1
-        st.rerun()
-    result = st.session_state.get('result')
-    if not result:
-        st.caption('選擇模式並按下按鈕後，結果會出現在這裡。')
+            st.caption('按「顯示展示結果」看合成案例。')
         return
-    if mode == MODE_UPLOAD:
-        show_vision_result(result)
-    else:
-        show_result(result)
+    key = gemini_key()
+    raw = photo_bytes()
+    result = st.session_state.get('result')
+    items, rows, total, missing, macros = [], [], None, [], {}
+    if result:
+        items, rows, total, missing, macros, _ = compute(result)
+    steps_slot.markdown(theme.steps(5 if total is not None else 4 if result else 1 if raw else 0),
+                        unsafe_allow_html=True)
+    left, middle, right = st.columns([1.15, 1.15, 0.95], gap='large')
+    with left:
+        with st.container(key='fc_plate'):
+            plate_card(result, raw, items, key)
+    with middle:
+        with st.container(key='fc_recognition'):
+            recognition_card(result, rows, items)
+    with right:
+        nutrition_card(result, rows, total, missing, macros)
+    tools_section(result)
+    if result:
+        unknown = [i.get('display_name') or i['class_name'] for i in items if nutrition_of(i) is None]
+        if unknown:
+            st.caption('、'.join(unknown) + ' 不在食材表裡，只能估體積；可以填克數，或把它加進 '
+                       '`src/portion/nutrition_model.py`。')
 
 
 if __name__ == '__main__':

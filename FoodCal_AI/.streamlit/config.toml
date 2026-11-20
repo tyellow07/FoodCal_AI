@@ -9,3 +9,12 @@ gatherUsageStats = false
 [client]
 # Hide developer-only toolbar items such as "Deploy" for demo viewers.
 toolbarMode = "viewer"
+
+[theme]
+# Colours from the proposal deck: off-white page, dark green actions, pale green panels.
+base = "light"
+primaryColor = "#3d6b4f"
+backgroundColor = "#f7f6f2"
+secondaryBackgroundColor = "#eef1ea"
+textColor = "#1f2a24"
+font = "sans serif"

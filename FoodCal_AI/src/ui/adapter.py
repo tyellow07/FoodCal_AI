@@ -161,3 +161,52 @@ def draw_predictions(image, result, card_box=None, manual_items=None):
         draw.line(points + points[:1], fill='#1f9d55', width=max(3, image.width // 300), joint='curve')
         draw.text((points[0][0] + 4, points[0][1] + 4), 'CARD', font=font, anchor='lt', fill='#1f9d55')
     return canvas
+
+
+CJK_FONTS = ('/System/Library/Fonts/STHeiti Medium.ttc', '/System/Library/Fonts/Hiragino Sans GB.ttc',
+             'C:/Windows/Fonts/msjh.ttc', 'C:/Windows/Fonts/msyh.ttc',
+             '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc')
+PILLS = (('#dcebd3', '#5f8f52'), ('#fbe7c2', '#c58b2b'), ('#d6e6f5', '#4f7fb0'),
+         ('#f6d9d6', '#b5615a'), ('#e6def3', '#7a64a8'), ('#d9eeeb', '#3f8f86'))
+
+
+def label_font(size):
+    """A font with Chinese glyphs when the computer has one (macOS, Windows, Noto on Linux), else Pillow's default."""
+    from pathlib import Path
+    for path in CJK_FONTS:
+        if Path(path).is_file():
+            try:
+                return ImageFont.truetype(path, size), True
+            except OSError:
+                continue
+    return ImageFont.load_default(size=size), False
+
+
+def draw_items(image, items, card=None, show_boxes=True):
+    """Recognised foods as pastel boxes with numbered name tags ("01 紫米飯"), plus the card outline in green."""
+    canvas = image.convert('RGB').copy()
+    draw = ImageDraw.Draw(canvas)
+    # The page shows the photo about 300-600 px wide, so tags are sized relative to the photo, not in pixels.
+    font, has_cjk = label_font(max(18, image.width // 24))
+    line = max(3, image.width // 200)
+    if card is not None:
+        if isinstance(card[0], (list, tuple)):
+            points = [tuple(p) for p in card]
+        else:
+            x0, y0, x1, y1 = card
+            points = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        draw.line(points + points[:1], fill='#3d6b4f', width=line, joint='curve')
+    if not show_boxes:
+        return canvas
+    for index, item in enumerate(items, 1):
+        fill, edge = PILLS[(index - 1) % len(PILLS)]
+        box = item['bounding_box']
+        x0, y0, x1, y1 = (box[k] for k in ('x_min', 'y_min', 'x_max', 'y_max'))
+        draw.rounded_rectangle((x0, y0, x1, y1), radius=max(6, line * 3), outline=edge, width=line)
+        name = item.get('display_name') if has_cjk else None
+        text = f'{index:02d} {name}' if name else f'{index:02d} {item["detection_id"]}'
+        left, top = x0 + line, max(0, y0 - font.size - 10)
+        tx0, ty0, tx1, ty1 = draw.textbbox((left + 8, top + 4), text, font=font, anchor='lt')
+        draw.rounded_rectangle((tx0 - 8, ty0 - 5, tx1 + 8, ty1 + 6), radius=8, fill=fill, outline=edge, width=max(1, line // 2))
+        draw.text((left + 8, top + 4), text, font=font, anchor='lt', fill='#1f2a24')
+    return canvas

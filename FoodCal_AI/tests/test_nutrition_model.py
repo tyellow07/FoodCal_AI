@@ -2,8 +2,8 @@
 from decimal import Decimal
 import unittest
 
-from src.portion.nutrition_model import (COOKING_METHODS, DEFAULT_COMPONENTS, INGREDIENTS, energy_for_grams,
-                                         food_nutrition)
+from src.portion.nutrition_model import (COOKING_METHODS, DEFAULT_COMPONENTS, INGREDIENTS, MACROS, energy_for_grams,
+                                         food_nutrition, macros_for_grams)
 from src.portion.rough_volume import FOOD_TEMPLATES
 
 D = Decimal
@@ -45,6 +45,15 @@ class NutritionModelTests(unittest.TestCase):
         self.assertEqual((partial['known_share'], partial['visible_kcal_per_100g']), (D('0.50'), D('20.0')))
         self.assertIsNone(food_nutrition([('dragon_fruit', 100)], 'none'))
         self.assertIsNone(food_nutrition([], 'none'))
+
+    def test_macros_match_energy_and_include_hidden_oil(self):
+        self.assertEqual(set(MACROS), set(INGREDIENTS))
+        for key, (p, f, c) in MACROS.items():  # Atwater 4/9/4 lands near the stated energy (TFDA uses finer factors)
+            kcal = INGREDIENTS[key][1]
+            self.assertLess(abs(p * 4 + f * 9 + c * 4 - kcal) / kcal, D('0.25'), key)
+        greens = food_nutrition([('leafy_vegetable', 100)], 'stir_fried')
+        macros = macros_for_grams({'low': D(100), 'mid': D(100), 'high': D(100)}, greens)
+        self.assertEqual(macros, {'protein': D('2.0'), 'carb': D('3.6'), 'fat': D('5.8')})  # + 5.5 g oil, 0.25 g sugar
 
     def test_energy_for_grams(self):
         greens = food_nutrition([('leafy_vegetable', 100)], 'stir_fried')

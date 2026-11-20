@@ -45,6 +45,32 @@ INGREDIENTS = {
     'batter_coating': ('裹粉', D('333'), D('0.6'), False, 'TFDA P1500201 炸雞粉（乾粉）333'),
 }
 
+# Protein, fat, carbohydrate g per 100 g as eaten (same TFDA rows as above; cooked meat = raw / the same yield).
+MACROS = {
+    'cooked_rice': (D('3.1'), D('0.3'), D('41.0')),
+    'noodles': (D('5.5'), D('1.8'), D('31.2')),
+    'instant_noodles': (D('3.8'), D('9.8'), D('21.4')),
+    'rice_noodles': (D('2.0'), D('0.3'), D('25.0')),       # assumption, like its energy value
+    'leafy_vegetable': (D('2.0'), D('0.3'), D('3.3')),
+    'gourd_vegetable': (D('1.1'), D('0.1'), D('3.9')),
+    'pickles': (D('3.0'), D('0.5'), D('18.1')),
+    'egg': (D('14.0'), D('11.2'), D('1.4')),
+    'braised_egg': (D('16.6'), D('11.1'), D('3.1')),
+    'tofu': (D('8.5'), D('3.4'), D('6.0')),
+    'dried_tofu': (D('18.3'), D('8.6'), D('4.8')),
+    'chicken': (D('22.4'), D('12.9'), D('0.4')),
+    'chicken_cutlet': (D('20.4'), D('21.1'), D('0.0')),
+    'pork': (D('20.0'), D('25.0'), D('0.0')),             # assumption, like its energy value
+    'braised_pork_mince': (D('9.5'), D('38.1'), D('4.2')),
+    'beef': (D('28.3'), D('8.6'), D('0.0')),
+    'fish': (D('24.3'), D('5.0'), D('0.4')),
+    'thick_soup': (D('2.5'), D('3.7'), D('9.0')),         # assumption, like its energy value
+    'clear_broth': (D('1.5'), D('0.3'), D('0.2')),
+    'meatball_bawan': (D('3.1'), D('1.6'), D('27.3')),
+    'pancake_skin': (D('5.7'), D('3.7'), D('43.7')),
+    'batter_coating': (D('8.3'), D('1.7'), D('71.0')),
+}
+
 # key: (name, oil g per 100 g (low, high), sugar g per 100 g (low, high), source note)
 COOKING_METHODS = {
     'none': ('生食／不另外調理', (D(0), D(0)), (D(0), D(0)), '—'),
@@ -95,13 +121,17 @@ def food_nutrition(components, method):
     if not known or total == 0:
         return None
     oil, sugar = COOKING_METHODS.get(method, COOKING_METHODS['none'])[1:3]
-    density = visible = hidden_low = hidden_high = D(0)
+    density = visible = hidden_low = hidden_high = cooked_share = D(0)
+    protein = fat = carb = D(0)
     for key, share in known:
         _, kcal, ingredient_density, includes_cooking, _ = INGREDIENTS[key]
         weight = share / total
         density += weight * ingredient_density
         visible += weight * kcal
+        p, f, c = MACROS[key]
+        protein, fat, carb = protein + weight * p, fat + weight * f, carb + weight * c
         if not includes_cooking:  # the TFDA value of a cooked dish already holds its oil and sugar
+            cooked_share += weight
             hidden_low += weight * (oil[0] * OIL_KCAL_PER_G + sugar[0] * SUGAR_KCAL_PER_G)
             hidden_high += weight * (oil[1] * OIL_KCAL_PER_G + sugar[1] * SUGAR_KCAL_PER_G)
     stated = sum((D(str(share)) for _, share in components if D(str(share)) > 0), D(0))
@@ -109,6 +139,9 @@ def food_nutrition(components, method):
             'hidden_kcal_per_100g': (hidden_low.quantize(D('0.1')), hidden_high.quantize(D('0.1'))),
             'known_share': (total / stated).quantize(D('0.01')) if stated else D(0),
             'parts': [(INGREDIENTS[key][0], int(share)) for key, share in known],
+            'macros_per_100g': {'protein': protein, 'fat': fat, 'carb': carb},
+            'hidden_fat_g_per_100g': (cooked_share * oil[0], cooked_share * oil[1]),
+            'hidden_sugar_g_per_100g': (cooked_share * sugar[0], cooked_share * sugar[1]),
             'method': COOKING_METHODS.get(method, COOKING_METHODS['none'])[0]}
 
 
@@ -119,3 +152,13 @@ def energy_for_grams(grams, nutrition):
     hidden_low, hidden_high = _bounds(grams['low'] * low / 100, grams['high'] * high / 100)
     hidden_mid = (grams['mid'] * (low + high) / 2 / 100).quantize(D('1'))
     return visible, {'low': hidden_low, 'mid': hidden_mid, 'high': hidden_high}
+
+
+def macros_for_grams(grams, nutrition):
+    """Point estimate {'protein', 'carb', 'fat'} in grams for the middle weight, hidden oil and sugar included."""
+    mid = grams['mid'] / 100
+    m = nutrition['macros_per_100g']
+    fat = m['fat'] + sum(nutrition['hidden_fat_g_per_100g']) / 2
+    carb = m['carb'] + sum(nutrition['hidden_sugar_g_per_100g']) / 2
+    return {'protein': (m['protein'] * mid).quantize(D('0.1')), 'carb': (carb * mid).quantize(D('0.1')),
+            'fat': (fat * mid).quantize(D('0.1'))}
