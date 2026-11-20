@@ -1,6 +1,7 @@
 """Run the photo pipeline over an evaluation workspace (docs/campus_meal_workflow_v0.md).
 
-estimate  accepted annotations + reference card + calibration -> portion estimates (review not_requested)
+estimate  accepted annotations + reference card + calibration -> portion estimates (review not_requested);
+          with a volume x density model, also an informational volume per item (unweighed foods included)
 review    apply an independent reviewer's decisions CSV -> reviewed estimates (new file)
 energy    reviewed estimates + photo-calculation nutrition bases + consumption assertion
           -> per-meal photo_energy_estimate, predictions.csv for tools.evaluate_meals and the red-line audit
@@ -18,10 +19,18 @@ from pathlib import Path
 from src.evaluation import audit_results, prediction_from_energy_estimate
 from src.portion import canonical_sha256, estimate_photo_energy, validate_portion_estimate
 from src.portion.reference_card import estimate_with_reference_card
+from src.portion.volume_density import (MODEL_CONTRACT as VOLUME_MODEL, estimate_volume,
+                                        estimate_with_volume_density)
 from tools.ingredient_pilot import ROOT, visual_evidence_from_annotation
 from tools.meal_workspace import accepted_annotations, load_manifest, read_csv
 
-PRODUCER = 'reference_card_area_ratio/0'
+PRODUCER = 'reference_card_area_ratio/0'  # area-ratio models; volume models use their own method id
+
+
+def _producer(model):
+    method = model.get('method') or {}
+    return f"{method.get('method_id')}/{method.get('method_version')}" if model.get('contract') == VOLUME_MODEL \
+        else PRODUCER
 DECISION_COLUMNS = ('estimate_id', 'status', 'reviewer_ref', 'reviewed_at')
 PREDICTION_COLUMNS = ('meal_id', 'status', 'low_kcal', 'high_kcal')
 
@@ -57,9 +66,13 @@ def meal_envelopes(workspace):
 
 
 def estimate_meals(workspace, *, record, model):
+    volume_model = model.get('contract') == VOLUME_MODEL
+    estimator = estimate_with_volume_density if volume_model else estimate_with_reference_card
     meals = {}
     for meal_id, (envelope, annotation, reason) in meal_envelopes(workspace).items():
         entry = {'estimates': [], 'skipped': [], 'meal_reason': reason}
+        if volume_model:
+            entry['volumes'] = []
         meals[meal_id] = entry
         if envelope is None:
             continue
@@ -69,10 +82,16 @@ def estimate_meals(workspace, *, record, model):
             if card is None:
                 entry['skipped'].append({'annotation_id': annotation_id, 'reason': 'reference_card_missing'})
                 continue
+            if volume_model:
+                try:
+                    entry['volumes'].append({'annotation_id': annotation_id,
+                                             **estimate_volume(item, card['bounding_box'], model=model)})
+                except ValueError as error:
+                    entry['volumes'].append({'annotation_id': annotation_id, 'reason': str(error)})
             try:
-                entry['estimates'].append(estimate_with_reference_card(
+                entry['estimates'].append(estimator(
                     item, card['bounding_box'], model=model, record=record,
-                    estimate_id=f'{meal_id}:{annotation_id}:{record["calibration_id"]}', producer_ref=PRODUCER))
+                    estimate_id=f'{meal_id}:{annotation_id}:{record["calibration_id"]}', producer_ref=_producer(model)))
             except ValueError as error:
                 entry['skipped'].append({'annotation_id': annotation_id, 'reason': str(error)})
     return {'contract': 'foodcal.meal_portion_estimates', 'schema_version': 0, 'usage': 'diagnostic/test_only',
@@ -127,7 +146,7 @@ def main(argv=None, *, root=ROOT / 'work'):
     est = commands.add_parser('estimate')
     est.add_argument('--workspace', type=Path, required=True)
     est.add_argument('--record', type=Path, required=True, help='approved_record.json')
-    est.add_argument('--model', type=Path, required=True, help='reference_card_model.json')
+    est.add_argument('--model', type=Path, required=True, help='reference_card_model.json or volume_density_model.json')
     est.add_argument('--out', type=Path, required=True, help='new directory under work/')
     rev = commands.add_parser('review')
     rev.add_argument('--estimates', type=Path, required=True)

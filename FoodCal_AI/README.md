@@ -15,6 +15,7 @@
 - Photo Item Source Review v0（2026-11-13）：照片食材對 TFDA 條目的受控人工審查，全程不經食譜，可產生 photo_calculation 營養基準（`docs/photo_item_source_review_design_v0.md` 第 12 節）；決策暫定、待團隊確認，只有合成測試資料，沒有真實審查或 gate 紀錄。
 - 2026-11-19 增補：
   - 份量估算方法 `reference_card_area_ratio` v0（學生證比例尺＋秤重校準，`docs/portion_calibration_protocol_v0.md`）與校準工具 `tools/build_portion_calibration.py`；沒有真實秤重資料，所以沒有校準紀錄。
+  - 2026-11-20：「體積 × 密度」方法 `reference_card_volume_density` v0（同一份文件第 5 節）：密度表填網路公開資料並留來源，有效高度由秤重照片學出；沒秤重的同形狀食物只給未驗證的體積與重量，不進熱量。
   - 人工標註接到視覺證據：`tools.ingredient_pilot.visual_evidence_from_annotation` 保留 annotation_id、image_sha256、標註者與複核者，可進入份量契約與照片審查。
   - 整餐熱量評估程式 `tools/evaluate_meals.py`（`docs/meal_evaluation_protocol_v0.md`）：MAPE、區間涵蓋率、寬度、B0 基準線、作答率、拒答正確率與評分表點數。
   - Streamlit 主畫面改為中文摘要（原因代碼翻成中文、下一步建議、免責聲明），技術細節收進「開發者細節」；手機直拍照片依 EXIF 方向轉正後才辨識。頁首列出模型認得的食物；CLI 加 `--summary` 中文摘要。

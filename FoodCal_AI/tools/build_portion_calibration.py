@@ -1,7 +1,8 @@
-"""Fit the reference-card portion calibration from a private weighing CSV (see docs/portion_calibration_protocol_v0.md).
+"""Fit a reference-card portion calibration from a private weighing CSV (see docs/portion_calibration_protocol_v0.md).
 
 Default: read directly weighed samples and write a draft calibration record, the fitted model and diagnostics
-under the Git-ignored work/ directory. `approve` records an explicit human approval (approver must differ from
+under the Git-ignored work/ directory. With --densities (a sourced density CSV) the volume x density method
+(reference_card_volume_density) is fitted instead of the area ratio. `approve` records an explicit human approval (approver must differ from
 the producer) as a separate approved_record.json; the draft is kept. Nothing is downloaded or trained.
 """
 import argparse
@@ -12,6 +13,8 @@ from pathlib import Path
 
 from src.portion import calibration_blockers, validate_calibration
 from src.portion.reference_card import fit_reference_card_calibration
+from src.portion.volume_density import (DENSITY_COLUMNS, MODEL_CONTRACT as VOLUME_MODEL,
+                                        fit_volume_density_calibration, load_density_table)
 
 ROOT = Path(__file__).resolve().parents[1]
 COLUMNS = ('sample_id', 'source_group', 'ingredient_candidate', 'region_x_min', 'region_y_min', 'region_x_max',
@@ -39,6 +42,16 @@ def load_weighing_csv(path):
     return samples
 
 
+def load_density_csv(path):
+    """Density CSV (columns DENSITY_COLUMNS) -> validated table; values stay exact decimal strings."""
+    with Path(path).open(encoding='utf-8-sig', newline='') as handle:
+        reader = csv.DictReader(handle)
+        if tuple(reader.fieldnames or ()) != DENSITY_COLUMNS:
+            raise ValueError('density_csv_columns_mismatch')
+        rows = [{k: (row[k] or '').strip() for k in DENSITY_COLUMNS} for row in reader]
+    return load_density_table(rows)
+
+
 def write_calibration(out_dir, record, model, diagnostics, *, root=ROOT / 'work'):
     out_dir, root = Path(out_dir).resolve(), Path(root).resolve()
     if not out_dir.is_relative_to(root):
@@ -46,7 +59,8 @@ def write_calibration(out_dir, record, model, diagnostics, *, root=ROOT / 'work'
     if out_dir.exists():
         raise ValueError('output_already_exists_no_overwrite')
     out_dir.mkdir(parents=True)
-    for name, value in (('calibration_record.json', record), ('reference_card_model.json', model),
+    model_name = 'volume_density_model.json' if model.get('contract') == VOLUME_MODEL else 'reference_card_model.json'
+    for name, value in (('calibration_record.json', record), (model_name, model),
                         ('diagnostics.json', diagnostics)):
         (out_dir / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     return out_dir
@@ -96,12 +110,20 @@ def main(argv=None):
     parser.add_argument('--dataset-reference', required=True, help='shareable locator, not a machine path')
     parser.add_argument('--producer', required=True, help='who ran this calibration')
     parser.add_argument('--nominal', default='0.8')
+    parser.add_argument('--densities', type=Path, help='sourced density CSV: fit volume x density instead')
     args = parser.parse_args(argv)
-    record, model, diagnostics = fit_reference_card_calibration(
-        load_weighing_csv(args.samples), calibration_id=args.calibration_id, nominal=args.nominal,
-        dataset_reference=args.dataset_reference, producer_ref=args.producer)
+    identity = dict(calibration_id=args.calibration_id, nominal=args.nominal,
+                    dataset_reference=args.dataset_reference, producer_ref=args.producer)
+    samples = load_weighing_csv(args.samples)
+    if args.densities:
+        record, model, diagnostics = fit_volume_density_calibration(samples, load_density_csv(args.densities), **identity)
+    else:
+        record, model, diagnostics = fit_reference_card_calibration(samples, **identity)
     write_calibration(args.out, record, model, diagnostics)
-    print(json.dumps({'status': record['status'], 'held_out_samples': record['dataset']['sample_count'],
+    print(json.dumps({'method': record['method']['method_id'],
+                      **({'effective_height_cm_median': diagnostics['effective_height_cm_median']}
+                         if args.densities else {}),
+                      'status': record['status'], 'held_out_samples': record['dataset']['sample_count'],
                       'source_groups': record['dataset']['source_group_count'],
                       'measured_coverage': diagnostics['measured_coverage'], 'nominal': record['coverage']['nominal'],
                       'mae_g': record['error']['mae_g'], 'next': 'independent approval required before use'},

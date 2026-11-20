@@ -142,6 +142,27 @@ class CampusMealWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'workspace_purpose_must_be_evaluation'):
             estimate_meals(self.calibration()[0], record={}, model={})
 
+    def test_volume_density_model_runs_through_the_same_pipeline(self):
+        from src.portion.volume_density import METHOD, fit_volume_density_calibration, load_density_table
+        from tests.test_portion_volume_density import density_rows
+        self.calibration()
+        record, model, _ = fit_volume_density_calibration(
+            load_weighing_csv(self.work / 'weighing.csv'), load_density_table(density_rows()),
+            calibration_id='rice-volume-v0', nominal='0.8', dataset_reference='private://campus/calibration_v0',
+            producer_ref='synthetic-calibrator')
+        approved, blockers = approve_calibration(record, approver_ref='synthetic-approver', approved_at='2026-11-20')
+        self.assertEqual(blockers, [])
+        workspace, _ = self.evaluation()
+        meals = estimate_meals(workspace, record=approved, model=model)['meals']
+        [estimate] = meals['e1']['estimates']
+        self.assertEqual((estimate['method'], estimate['producer']['ref']),
+                         (METHOD, 'reference_card_volume_density/0'))
+        [volume] = meals['e1']['volumes']
+        self.assertEqual((volume['annotation_id'], volume['basis'], volume['area_cm2']), ('r', 'weighed_food', '100'))
+        self.assertEqual({k: volume['mass_g'][k] for k in ('low', 'high')},
+                         {k: estimate['mass_g'][k] for k in ('low', 'high')})
+        self.assertEqual(meals['e2']['volumes'], [])  # no card: skipped before any volume is computed
+
     def test_end_to_end_from_photos_to_rubric_metrics(self):
         _, record, model, blockers, diagnostics = self.calibration()
         self.assertEqual(diagnostics['samples_evaluated'], 36)

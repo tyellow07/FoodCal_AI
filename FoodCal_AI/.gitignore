@@ -172,6 +172,9 @@
 !/docs/project_rubric_v0.md
 !/tests/test_measure_coverage.py
 !/tools/measure_coverage.py
+!/docs/examples/food_density_template.csv
+!/src/portion/volume_density.py
+!/tests/test_portion_volume_density.py
 
 # Private data stays blocked even under future broad allow rules.
 **/data/

@@ -56,6 +56,9 @@
   --approver <核可者> --date 2026-11-25
 ```
 
+改用「體積 × 密度」時，在 `build_portion_calibration` 加上 `--densities <密度表.csv>`，模型檔改成
+`volume_density_model.json`（`portion_calibration_protocol_v0.md` 第 5 節）。
+
 `approve` 會印出剩下的阻擋原因（例如樣本不足、實測涵蓋率低於 80%）。有阻擋時照樣可以跑後面的步驟，但熱量會維持 unavailable。
 
 ## 4. 評估工作區：估計 → 複核 → 熱量
