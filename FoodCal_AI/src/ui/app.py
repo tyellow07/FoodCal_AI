@@ -25,6 +25,7 @@ GEMINI_ERRORS = {
     'gemini_model_unavailable': '這組金鑰目前用不了 Gemini Flash 模型，請到 Google AI Studio 確認。',
     'gemini_quota_exceeded': '已超過 Gemini 免費額度（每分鐘或每天的次數上限），請稍後再試。',
     'gemini_service_error': 'Gemini 服務暫時出錯，請稍後再試。',
+    'gemini_too_slow': 'Gemini 免費版現在太忙，所有模型都沒有在時間內回應，請過幾分鐘再試，或先用手動加菜。',
     'gemini_network_error': '連不上 Gemini，請檢查網路。',
     'gemini_blocked': 'Gemini 拒絕處理這張照片，請換一張。',
     'gemini_answer_truncated': 'Gemini 的回答被截斷，請再試一次。',
@@ -340,7 +341,7 @@ def main():
                     card = locate_card(image, reference)
             outgoing = mask_card(image, card['quad']) if card else image
             try:
-                with st.spinner('Gemini 辨識中…'):
+                with st.spinner('Gemini 辨識中…（通常 5–30 秒，免費版忙的時候會更久）'):
                     found = recognize_foods_gemini(outgoing, clients=gemini_clients(key))
             except RecognitionError as error:
                 st.error(GEMINI_ERRORS.get(str(error), str(error)))

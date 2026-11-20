@@ -1,14 +1,19 @@
 """Gemini recognizer with fake clients: no network, no API key, synthetic images only."""
 from io import BytesIO
 import json
+from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 import unittest
 
 from google.genai import errors
 from PIL import Image
 
+from src.detection import gemini_vision as gv
 from src.detection.claude_vision import MAX_SIDE, RecognitionError
-from src.detection.gemini_vision import MODELS, SCHEMA, mask_card, recognize_foods_gemini
+from src.detection.gemini_vision import SCHEMA, mask_card, model_order, recognize_foods_gemini
+
+MODELS = ('gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite')
 
 
 def reply(*foods, notes='', finish='STOP', text=None, block=None):
@@ -30,10 +35,17 @@ def client_error(code, message):
     return errors.ClientError(code, {'error': {'code': code, 'message': message, 'status': status}})
 
 
+def server_error():
+    return errors.ServerError(503, {'error': {'code': 503, 'message': 'high demand', 'status': 'UNAVAILABLE'}})
+
+
 class FakeClient:
-    def __init__(self, *outcomes):
-        self.outcomes, self.calls = list(outcomes), []
-        self.models = SimpleNamespace(generate_content=self.generate_content)
+    def __init__(self, *outcomes, listed=()):
+        self.outcomes, self.calls, self.listed = list(outcomes), [], list(listed)
+        self.models = SimpleNamespace(generate_content=self.generate_content, list=self.list)
+
+    def list(self):
+        return [SimpleNamespace(name='models/' + n, supported_actions=['generateContent']) for n in self.listed]
 
     def generate_content(self, *, model, contents, config):
         self.calls.append({'model': model, 'contents': contents, 'config': config})
@@ -43,19 +55,29 @@ class FakeClient:
         return outcome
 
 
+def run(client, image, models=MODELS):
+    return recognize_foods_gemini(image, clients=[('gemini_api', client)], models=models)
+
+
 class GeminiVisionTests(unittest.TestCase):
     def setUp(self):
         self.image = Image.new('RGB', (4000, 3000), (200, 190, 180))
         self.image.info['exif'] = Image.Exif().tobytes()
+        gv._ORDER_CACHE.clear()
+        gv._LAST_GOOD.clear()
+        self.state = tempfile.TemporaryDirectory()
+        self.addCleanup(self.state.cleanup)
+        gv.STATE_PATH = Path(self.state.name) / 'gemini_state.json'
 
     def test_request_shape_and_box_conversion(self):
         client = FakeClient(reply(food(), food(name_zh='燙青菜', name_en='Greens', key='other', box=(0, 800, 300, 1000))))
-        result = recognize_foods_gemini(self.image, clients=[('gemini_api', client)])
+        result = run(client, self.image)
         [call] = client.calls
         self.assertEqual(call['model'], MODELS[0])
         self.assertEqual((call['config'].response_mime_type, call['config'].response_json_schema),
                          ('application/json', SCHEMA))
         self.assertIn('calories', call['config'].system_instruction)
+        self.assertEqual(call['config'].thinking_config.thinking_level.name, 'LOW')
         part = call['contents'][0]
         self.assertEqual(part.inline_data.mime_type, 'image/jpeg')
         sent = Image.open(BytesIO(part.inline_data.data))
@@ -68,38 +90,57 @@ class GeminiVisionTests(unittest.TestCase):
         self.assertEqual((result['model'], result['endpoint'], result['usage']['thinking_tokens']),
                          ('gemini-test-flash', 'gemini_api', 400))
 
-    def test_falls_back_across_model_names_and_endpoints(self):
-        missing = FakeClient(client_error(404, 'models/gemini-flash-latest is not found'), reply(food()))
-        result = recognize_foods_gemini(self.image, clients=[('gemini_api', missing)])
-        self.assertEqual([c['model'] for c in missing.calls], list(MODELS[:2]))
-        wrong_endpoint = FakeClient(client_error(400, 'API key not valid. Please pass a valid API key.'))
-        vertex = FakeClient(reply(food()))
-        result = recognize_foods_gemini(self.image, clients=[('gemini_api', wrong_endpoint), ('vertex_express', vertex)])
-        self.assertEqual(result['endpoint'], 'vertex_express')
-        with self.assertRaises(RecognitionError) as caught:
-            recognize_foods_gemini(self.image, clients=[('gemini_api', FakeClient(client_error(400, 'API key not valid')))])
-        self.assertEqual(str(caught.exception), 'gemini_key_invalid')
+    def test_model_order_newest_flash_then_lite(self):
+        names = ['models/gemini-2.5-flash', 'models/gemini-3.8-flash', 'models/gemini-3.5-flash-lite',
+                 'models/gemini-3.1-flash-image', 'models/gemini-3.6-flash', 'models/gemini-omni-flash-preview',
+                 'models/gemini-3.1-flash-lite', 'models/text-embedding']
+        self.assertEqual(model_order(names), ('gemini-3.5-flash-lite', 'gemini-3.1-flash-lite',
+                                              'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-2.5-flash'))
+        self.assertEqual(model_order([]), gv.MODELS)
 
-    def test_quota_blocks_and_bad_answers_raise_readable_codes(self):
-        exhausted = client_error(429, 'Resource has been exhausted (e.g. check quota).')
-        with self.assertRaises(RecognitionError) as caught:
-            recognize_foods_gemini(self.image, clients=[('gemini_api', FakeClient(*[exhausted] * len(MODELS)))])
-        self.assertEqual(str(caught.exception), 'gemini_quota_exceeded')
-        lite = FakeClient(exhausted, reply(food()))
-        self.assertEqual(len(recognize_foods_gemini(self.image, clients=[('gemini_api', lite)])['items']), 1)
-        self.assertEqual([c['model'] for c in lite.calls], list(MODELS[:2]))  # a used-up Flash falls through
-        for outcome, code in ((reply(block='SAFETY'), 'gemini_blocked'),
-                              (reply(finish='SAFETY'), 'gemini_blocked'),
-                              (reply(finish='MAX_TOKENS'), 'gemini_answer_truncated'),
-                              (reply(text='not json'), 'gemini_answer_unreadable'),
-                              (reply(text='{"notes": "no foods key"}'), 'gemini_answer_unreadable')):
-            with self.assertRaises(RecognitionError) as caught:
-                recognize_foods_gemini(self.image, clients=[('gemini_api', FakeClient(outcome))])
+    def test_busy_missing_or_used_up_models_fall_through_and_the_winner_goes_first(self):
+        listed = ('gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite')
+        client = FakeClient(server_error(), client_error(429, 'quota exceeded'), reply(food()), reply(food()),
+                            listed=listed)
+        result = recognize_foods_gemini(self.image, clients=[('gemini_api', client)])
+        # Flash Lite first, then Flash newest first: lite busy, 3.8 used up, 3.6 answers
+        self.assertEqual([c['model'] for c in client.calls], ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash'])
+        self.assertEqual(len(result['items']), 1)
+        recognize_foods_gemini(self.image, clients=[('gemini_api', client)])
+        self.assertEqual(client.calls[-1]['model'], 'gemini-3.6-flash')  # remembered, tried first
+        gv._LAST_GOOD.clear()
+        gv._ORDER_CACHE.clear()  # a restarted page reads the winner back from disk
+        self.assertEqual(gv.models_for('gemini_api', FakeClient(listed=listed))[0], 'gemini-3.6-flash')
+        older = FakeClient(reply(food()))
+        run(older, self.image, models=('gemini-2.5-flash',))
+        self.assertEqual(older.calls[0]['config'].thinking_config.thinking_budget, 0)
+
+    def test_errors_become_readable_codes(self):
+        cases = (([client_error(429, 'Resource has been exhausted (e.g. check quota).')] * 3, 'gemini_quota_exceeded'),
+                 ([server_error()] * 3, 'gemini_service_error'),
+                 ([client_error(404, 'not found')] * 3, 'gemini_model_unavailable'),
+                 ([client_error(400, 'API key not valid. Please pass a valid API key.')], 'gemini_key_invalid'),
+                 ([reply(block='SAFETY')], 'gemini_blocked'),
+                 ([reply(finish='SAFETY')], 'gemini_blocked'),
+                 ([reply(finish='MAX_TOKENS')], 'gemini_answer_truncated'),
+                 ([reply(text='not json')], 'gemini_answer_unreadable'),
+                 ([reply(text='{"notes": "no foods key"}')], 'gemini_answer_unreadable'))
+        for outcomes, code in cases:
+            with self.assertRaises(RecognitionError, msg=code) as caught:
+                run(FakeClient(*outcomes), self.image)
             self.assertEqual(str(caught.exception), code)
+
+    def test_total_time_budget_stops_trying(self):
+        budget = gv.TOTAL_BUDGET_S
+        gv.TOTAL_BUDGET_S = -1
+        self.addCleanup(setattr, gv, 'TOTAL_BUDGET_S', budget)
+        with self.assertRaises(RecognitionError) as caught:
+            run(FakeClient(reply(food())), self.image)
+        self.assertEqual(str(caught.exception), 'gemini_too_slow')
 
     def test_malformed_boxes_are_skipped_not_fatal(self):
         bad = dict(food(), box_2d=[1, 2, 3])
-        result = recognize_foods_gemini(self.image, clients=[('gemini_api', FakeClient(reply(bad, food())))])
+        result = run(FakeClient(reply(bad, food())), self.image)
         self.assertEqual([i['detection_id'] for i in result['items']], ['G1'])
 
     def test_card_is_painted_over_on_a_copy(self):
