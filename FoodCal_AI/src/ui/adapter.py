@@ -149,6 +149,11 @@ def draw_predictions(image, result, card_box=None, manual_items=None):
                        width=max(3, image.width // 300))
         draw.text((box['x_min'] + 4, box['y_min'] + 4), item['detection_id'], font=font, anchor='lt', fill='#2b6cb0')
     if card_box is not None:
-        draw.rectangle(tuple(card_box), outline='#1f9d55', width=max(3, image.width // 300))
-        draw.text((card_box[0] + 4, card_box[1] + 4), 'CARD', font=font, anchor='lt', fill='#1f9d55')
+        if isinstance(card_box[0], (list, tuple)):  # detected outline TL, TR, BR, BL
+            points = [tuple(p) for p in card_box]
+        else:
+            x0, y0, x1, y1 = card_box
+            points = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        draw.line(points + points[:1], fill='#1f9d55', width=max(3, image.width // 300), joint='curve')
+        draw.text((points[0][0] + 4, points[0][1] + 4), 'CARD', font=font, anchor='lt', fill='#1f9d55')
     return canvas

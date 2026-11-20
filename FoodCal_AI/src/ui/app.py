@@ -8,6 +8,7 @@ import streamlit as st
 from src.ui.adapter import fixture_demo, decode_upload, analyze_upload, draw_predictions
 from src.ui.explain import reason_text, summarize, supported_foods_markdown
 from src.ui.portions import note_text, portion_rows, range_text, read_food_reference_csv
+from src.portion.card_locator import load_card_reference, locate_card
 from src.portion.rough_volume import FOOD_TEMPLATES, cm_per_px
 from src.ui.explain import food_name
 from src.detection import FoodDetector
@@ -15,8 +16,10 @@ from src.detection.model import DEFAULT_CLASSES_PATH, DEFAULT_MODEL_PATH
 
 MODE_DEMO = '合成展示（不需模型）'
 MODE_UPLOAD = '上傳照片辨識（需要模型權重）'
-SESSION_KEYS = ('result', 'image', 'input_key', 'detector', 'card_box', 'manual_items')
+SESSION_KEYS = ('result', 'image', 'input_key', 'detector', 'card_box', 'card_source', 'card_auto', 'manual_items')
+PER_PHOTO_KEYS = ('result', 'image', 'card_box', 'card_source', 'card_auto', 'manual_items')
 FOOD_REFERENCE_PATH = Path(__file__).resolve().parents[2] / 'data/food_reference/food_reference.csv'
+CARD_REFERENCE_DIR = Path(__file__).resolve().parents[2] / 'data/card_reference'
 
 
 def weights_available():
@@ -62,6 +65,29 @@ def box_picker(image, key, name):
     return None
 
 
+def auto_find_card(image):
+    """Look for the card once per photo, before the result image is drawn; a hand-drawn box always wins."""
+    if image is None or 'card_auto' in st.session_state:
+        return
+    reference = card_reference()
+    found = None
+    if reference is not None:
+        with st.spinner('找學生證中…'):
+            found = locate_card(image, reference)
+    st.session_state['card_auto'] = found or False
+    if found and st.session_state.get('card_box') is None:
+        st.session_state['card_box'], st.session_state['card_source'] = found['quad'], 'auto'
+
+
+def card_reference():
+    """Logo template for automatic card finding, or None when it has not been set up on this computer."""
+    try:
+        return load_card_reference(CARD_REFERENCE_DIR)
+    except (ValueError, OSError):
+        st.warning('學生證 logo 設定檔讀不到，請重新執行 `python -m tools.setup_card_reference`。')
+        return None
+
+
 def detections_of(result):
     return list((result.get('detection_snapshot') or {}).get('detections', []))
 
@@ -74,8 +100,17 @@ def show_portions(result):
     st.caption('用學生證當比例尺、依食物形狀估體積，再乘上密度得到重量。沒有用秤重資料驗證，'
                '只是大概的數字；知道實際重量的話，直接在右邊填入。')
     if image is not None:
-        with st.expander('① 框出學生證（用來換算大小）', expanded=True):
-            st.caption('在照片上按住滑鼠拖曳，框住整張學生證；學生證要平放、邊緣大致和照片邊緣平行。')
+        reference = card_reference()
+        auto = st.session_state.get('card_auto')
+        with st.expander('① 學生證（用來換算大小）', expanded=st.session_state.get('card_source') != 'auto'):
+            if st.session_state.get('card_source') == 'auto':
+                st.success(f"自動找到學生證（logo 配對分數 {auto['score']:.2f}），就是結果圖上的綠框。"
+                           '框得不對的話，在下面照片上拖曳重框。')
+            elif reference is None:
+                st.caption('還沒設定學生證 logo（`python -m tools.setup_card_reference`），所以要手動框。')
+            elif auto is False:
+                st.info('沒有自動找到學生證：要背面朝上、左下角的悠遊卡 logo 清楚入鏡。請在下面照片上拖曳框出學生證。')
+            st.caption('手動框：在照片上按住滑鼠拖曳，框住整張學生證；學生證要平放、邊緣大致和照片邊緣平行。')
             picked = box_picker(image, key='card_picker_' + input_tag, name='card')
             if picked is not None and picked != st.session_state.get('card_box'):
                 try:
@@ -83,8 +118,8 @@ def show_portions(result):
                 except ValueError as error:
                     st.warning(note_text(str(error)))
                 else:
-                    st.session_state['card_box'] = picked
-            if st.session_state.get('card_box') is not None:
+                    st.session_state['card_box'], st.session_state['card_source'] = picked, 'manual'
+            if st.session_state.get('card_source') == 'manual':
                 st.success('已框出學生證（結果圖上的綠框）。要重框的話，直接再拖一次。')
         manual = st.session_state.setdefault('manual_items', [])
         with st.expander('② 沒辨識到或認錯？手動加一道菜', expanded=not detections_of(result) and not manual):
@@ -106,16 +141,24 @@ def show_portions(result):
     if not reference:
         st.info('還沒有密度與熱量表（`data/food_reference/food_reference.csv`），所以只能估體積；'
                 '格式見 `docs/examples/food_reference_template.csv`。')
-    items = detections_of(result) + st.session_state.get('manual_items', [])
+    detections = detections_of(result)
+    skipped = {d['detection_id'] for d in detections if st.session_state.get(f"skip_{input_tag}_{d['detection_id']}")}
+    for detection in detections:
+        if detection['detection_id'] in skipped:
+            left, right = st.columns([3, 2], gap='large')
+            left.markdown(f"~~#{detection['detection_id']} {food_name(detection['class_name'])}~~（已排除，不算進合計）")
+            right.checkbox('辨識錯了，不要算', key=f"skip_{input_tag}_{detection['detection_id']}")
+    items = [d for d in detections if d['detection_id'] not in skipped] + st.session_state.get('manual_items', [])
     if not items:
         st.caption('還沒有任何一道菜：用上面的「手動加一道菜」加入。')
         return
     typed = {item['detection_id']: st.session_state.get(f"grams_{input_tag}_{item['detection_id']}") for item in items}
     rows, total, missing = portion_rows(items, st.session_state.get('card_box'), reference, typed)
+    manual_ids = {item['detection_id'] for item in st.session_state.get('manual_items', [])}
     for row in rows:
         left, right = st.columns([3, 2], gap='large')
         with left:
-            st.markdown(f"**#{row['id']} {row['name']}**")
+            st.markdown(f"**#{row['id']} {row['name']}**" + ('（手動加入）' if row['id'] in manual_ids else ''))
             lines = [f"- 體積：{range_text(row['volume_ml'], 'mL')}"]
             source = '（你填的）' if row['grams_source'] == 'user' else ''
             lines.append(f"- 重量：{range_text(row['grams'], 'g')}{source}")
@@ -125,6 +168,8 @@ def show_portions(result):
         with right:
             st.number_input('自己填重量（克）', min_value=0.0, max_value=5000.0, value=None, step=10.0,
                             key=f"grams_{input_tag}_{row['id']}", placeholder='不填就用粗估')
+            if row['id'] not in manual_ids:
+                st.checkbox('辨識錯了，不要算', key=f"skip_{input_tag}_{row['id']}")
     if total is not None:
         st.markdown(f"### 合計：{range_text(total, 'kcal')}")
         st.caption('粗估值，僅供參考，不是醫療或營養建議。')
@@ -163,6 +208,7 @@ def show_upload_result(result):
     """Real photo: detections first, then the rough portion section; the strict result moves to an expander."""
     summary = summarize(result)
     image = st.session_state.get('image')
+    auto_find_card(image)
     st.subheader('辨識結果')
     left, right = st.columns([3, 2], gap='large')
     if image is not None:
@@ -175,7 +221,7 @@ def show_upload_result(result):
     else:
         right.warning(summary['headline'])
         right.markdown('\n'.join('- ' + text for text in summary['reasons']))
-        right.caption('白飯、麵這類單一食材不在模型的 15 種菜裡，可以用下面的「手動加一道菜」。')
+    right.caption('白飯、麵這類單一食材不在模型的 15 種菜裡；認錯或漏掉的菜，可以在下面排除或「手動加一道菜」。')
     show_portions(result)
     with st.expander('嚴格模式結果（要有秤重校準才會給熱量）'):
         st.markdown(f"**{summary['headline']}**　熱量：{summary['energy_text']}")
@@ -252,7 +298,7 @@ def main():
             from hashlib import sha256
             input_key = (sha256(raw).hexdigest(), synthetic)
             if st.session_state.get('input_key') != input_key:
-                for key in ('result', 'image', 'card_box', 'manual_items'):
+                for key in PER_PHOTO_KEYS:
                     st.session_state.pop(key, None)
                 st.session_state['input_key'] = input_key
             try:

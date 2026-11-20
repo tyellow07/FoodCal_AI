@@ -62,6 +62,19 @@ def _number(value, code):
     return number
 
 
+def _number_signed(value):
+    """Pixel coordinate of a card corner; a detected outline may stick out of the photo, so negatives are allowed."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, str, Decimal)):
+        raise ValueError('invalid_card_box')
+    try:
+        number = D(str(value).strip())
+    except ArithmeticError:
+        raise ValueError('invalid_card_box') from None
+    if not number.is_finite():
+        raise ValueError('invalid_card_box')
+    return number
+
+
 def _box(box, code):
     if not isinstance(box, (list, tuple)) or len(box) != 4:
         raise ValueError(code)
@@ -71,13 +84,30 @@ def _box(box, code):
     return x1 - x0, y1 - y0
 
 
-def cm_per_px(card_box):
-    """Photo scale from an axis-aligned box around the card (edges roughly parallel to the photo)."""
-    width, height = _box(card_box, 'invalid_card_box')
-    ratio = max(width, height) / min(width, height)
-    if not D('1.3') <= ratio <= D('1.9'):  # a card is 1.586:1; a very different box is not a card
+def _quad(points):
+    """Card outline TL, TR, BR, BL -> (area px^2, long side / short side)."""
+    if not isinstance(points, (list, tuple)) or len(points) != 4 or \
+            not all(isinstance(p, (list, tuple)) and len(p) == 2 for p in points):
+        raise ValueError('invalid_card_box')
+    xy = [(_number_signed(p[0]), _number_signed(p[1])) for p in points]
+    area = abs(sum(xy[i][0] * xy[i - 3][1] - xy[i - 3][0] * xy[i][1] for i in range(4))) / 2
+    sides = [((xy[i][0] - xy[i - 1][0]) ** 2 + (xy[i][1] - xy[i - 1][1]) ** 2).sqrt() for i in range(4)]
+    long_side, short_side = (sides[1] + sides[3]) / 2, (sides[0] + sides[2]) / 2
+    if area == 0 or min(long_side, short_side) == 0:
+        raise ValueError('invalid_card_box')
+    return area, max(long_side, short_side) / min(long_side, short_side)
+
+
+def cm_per_px(card):
+    """Photo scale from the card: an axis-aligned box [x0, y0, x1, y1] or an outline [[x, y]] * 4 (TL, TR, BR, BL)."""
+    if isinstance(card, (list, tuple)) and card and isinstance(card[0], (list, tuple)):
+        area, ratio = _quad(card)
+    else:
+        width, height = _box(card, 'invalid_card_box')
+        area, ratio = width * height, max(width, height) / min(width, height)
+    if not D('1.3') <= ratio <= D('1.9'):  # a card is 1.586:1; a very different shape is not a card
         raise ValueError('card_box_shape_not_a_card')
-    return (CARD_AREA_CM2 / (width * height)).sqrt()
+    return (CARD_AREA_CM2 / area).sqrt()
 
 
 def _cap(diameter, depth):

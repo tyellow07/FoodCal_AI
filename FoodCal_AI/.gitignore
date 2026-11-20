@@ -180,6 +180,9 @@
 !/src/portion/rough_volume.py
 !/src/ui/portions.py
 !/tests/test_rough_volume.py
+!/src/portion/card_locator.py
+!/tools/setup_card_reference.py
+!/tests/test_card_locator.py
 
 # Private data stays blocked even under future broad allow rules.
 **/data/
