@@ -1,48 +1,40 @@
-"""Streamlit local demo. Default synthetic demo; user images/results are session-memory only."""
+"""Streamlit page: synthetic demo, or a real photo recognised by Google Gemini with rough portions.
+
+User images and results stay in session memory; photos go to Gemini only after the user agrees.
+"""
 import sys
 from pathlib import Path
 
 # Streamlit executes this file as an entry script, from the documented project root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import streamlit as st
-from src.ui.adapter import fixture_demo, decode_upload, analyze_upload, draw_predictions
-from src.ui.explain import reason_text, summarize, supported_foods_markdown
+from src.ui.adapter import fixture_demo, decode_upload, draw_predictions
+from src.ui.explain import reason_text, summarize
 from src.ui.portions import note_text, portion_rows, range_text, read_food_reference_csv
 from src.portion.card_locator import load_card_reference, locate_card
 from src.portion.rough_volume import FOOD_TEMPLATES, cm_per_px
 from src.ui.explain import food_name
-from src.detection import FoodDetector
-from src.detection.claude_vision import RecognitionError, make_client, recognize_foods
-from src.detection.model import DEFAULT_CLASSES_PATH, DEFAULT_MODEL_PATH
+from src.detection.claude_vision import RecognitionError
+from src.detection.gemini_vision import gemini_clients, mask_card, recognize_foods_gemini
 
 MODE_DEMO = '合成展示（不需模型）'
 MODE_UPLOAD = '上傳照片辨識'
-ENGINE_CLAUDE = 'Claude Opus 5.5（雲端，認得大部分食物）'
-ENGINE_YOLO = 'YOLO（本機，只認得 15 種菜）'
 CONFIDENCE_TEXT = {'high': '高', 'medium': '中', 'low': '低'}
-CLAUDE_ERRORS = {
-    'claude_credentials_missing': '這台電腦還沒有 Claude API 的登入資訊：在終端機執行 `ant auth login`，'
-                                  '或在 `.streamlit/secrets.toml` 寫一行 `ANTHROPIC_API_KEY = "..."`。',
-    'claude_authentication_failed': 'Claude API 的登入資訊無效或過期，請重新執行 `ant auth login`。',
-    'claude_permission_denied': '這個 API 帳戶沒有使用 claude-opus-5-5 的權限。',
-    'claude_credit_or_billing': 'Claude API 帳戶額度不足，請到 Claude Console 加值。',
-    'claude_rate_limited': 'Claude API 暫時太忙（流量限制），請稍等再試。',
-    'claude_network_error': '連不上 Claude API，請檢查網路。',
-    'claude_service_error': 'Claude API 暫時出錯，請稍後再試。',
-    'claude_refused': 'Claude 拒絕處理這張照片，請換一張。',
-    'claude_answer_truncated': 'Claude 的回答被截斷，請再試一次。',
-    'claude_answer_unreadable': 'Claude 的回答格式不對，請再試一次。',
-    'claude_bad_request': '送給 Claude 的請求不被接受，請換一張照片再試。',
+GEMINI_ERRORS = {
+    'gemini_key_invalid': 'Gemini API 金鑰無效或沒有權限：到 Google AI Studio 確認金鑰，再更新 `.streamlit/secrets.toml`。',
+    'gemini_model_unavailable': '這組金鑰目前用不了 Gemini Flash 模型，請到 Google AI Studio 確認。',
+    'gemini_quota_exceeded': '已超過 Gemini 免費額度（每分鐘或每天的次數上限），請稍後再試。',
+    'gemini_service_error': 'Gemini 服務暫時出錯，請稍後再試。',
+    'gemini_network_error': '連不上 Gemini，請檢查網路。',
+    'gemini_blocked': 'Gemini 拒絕處理這張照片，請換一張。',
+    'gemini_answer_truncated': 'Gemini 的回答被截斷，請再試一次。',
+    'gemini_answer_unreadable': 'Gemini 的回答格式不對，請再試一次。',
+    'gemini_bad_request': '送給 Gemini 的請求不被接受，請換一張照片再試。',
 }
-SESSION_KEYS = ('result', 'image', 'input_key', 'detector', 'card_box', 'card_source', 'card_auto', 'manual_items')
+SESSION_KEYS = ('result', 'image', 'input_key', 'card_box', 'card_source', 'card_auto', 'manual_items')
 PER_PHOTO_KEYS = ('result', 'image', 'card_box', 'card_source', 'card_auto', 'manual_items')
 FOOD_REFERENCE_PATH = Path(__file__).resolve().parents[2] / 'data/food_reference/food_reference.csv'
 CARD_REFERENCE_DIR = Path(__file__).resolve().parents[2] / 'data/card_reference'
-
-
-def weights_available():
-    """Cheap file check only; the model is never loaded here."""
-    return Path(DEFAULT_MODEL_PATH).is_file() and Path(DEFAULT_CLASSES_PATH).is_file()
 
 
 def clear_session():
@@ -104,10 +96,6 @@ def card_reference():
     except (ValueError, OSError):
         st.warning('學生證 logo 設定檔讀不到，請重新執行 `python -m tools.setup_card_reference`。')
         return None
-
-
-def detections_of(result):
-    return list((result.get('detection_snapshot') or {}).get('detections', []))
 
 
 def show_portions(base_items):
@@ -222,65 +210,45 @@ def show_developer_details(result):
         st.json(result, expanded=False)
 
 
-def show_upload_result(result):
-    """Real photo: detections first, then the rough portion section; the strict result moves to an expander."""
-    summary = summarize(result)
-    image = st.session_state.get('image')
-    auto_find_card(image)
-    st.subheader('辨識結果')
-    left, right = st.columns([3, 2], gap='large')
-    if image is not None:
-        left.image(draw_predictions(image, result, st.session_state.get('card_box'),
-                                    st.session_state.get('manual_items')),
-                   caption='橘框：模型辨識　藍框：手動加入　綠框：學生證', width='stretch')
-    if summary['foods']:
-        right.dataframe(summary['foods'], hide_index=True, width='stretch')
-        right.caption('模型只認得 15 種菜；分數越高越有把握。')
-    else:
-        right.warning(summary['headline'])
-        right.markdown('\n'.join('- ' + text for text in summary['reasons']))
-    right.caption('白飯、麵這類單一食材不在模型的 15 種菜裡；認錯或漏掉的菜，可以在下面排除或「手動加一道菜」。')
-    show_portions(detections_of(result))
-    with st.expander('嚴格模式結果（要有秤重校準才會給熱量）'):
-        st.markdown(f"**{summary['headline']}**　熱量：{summary['energy_text']}")
-        st.markdown('\n'.join('- ' + text for text in summary['reasons']))
-    show_developer_details(result)
-
-
-def claude_client():
-    """Client from .streamlit/secrets.toml when it holds a key, else ANTHROPIC_API_KEY or an `ant auth login` profile."""
+def gemini_key():
+    """Gemini API key from .streamlit/secrets.toml (git-ignored), else the GEMINI_API_KEY environment variable."""
+    import os
     try:
-        key = st.secrets.get('ANTHROPIC_API_KEY')
-    except Exception:  # no secrets file: fall back to the environment and the CLI profile
+        key = st.secrets.get('GEMINI_API_KEY')
+    except Exception:  # no secrets file yet
         key = None
-    return make_client(api_key=key)
+    return key or os.environ.get('GEMINI_API_KEY') or None
 
 
-def show_claude_result(result):
-    """Claude's foods with boxes, then the same rough portion section as the YOLO path."""
+def show_vision_result(result):
+    """Gemini's foods with boxes, then the rough portion section."""
     image = st.session_state.get('image')
     auto_find_card(image)
     items = result['items']
-    st.subheader('辨識結果（Claude Opus 5.5）')
+    st.subheader('辨識結果（Google Gemini）')
     left, right = st.columns([3, 2], gap='large')
     if image is not None:
         canvas = {'detection_snapshot': {'image': {'width': image.width, 'height': image.height}, 'detections': []}}
         left.image(draw_predictions(image, canvas, st.session_state.get('card_box'),
                                     items + st.session_state.get('manual_items', [])),
-                   caption='藍框：Claude 辨識（C）與手動加入（M）　綠框：學生證', width='stretch')
+                   caption='藍框：Gemini 辨識（G）與手動加入（M）　綠框：學生證', width='stretch')
     if items:
         right.dataframe([{'編號': i['detection_id'], '食物': i['display_name'],
                           '看得到的食材': '、'.join(i['visible_ingredients']) or '—',
                           '把握': CONFIDENCE_TEXT.get(i['confidence'], i['confidence'])} for i in items],
                         hide_index=True, width='stretch')
     else:
-        right.warning('Claude 沒有在照片裡找到食物。')
+        right.warning('Gemini 沒有在照片裡找到食物。')
     if result.get('notes'):
         right.info(result['notes'])
     usage = result.get('usage') or {}
     right.caption(f"模型 {result.get('model')} · {result.get('latency_s')} 秒 · "
-                  f"輸入 {usage.get('input_tokens')} / 輸出 {usage.get('output_tokens')} tokens。"
+                  f"輸入 {usage.get('input_tokens')} / 輸出 {usage.get('output_tokens')} tokens（免費額度）。"
                   '框的位置是大概的；認錯的菜可以在下面排除，漏掉的可以手動加入。')
+    if result.get('card_masked'):
+        right.caption('學生證在照片送出前已經塗掉。')
+    else:
+        right.caption('送出前沒有找到學生證，所以這張照片的卡片沒有被塗掉。')
     show_portions(items)
 
 
@@ -327,9 +295,8 @@ def main():
     st.caption('本機展示版 · 份量是粗估（體積 × 密度），也可以自己填 · 估計值僅供參考，不是醫療或營養建議')
     mode = st.radio('模式', [MODE_DEMO, MODE_UPLOAD], horizontal=True)
     with st.expander('這個模型認得哪些食物？'):
-        st.markdown('**Claude Opus 5.5**（雲端）：大部分常見食物都認得，包括白飯、燙青菜這類單一食材。'
-                    '\n\n**YOLO**（本機，可離線）：只認得下面這些。')
-        st.markdown(supported_foods_markdown())
+        st.markdown('上傳的照片用 **Google Gemini**（免費 API）辨識，大部分常見食物都認得，包括白飯、燙青菜這類單一食材。'
+                    '認錯的菜可以排除，漏掉的可以手動加入。合成展示只用測試資料，不會連網。')
     if st.session_state.get('mode') != mode:
         clear_session()
         st.session_state['mode'] = mode
@@ -338,31 +305,18 @@ def main():
         if st.button('顯示展示結果', type='primary'):
             st.session_state['result'], st.session_state['image'] = fixture_demo()
     else:
-        engine = st.radio('辨識方式', [ENGINE_CLAUDE, ENGINE_YOLO], horizontal=True, key='engine')
-        if st.session_state.get('engine_used') != engine:
-            for key in PER_PHOTO_KEYS:
-                if key != 'image':
-                    st.session_state.pop(key, None)
-            st.session_state['engine_used'] = engine
-        if engine == ENGINE_CLAUDE:
-            st.info('按「開始辨識」後，照片會傳給 Anthropic 的 Claude（claude-opus-5-5）辨識。'
-                    '只送縮小過、沒有拍攝資訊（含 GPS）的照片；本機不存檔。')
-            ready = st.checkbox('我同意把這張照片傳給 Anthropic 辨識', key='claude_consent')
-        else:
-            ready = weights_available()
-            if ready:
-                st.info('選好照片後按「開始辨識」才會執行模型；照片與結果只留在這次的記憶體，不會存檔。')
-            else:
-                st.warning('這台電腦沒有模型權重或類別檔，無法用 YOLO 辨識。請向組員取得 '
-                           '`runs/detect/taiwanese_food_baseline_10ep/weights/best.pt` 與 '
-                           '`data/roboflow_taiwanese_food_detection/foodcal_data.yaml`，或改用 Claude。')
+        key = gemini_key()
+        st.info('按「開始辨識」後，照片會傳給 Google 的 Gemini 免費 API 辨識。只送縮小過、沒有拍攝資訊（含 GPS）的照片，'
+                '學生證會先自動塗掉。依 Google 免費版條款，照片和結果可能被 Google 用來改進產品，也可能由人員審閱，'
+                '所以不要拍到人臉或其他個人資料。')
+        if not key:
+            st.warning('還沒有設定 Gemini API 金鑰：在 `FoodCal_AI/.streamlit/secrets.toml` 加一行 '
+                       '`GEMINI_API_KEY = "你的金鑰"`，再重新整理這個頁面。')
+        ready = st.checkbox('我了解並同意把這張照片傳給 Google Gemini 辨識', key='gemini_consent') and bool(key)
         uploaded = st.file_uploader('選擇餐點照片（PNG / JPEG / WEBP，最多 10 MB）',
                                     type=['png', 'jpg', 'jpeg', 'webp'],
                                     key=f"upload_{st.session_state.get('upload_generation', 0)}")
         synthetic = False
-        if engine == ENGINE_YOLO:
-            with st.expander('進階選項'):
-                synthetic = st.checkbox('顯示測試用食譜候選（合成資料，不是推薦，也不會算進熱量）', value=False)
         raw = uploaded.getvalue() if uploaded else None
         if raw:
             from hashlib import sha256
@@ -378,26 +332,26 @@ def main():
         else:
             st.session_state.pop('result', None)
             st.session_state.pop('image', None)
-        start = st.button('開始辨識', type='primary', disabled=not raw or not ready)
-        if start and engine == ENGINE_CLAUDE:
+        if st.button('開始辨識', type='primary', disabled=not raw or not ready):
             image = decode_upload(raw)
+            reference, card = card_reference(), None
+            if reference is not None:
+                with st.spinner('找學生證中…'):
+                    card = locate_card(image, reference)
+            outgoing = mask_card(image, card['quad']) if card else image
             try:
-                with st.spinner('Claude 辨識中…（通常 10–30 秒）'):
-                    found = recognize_foods(image, client=claude_client())
+                with st.spinner('Gemini 辨識中…'):
+                    found = recognize_foods_gemini(outgoing, clients=gemini_clients(key))
             except RecognitionError as error:
-                st.error(CLAUDE_ERRORS.get(str(error), str(error)))
+                st.error(GEMINI_ERRORS.get(str(error), str(error)))
             else:
-                for key in PER_PHOTO_KEYS:
-                    st.session_state.pop(key, None)
-                st.session_state['result'], st.session_state['image'] = {'engine': 'claude', **found}, image
-        elif start:
-            def detector():
-                if 'detector' not in st.session_state:
-                    st.session_state['detector'] = FoodDetector()
-                return st.session_state['detector']
-            with st.spinner('辨識中…'):
-                st.session_state['result'], st.session_state['image'] = analyze_upload(
-                    raw, enabled=True, fixture_recipes=synthetic, detector_factory=detector)
+                for name in PER_PHOTO_KEYS:
+                    st.session_state.pop(name, None)
+                st.session_state['card_auto'] = card or False
+                if card:
+                    st.session_state['card_box'], st.session_state['card_source'] = card['quad'], 'auto'
+                st.session_state['result'] = {'engine': 'gemini', 'card_masked': bool(card), **found}
+                st.session_state['image'] = image
     if st.button('清除本次圖片與結果'):
         clear_session()
         st.session_state['upload_generation'] = st.session_state.get('upload_generation', 0) + 1
@@ -406,10 +360,8 @@ def main():
     if not result:
         st.caption('選擇模式並按下按鈕後，結果會出現在這裡。')
         return
-    if mode == MODE_UPLOAD and result.get('engine') == 'claude':
-        show_claude_result(result)
-    elif mode == MODE_UPLOAD:
-        show_upload_result(result)
+    if mode == MODE_UPLOAD:
+        show_vision_result(result)
     else:
         show_result(result)
 

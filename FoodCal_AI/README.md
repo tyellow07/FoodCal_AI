@@ -15,7 +15,7 @@
 - Photo Item Source Review v0（2026-11-13）：照片食材對 TFDA 條目的受控人工審查，全程不經食譜，可產生 photo_calculation 營養基準（`docs/photo_item_source_review_design_v0.md` 第 12 節）；決策暫定、待團隊確認，只有合成測試資料，沒有真實審查或 gate 紀錄。
 - 2026-11-19 增補：
   - 份量估算方法 `reference_card_area_ratio` v0（學生證比例尺＋秤重校準，`docs/portion_calibration_protocol_v0.md`）與校準工具 `tools/build_portion_calibration.py`；沒有真實秤重資料，所以沒有校準紀錄。
-  - 2026-11-20：網頁的主要辨識改用 Claude Opus 5.5（`docs/claude_vision_v0.md`），YOLO 保留為本機選項；照片要使用者同意後才會送出。
+  - 2026-11-20：網頁辨識改用 Google Gemini 免費 API（`docs/gemini_vision_v0.md`）；YOLO 與 Claude（`docs/claude_vision_v0.md`）先放棄，程式保留。
   - 2026-11-20：網頁改用粗估份量（`docs/rough_volume_estimation_v0.md`）：自動找學生證背面的悠遊卡 logo（設定：`python -m tools.setup_card_reference`），找不到再手動框，用學生證當比例尺，依形狀模板估體積，再乘上密度表的密度；可以手動加菜、自己填重量；密度與熱量表放在 `data/food_reference/food_reference.csv`（格式見 `docs/examples/food_reference_template.csv`）。
   - 2026-11-20：「體積 × 密度」方法 `reference_card_volume_density` v0（同一份文件第 5 節）：密度表填網路公開資料並留來源，有效高度由秤重照片學出；沒秤重的同形狀食物只給未驗證的體積與重量，不進熱量。
   - 人工標註接到視覺證據：`tools.ingredient_pilot.visual_evidence_from_annotation` 保留 annotation_id、image_sha256、標註者與複核者，可進入份量契約與照片審查。
@@ -58,9 +58,9 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m streamlit run src/ui/app.py
 ```
 
-Claude 視覺辨識（選用，`docs/claude_vision_v0.md`）：`.venv/bin/python -m pip install -r requirements-vision.txt`，
-再用 `ant auth login` 登入，或在 `.streamlit/secrets.toml` 寫 `ANTHROPIC_API_KEY = "..."`（不進 Git）。
-照片只有在使用者勾選同意後才會傳給 Anthropic；YOLO 模式完全在本機。
+上傳照片的辨識用 Google Gemini 免費 API（`docs/gemini_vision_v0.md`）：`.venv/bin/python -m pip install -r requirements-vision.txt`，
+在 `.streamlit/secrets.toml` 寫 `GEMINI_API_KEY = "..."`（不會被加進 Git）。使用者勾選同意後照片才會送出，學生證會先塗掉。
+免費版條款允許 Google 用送出的內容改進產品。
 
 UI 預設使用合成展示，服務位址以啟動輸出為準。Tk GUI 需要 Python 安裝的 Tk/Tcl 與 Pillow；用法見 `docs/ingredient_pilot_ai_import_v0.md`。沒有核准的本機圖片、manifest 與 workspace 時，先執行合成測試，不要建立假的私人資料以通過驗證。
 

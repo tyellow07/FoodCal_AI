@@ -187,6 +187,9 @@
 !/tests/test_claude_vision.py
 !/docs/claude_vision_v0.md
 !/requirements-vision.txt
+!/src/detection/gemini_vision.py
+!/tests/test_gemini_vision.py
+!/docs/gemini_vision_v0.md
 
 # Private data stays blocked even under future broad allow rules.
 **/data/

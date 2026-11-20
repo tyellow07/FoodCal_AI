@@ -1,6 +1,7 @@
 # Claude 視覺辨識 v0（2026-11-20）
 
-狀態：團隊決定用 Claude Opus 5.5（`claude-opus-5-5`）當網頁的主要食物辨識，原本的 YOLO 保留為本機、可離線的選項。
+狀態：**2026-11-20 晚上團隊改用 Gemini 免費 API（`gemini_vision_v0.md`）**，Claude 和 YOLO 都先放棄。
+程式和測試保留，網頁上不再顯示。以下是當時 Claude 方案的紀錄。
 程式：`src/detection/claude_vision.py`；網頁：`src/ui/app.py`（上傳模式的「辨識方式」）；測試：`tests/test_claude_vision.py`（用假的 client，不連網）。
 
 核心原則不變：**Recipe candidates may explain hidden calories, but are not visual proof.** Claude 只回報照片裡看得到的東西。

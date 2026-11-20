@@ -71,12 +71,17 @@ class RecognitionError(Exception):
     """Recognition could not produce a usable answer; str(error) is a short code."""
 
 
-def _jpeg(image):
+def jpeg_bytes(image):
+    """Downscaled JPEG of the pixels only: no EXIF (GPS included) or other metadata is carried over."""
     picture = image.convert('RGB')
     picture.thumbnail((MAX_SIDE, MAX_SIDE))
     buffer = BytesIO()
-    picture.save(buffer, format='JPEG', quality=88)  # pixels only: no EXIF or other metadata is carried over
-    return standard_b64encode(buffer.getvalue()).decode('ascii')
+    picture.save(buffer, format='JPEG', quality=88)
+    return buffer.getvalue()
+
+
+def _jpeg(image):
+    return standard_b64encode(jpeg_bytes(image)).decode('ascii')
 
 
 def _snake(text):
@@ -88,7 +93,7 @@ def _clamp(value):
     return max(0, min(GRID, int(value)))
 
 
-def items_from_answer(answer, width, height):
+def items_from_answer(answer, width, height, prefix='C'):
     """Schema answer -> page items (detection_id C1.., class_name, display_name, pixel box, container, ...)."""
     items = []
     for index, food in enumerate(answer.get('foods', []), 1):
@@ -99,7 +104,7 @@ def items_from_answer(answer, width, height):
             continue
         known = food['food_key'] in FOOD_TEMPLATES
         items.append({
-            'detection_id': f'C{index}',
+            'detection_id': f'{prefix}{index}',
             'class_name': food['food_key'] if known else _snake(food['name_en']),
             'display_name': food['name_zh'] or food['name_en'],
             'container': food['container'] if food['container'] in CONTAINERS else 'plate',

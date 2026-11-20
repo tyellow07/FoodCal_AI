@@ -1,2 +1,4 @@
-# Optional: Claude vision recognition in the web page (photos are sent to Anthropic only after the user agrees).
+# Web page recognition with the Gemini API (photos are sent to Google only after the user agrees).
+google-genai==3.6.1
+# Kept for the shelved Claude engine (src/detection/claude_vision.py).
 anthropic==2.11.0
