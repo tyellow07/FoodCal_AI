@@ -93,6 +93,18 @@ def _clamp(value):
     return max(0, min(GRID, int(value)))
 
 
+def _composition(food):
+    """Optional components [(ingredient key, share percent)] and cooking method from a vision answer."""
+    out = {}
+    parts = [(c.get('ingredient'), c.get('share_percent')) for c in food.get('components') or [] if isinstance(c, dict)]
+    parts = [(k, int(v)) for k, v in parts if isinstance(k, str) and isinstance(v, (int, float)) and 0 < v <= 100]
+    if parts:
+        out['components'] = parts
+    if isinstance(food.get('cooking_method'), str):
+        out['cooking_method'] = food['cooking_method']
+    return out
+
+
 def items_from_answer(answer, width, height, prefix='C'):
     """Schema answer -> page items (detection_id C1.., class_name, display_name, pixel box, container, ...)."""
     items = []
@@ -110,6 +122,7 @@ def items_from_answer(answer, width, height, prefix='C'):
             'container': food['container'] if food['container'] in CONTAINERS else 'plate',
             'confidence': food['confidence'] if food['confidence'] in CONFIDENCE else 'low',
             'visible_ingredients': list(food.get('visible_ingredients') or []),
+            **_composition(food),
             'bounding_box': {'x_min': round(x0 * width / GRID, 1), 'y_min': round(y0 * height / GRID, 1),
                              'x_max': round(x1 * width / GRID, 1), 'y_max': round(y1 * height / GRID, 1)},
         })

@@ -95,20 +95,25 @@ class PortionRowsTests(unittest.TestCase):
         self.assertEqual(missing, ['熟米飯（cooked_rice_region）', '牛肉麵（beef_noodles）'])
         rows, total, _ = portion_rows(self.items, None, self.table, {1: 200, 'M1': 500.0})
         self.assertEqual(rows[0]['grams_source'], 'user')
-        self.assertEqual(rows[0]['kcal'], {'low': Decimal(300), 'mid': Decimal(300), 'high': Decimal(300)})
+        # Known dishes use the nutrition model (TFDA white rice 183 kcal / 100 g), not the placeholder table.
+        self.assertEqual(rows[0]['kcal'], {'low': Decimal(366), 'mid': Decimal(366), 'high': Decimal(366)})
+        self.assertEqual(rows[0]['hidden_kcal'], {'low': 0, 'mid': 0, 'high': 0})
         self.assertEqual(rows[0]['notes'], [])
-        self.assertEqual(total['mid'], Decimal(700))
+        self.assertGreater(rows[1]['hidden_kcal']['high'], rows[1]['hidden_kcal']['low'])  # soup oil range
+        self.assertEqual(total['mid'], total['visible']['mid'] + total['hidden']['mid'])
 
     def test_with_a_card_rough_values_and_total(self):
         rows, total, missing = portion_rows(self.items, CARD, self.table, {1: None})
         self.assertEqual(rows[0]['grams_source'], 'rough')
-        self.assertEqual(total['low'], rows[0]['kcal']['low'] + rows[1]['kcal']['low'])
+        self.assertEqual(rows[0]['grams']['mid'], (rows[0]['volume_ml']['mid'] * Decimal('0.79')).quantize(Decimal('1')))
+        self.assertEqual(total['low'], sum(r['kcal']['low'] + r['hidden_kcal']['low'] for r in rows))
         self.assertEqual(missing, [])
-        rows, total, missing = portion_rows(self.items + [item(2, 'loofah', [0, 0, 500, 500])], CARD, self.table, {})
+        mystery = dict(item(2, 'mystery_food', [0, 0, 500, 500]), container='plate')
+        rows, total, missing = portion_rows(self.items + [mystery], CARD, self.table, {})
         self.assertEqual(rows[2]['notes'], ['density_missing'])
         self.assertIsNone(rows[2]['grams'])
         self.assertIsNone(total)
-        self.assertEqual(missing, ['絲瓜（loofah）'])
+        self.assertEqual(missing, ['mystery_food'])
 
     def test_text_helpers(self):
         self.assertEqual(range_text(None, 'g'), '—')

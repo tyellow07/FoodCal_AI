@@ -190,6 +190,9 @@
 !/src/detection/gemini_vision.py
 !/tests/test_gemini_vision.py
 !/docs/gemini_vision_v0.md
+!/src/portion/nutrition_model.py
+!/tests/test_nutrition_model.py
+!/docs/nutrition_model_v0.md
 
 # Private data stays blocked even under future broad allow rules.
 **/data/

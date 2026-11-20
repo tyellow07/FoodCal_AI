@@ -138,6 +138,17 @@ class GeminiVisionTests(unittest.TestCase):
             run(FakeClient(reply(food())), self.image)
         self.assertEqual(str(caught.exception), 'gemini_too_slow')
 
+    def test_components_and_cooking_method_pass_through(self):
+        bowl = dict(food(name_zh='滷肉飯', name_en='Braised pork rice', key='braised_pork_over_rice', container='bowl'),
+                    components=[{'ingredient': 'cooked_rice', 'share_percent': 80},
+                                {'ingredient': 'braised_pork_mince', 'share_percent': 20},
+                                {'ingredient': 'other', 'share_percent': 0}],
+                    cooking_method='braised')
+        [item] = run(FakeClient(reply(bowl)), self.image)['items']
+        self.assertEqual(item['components'], [('cooked_rice', 80), ('braised_pork_mince', 20)])
+        self.assertEqual(item['cooking_method'], 'braised')
+        self.assertIn('components', SCHEMA['properties']['foods']['items']['required'])
+
     def test_malformed_boxes_are_skipped_not_fatal(self):
         bad = dict(food(), box_2d=[1, 2, 3])
         result = run(FakeClient(reply(bad, food())), self.image)

@@ -17,6 +17,7 @@ import time
 
 from PIL import ImageDraw
 
+from src.portion.nutrition_model import COOKING_METHODS, INGREDIENTS
 from src.portion.rough_volume import FOOD_TEMPLATES
 from .claude_vision import CONFIDENCE, CONTAINERS, GRID, RecognitionError, items_from_answer, jpeg_bytes
 
@@ -46,8 +47,15 @@ SCHEMA = {
                 'box_2d': {'type': 'array', 'items': {'type': 'integer'}, 'minItems': 4, 'maxItems': 4},
                 'visible_ingredients': {'type': 'array', 'items': {'type': 'string'}},
                 'confidence': {'type': 'string', 'enum': list(CONFIDENCE)},
+                'components': {'type': 'array', 'items': {
+                    'type': 'object',
+                    'properties': {'ingredient': {'type': 'string', 'enum': sorted(INGREDIENTS) + ['other']},
+                                   'share_percent': {'type': 'integer'}},
+                    'required': ['ingredient', 'share_percent']}},
+                'cooking_method': {'type': 'string', 'enum': sorted(COOKING_METHODS)},
             },
-            'required': ['name_zh', 'name_en', 'food_key', 'container', 'box_2d', 'visible_ingredients', 'confidence']}},
+            'required': ['name_zh', 'name_en', 'food_key', 'container', 'box_2d', 'visible_ingredients', 'confidence',
+                         'components', 'cooking_method']}},
         'notes': {'type': 'string'},
     },
     'required': ['foods', 'notes'],
@@ -66,6 +74,12 @@ For every distinct food item you can see, report:
   box the bowl opening.
 - visible_ingredients: only ingredients you can actually see.
 - confidence: high, medium or low.
+- components: what the item is made of, judged from what you see, as ingredient keys with your estimate of each
+  one's share of the item's weight in percent (about 100 in total; count the broth of soups). Use "other" for
+  anything not listed. Keys:
+{chr(10).join(f'  {key} = {INGREDIENTS[key][0]}' for key in sorted(INGREDIENTS))}
+- cooking_method: how it looks cooked, one of:
+{chr(10).join(f'  {key} = {COOKING_METHODS[key][0]}' for key in sorted(COOKING_METHODS))}
 
 Report only what is visible in the photo. Do not estimate weights, portions or calories, and do not add ingredients
 a recipe would usually contain but the photo does not show. Ignore plates, trays, cutlery, hands, the grey

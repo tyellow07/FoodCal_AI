@@ -15,6 +15,7 @@
 - Photo Item Source Review v0（2026-11-13）：照片食材對 TFDA 條目的受控人工審查，全程不經食譜，可產生 photo_calculation 營養基準（`docs/photo_item_source_review_design_v0.md` 第 12 節）；決策暫定、待團隊確認，只有合成測試資料，沒有真實審查或 gate 紀錄。
 - 2026-11-19 增補：
   - 份量估算方法 `reference_card_area_ratio` v0（學生證比例尺＋秤重校準，`docs/portion_calibration_protocol_v0.md`）與校準工具 `tools/build_portion_calibration.py`；沒有真實秤重資料，所以沒有校準紀錄。
+  - 2026-11-20：熱量改用營養模型（`docs/nutrition_model_v0.md`）：Gemini 回報組成食材與烹調方式，食材熱量取自衛福部食品營養成分資料庫，看不到的油、糖依烹調方式另外估計、分開顯示。
   - 2026-11-20：網頁辨識改用 Google Gemini 免費 API（`docs/gemini_vision_v0.md`）；YOLO 與 Claude（`docs/claude_vision_v0.md`）先放棄，程式保留。
   - 2026-11-20：網頁改用粗估份量（`docs/rough_volume_estimation_v0.md`）：自動找學生證背面的悠遊卡 logo（設定：`python -m tools.setup_card_reference`），找不到再手動框，用學生證當比例尺，依形狀模板估體積，再乘上密度表的密度；可以手動加菜、自己填重量；密度與熱量表放在 `data/food_reference/food_reference.csv`（格式見 `docs/examples/food_reference_template.csv`）。
   - 2026-11-20：「體積 × 密度」方法 `reference_card_volume_density` v0（同一份文件第 5 節）：密度表填網路公開資料並留來源，有效高度由秤重照片學出；沒秤重的同形狀食物只給未驗證的體積與重量，不進熱量。

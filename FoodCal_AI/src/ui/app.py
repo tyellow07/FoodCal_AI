@@ -10,8 +10,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import streamlit as st
 from src.ui.adapter import fixture_demo, decode_upload, draw_predictions
 from src.ui.explain import reason_text, summarize
-from src.ui.portions import note_text, portion_rows, range_text, read_food_reference_csv
+from src.ui.portions import note_text, nutrition_of, portion_rows, range_text, read_food_reference_csv
 from src.portion.card_locator import load_card_reference, locate_card
+from src.portion.nutrition_model import COOKING_METHODS
 from src.portion.rough_volume import FOOD_TEMPLATES, cm_per_px
 from src.ui.explain import food_name
 from src.detection.claude_vision import RecognitionError
@@ -145,9 +146,6 @@ def show_portions(base_items):
     except ValueError as error:
         st.error('密度與熱量表格式不對：' + str(error))
         reference = {}
-    if not reference:
-        st.info('還沒有密度與熱量表（`data/food_reference/food_reference.csv`），所以只能估體積；'
-                '格式見 `docs/examples/food_reference_template.csv`。')
     detections = list(base_items)
     skipped = {d['detection_id'] for d in detections if st.session_state.get(f"skip_{input_tag}_{d['detection_id']}")}
     for detection in detections:
@@ -156,6 +154,11 @@ def show_portions(base_items):
             left.markdown(f"~~#{detection['detection_id']} {food_name(detection['class_name'])}~~（已排除，不算進合計）")
             right.checkbox('辨識錯了，不要算', key=f"skip_{input_tag}_{detection['detection_id']}")
     items = [d for d in detections if d['detection_id'] not in skipped] + st.session_state.get('manual_items', [])
+    unknown = [i.get('display_name') or i['class_name'] for i in items
+               if nutrition_of(i) is None and i['class_name'] not in reference]
+    if unknown:
+        st.info('、'.join(unknown) + ' 不在食材表裡，只能估體積；可以自己填重量，或把它加進 '
+                '`src/portion/nutrition_model.py` 的食材表。')
     if not items:
         st.caption('還沒有任何一道菜：用上面的「手動加一道菜」加入。')
         return
@@ -166,10 +169,16 @@ def show_portions(base_items):
         left, right = st.columns([3, 2], gap='large')
         with left:
             st.markdown(f"**#{row['id']} {row['name']}**" + ('（手動加入）' if row['id'] in manual_ids else ''))
-            lines = [f"- 體積：{range_text(row['volume_ml'], 'mL')}"]
+            lines = []
+            if row['nutrition']:
+                parts = '、'.join(f'{name} {share}%' for name, share in row['nutrition']['parts'])
+                lines.append(f"- 組成：{parts} · 烹調：{row['nutrition']['method']}")
+            lines.append(f"- 體積：{range_text(row['volume_ml'], 'mL')}")
             source = '（你填的）' if row['grams_source'] == 'user' else ''
             lines.append(f"- 重量：{range_text(row['grams'], 'g')}{source}")
-            lines.append(f"- 熱量：{range_text(row['kcal'], 'kcal')}")
+            lines.append(f"- 熱量（看得到的食材）：{range_text(row['kcal'], 'kcal')}")
+            if row['hidden_kcal'] is not None and row['hidden_kcal']['high'] > 0:
+                lines.append(f"- 看不到的油、糖（依食譜估計，不是照片看到的）：{range_text(row['hidden_kcal'], 'kcal')}")
             lines += ['- ' + note_text(code) for code in row['notes']]
             st.markdown('\n'.join(lines))
         with right:
@@ -179,7 +188,9 @@ def show_portions(base_items):
                 st.checkbox('辨識錯了，不要算', key=f"skip_{input_tag}_{row['id']}")
     if total is not None:
         st.markdown(f"### 合計：{range_text(total, 'kcal')}")
-        st.caption('粗估值，僅供參考，不是醫療或營養建議。')
+        st.caption(f"看得到的食材 {range_text(total['visible'], 'kcal')}；看不到的油、糖 "
+                   f"{range_text(total['hidden'], 'kcal')}（依烹調方式和食譜估計，不是照片看到的）。"
+                   '食材熱量來自衛福部食品營養成分資料庫。粗估值，僅供參考，不是醫療或營養建議。')
     elif rows:
         st.caption('還不能算合計：' + '、'.join(missing) + ' 沒有熱量數字。')
 
@@ -236,6 +247,7 @@ def show_vision_result(result):
     if items:
         right.dataframe([{'編號': i['detection_id'], '食物': i['display_name'],
                           '看得到的食材': '、'.join(i['visible_ingredients']) or '—',
+                          '烹調': COOKING_METHODS.get(i.get('cooking_method'), ('—',))[0],
                           '把握': CONFIDENCE_TEXT.get(i['confidence'], i['confidence'])} for i in items],
                         hide_index=True, width='stretch')
     else:
