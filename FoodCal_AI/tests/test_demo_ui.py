@@ -194,7 +194,7 @@ class StreamlitOfflineTests(unittest.TestCase):
         app = self.app()
         next(b for b in app.button if b.label == '顯示展示結果').click().run()
         with patch('src.detection.model._load_yolo') as load:
-            app.radio[0].set_value('上傳照片辨識（需要模型權重）').run()
+            app.radio[0].set_value('上傳照片辨識').run()
         self.assertFalse(app.exception)
         load.assert_not_called()
         self.assertNotIn('result', app.session_state)

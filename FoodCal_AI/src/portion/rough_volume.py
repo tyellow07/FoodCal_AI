@@ -45,6 +45,8 @@ FOOD_TEMPLATES = {
     'cooked_noodle_region': ('plate', (D('2'), D('4'))),
     'visible_fried_egg': ('plate', (D('0.8'), D('1.5'))),
 }
+# Foods Claude names that have no template of their own use one of these, chosen by the container it reports.
+GENERIC_TEMPLATES = {'plate': ('plate', (D('1'), D('3'))), 'bowl': ('bowl', None)}
 REFERENCE_COLUMNS = ('food', 'grams', 'volume_ml', 'density_source_url', 'kcal_per_100g', 'kcal_source_url',
                      'retrieved_at', 'entered_by')
 DENSITY_RANGE = (D('0.05'), D('3'))
@@ -121,9 +123,12 @@ def _interval(low, high, step=D('1')):
     return {'low': low, 'mid': mid, 'high': high}
 
 
-def rough_volume(food, box_px, card_box_px):
-    """Volume interval in mL for one detected food box, using the card in the same photo for scale."""
-    template = FOOD_TEMPLATES.get(food)
+def rough_volume(food, box_px, card_box_px, container=None):
+    """Volume interval in mL for one food box, using the card in the same photo for scale.
+
+    Foods without their own template use the generic plate or bowl template for the container given.
+    """
+    template = FOOD_TEMPLATES.get(food) or GENERIC_TEMPLATES.get(container)
     if template is None:
         raise ValueError('no_shape_template: ' + str(food))
     scale = cm_per_px(card_box_px)
@@ -187,9 +192,9 @@ def kcal_for_grams(grams, entry):
     return (_number(grams, 'invalid_grams') * entry['kcal_per_100g'] / 100).quantize(D('1'))
 
 
-def rough_portion(food, box_px, card_box_px, reference):
+def rough_portion(food, box_px, card_box_px, reference, container=None):
     """rough_volume plus grams (volume x density) and kcal when the reference table has them."""
-    out = rough_volume(food, box_px, card_box_px)
+    out = rough_volume(food, box_px, card_box_px, container)
     entry = (reference or {}).get(food)
     out['grams'] = out['kcal'] = None
     if entry and entry['density'] is not None:

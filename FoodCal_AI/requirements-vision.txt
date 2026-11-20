@@ -1,0 +1,2 @@
+# Optional: Claude vision recognition in the web page (photos are sent to Anthropic only after the user agrees).
+anthropic==2.11.0

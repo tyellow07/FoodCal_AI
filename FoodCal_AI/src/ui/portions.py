@@ -47,13 +47,15 @@ def portion_rows(items, card_box, reference, user_grams):
     for detection in items:
         class_name, detection_id = detection['class_name'], detection['detection_id']
         box = [detection['bounding_box'][k] for k in ('x_min', 'y_min', 'x_max', 'y_max')]
-        row = {'id': detection_id, 'class_name': class_name, 'name': food_name(class_name),
+        name = detection.get('display_name')
+        row = {'id': detection_id, 'class_name': class_name,
+               'name': f'{name}（{class_name}）' if name else food_name(class_name),
                'volume_ml': None, 'grams': None, 'grams_source': None, 'kcal': None, 'notes': []}
         if card_box is None:
             row['notes'].append('card_missing')
         else:
             try:
-                rough = rough_portion(class_name, box, card_box, reference)
+                rough = rough_portion(class_name, box, card_box, reference, detection.get('container'))
             except ValueError as error:
                 row['notes'].append(str(error).split(':')[0])
             else:

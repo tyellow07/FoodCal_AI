@@ -183,6 +183,10 @@
 !/src/portion/card_locator.py
 !/tools/setup_card_reference.py
 !/tests/test_card_locator.py
+!/src/detection/claude_vision.py
+!/tests/test_claude_vision.py
+!/docs/claude_vision_v0.md
+!/requirements-vision.txt
 
 # Private data stays blocked even under future broad allow rules.
 **/data/
