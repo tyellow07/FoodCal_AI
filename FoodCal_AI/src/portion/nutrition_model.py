@@ -9,15 +9,26 @@ A food is a list of components (ingredient key, share of the food's weight in pe
   It is skipped for ingredients whose TFDA value already includes the cooking (for example braised minced pork),
   so nothing is counted twice. Salt adds sodium, not energy.
 - Density per food = sum(share x ingredient density), for converting volume to grams.
+- Other nutrients health-minded eaters look at (fibre, sugar, saturated fat, cholesterol, sodium, potassium,
+  calcium, iron) come from the same TFDA rows with the same conversions (MICROS). A blank TFDA cell means "not
+  analysed", not zero: it is filled only from another TFDA sample of the same food, or with a structural zero
+  (animal foods have no dietary fibre, plant foods no cholesterol); otherwise it stays None and the food's amount
+  is flagged partial (a lower bound).
+- Recipe additions follow the cooking method like hidden energy: oil adds saturated fat (TFDA soybean oil 16.1 g
+  per 100 g), added sugar adds sugar, and seasoning adds sodium (SEASONING_SODIUM). Most sodium in a cooked dish
+  comes from salt and sauces, so ingredient sodium alone would badly understate it.
 
-Hidden energy is a recipe prior, not something the photo shows; the page shows it on its own line.
+Hidden energy and the recipe additions are a recipe prior, not something the photo shows; the page shows them apart.
 """
-from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
+from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP
 
 D = Decimal
 OIL_KCAL_PER_G = D('8.84')
 SUGAR_KCAL_PER_G = D('3.84')
+OIL_SAT_FAT_PER_G = D('0.161')  # TFDA M1100101 大豆油：飽和脂肪 16.1 g / 100 g
+SALT_SODIUM_MG_PER_G = D('393')  # NaCl 含鈉 22.99 / 58.44 = 39.3%
 TFDA = 'https://consumer.fda.gov.tw/Food/TFND.aspx?nodeID=178'
+TFDA_OPEN_DATA = 'https://data.gov.tw/dataset/8543'
 
 # key: (name, kcal/100 g as eaten, density g/mL, value already includes cooking, source note)
 INGREDIENTS = {
@@ -71,6 +82,67 @@ MACROS = {
     'batter_coating': (D('8.3'), D('1.7'), D('71.0')),
 }
 
+# Other nutrients: (key, name, unit, display step), in the order of the MICROS tuples.
+NUTRIENTS = (('fiber_g', '膳食纖維', 'g', D('0.1')), ('sugar_g', '糖', 'g', D('0.1')),
+             ('sat_fat_g', '飽和脂肪', 'g', D('0.1')), ('cholesterol_mg', '膽固醇', 'mg', D('1')),
+             ('sodium_mg', '鈉', 'mg', D('1')), ('potassium_mg', '鉀', 'mg', D('1')),
+             ('calcium_mg', '鈣', 'mg', D('1')), ('iron_mg', '鐵', 'mg', D('0.1')))
+
+# Per 100 g as eaten, from the TFDA open data set (食品營養成分資料集, data.gov.tw 8543) for the same rows and
+# conversions as INGREDIENTS; MICRO_NOTES says how each blank TFDA cell was handled. None = no TFDA value.
+# (fibre g, sugar g, saturated fat g, cholesterol mg, sodium mg, potassium mg, calcium mg, iron mg)
+MICROS = {
+    'cooked_rice': (D('0.6'), D('0.05'), D('0.1'), D('0'), D('2'), D('40'), D('1'), D('0.2')),
+    'noodles': (D('0.6'), D('0.72'), D('0.3'), D('0'), D('67'), D('49'), D('12'), D('0.4')),
+    'instant_noodles': (D('0.72'), D('0.64'), D('4.96'), D('0'), D('830.8'), D('74.4'), D('5.2'), D('0.6')),
+    'rice_noodles': (D('0.31'), None, None, D('0'), D('61'), D('2.5'), D('0.9'), D('0.3')),
+    'leafy_vegetable': (D('1.93'), D('0.9'), D('0.07'), D('0'), D('72.3'), D('266.3'), D('67.3'), D('2.2')),
+    'gourd_vegetable': (D('1'), D('2.1'), D('0.1'), D('0'), D('0'), D('117'), D('10'), D('0.2')),
+    'pickles': (D('1.5'), D('14.5'), D('0.1'), D('0'), D('1530.5'), D('116'), D('20.5'), D('2.3')),
+    'egg': (D('0'), D('0.2'), D('3.8'), D('449'), D('151'), D('139'), D('52'), D('3.4')),
+    'braised_egg': (D('0'), D('4.3'), D('3.7'), D('411'), D('1278'), D('195'), D('54'), D('2.4')),
+    'tofu': (D('0.6'), D('0'), D('1'), D('0'), D('2'), D('180'), D('140'), D('2')),
+    'dried_tofu': (D('2.6'), D('0.4'), D('1.4'), D('0'), D('549'), D('45'), D('287'), D('6.2')),
+    'chicken': (D('0'), D('0'), D('3.87'), D('117.3'), D('145.3'), D('317.3'), D('10.7'), D('1.9')),
+    'chicken_cutlet': (D('0'), D('0'), D('6.67'), D('100'), D('101.3'), D('317.3'), D('10.7'), D('1.3')),
+    'pork': (D('0'), D('0'), D('7.2'), D('82.7'), D('77.3'), D('421.3'), D('12'), D('1.1')),
+    'braised_pork_mince': (None, None, D('14.2'), D('109'), D('941'), D('294'), D('9'), D('1.3')),
+    'beef': (D('0'), D('0'), D('3.71'), D('108.6'), D('112.9'), D('425.7'), D('11.4'), D('4.3')),
+    'fish': (D('0'), D('0'), D('2'), D('80'), D('57.5'), D('560'), D('7.5'), D('1')),
+    'thick_soup': (D('0.23'), D('0.4'), D('1.33'), D('12.5'), None, D('25.5'), D('52.8'), D('0.3')),
+    'clear_broth': (D('0'), D('0'), D('0.1'), D('3'), D('24'), D('46'), D('2'), D('0.1')),
+    'meatball_bawan': (D('0.3'), D('2'), D('0.6'), D('8'), D('217'), D('49'), D('9'), D('0.9')),
+    'pancake_skin': (D('1.3'), D('4.4'), D('1.4'), D('4'), D('291'), D('77'), D('15'), D('0.7')),
+    'batter_coating': (D('6.2'), None, D('0.6'), D('0'), D('3790'), D('220'), D('19'), D('2.7')),
+}
+PLANT_NO_CHOLESTEROL = '植物性，膽固醇 0（同類較新樣品如 R4700902 傳統豆腐、E3000104 甘藍記 0）'
+ANIMAL_NO_FIBER = '動物性，膳食纖維 0（同類較新樣品如 I0108302 牛腱、K01001 雞蛋平均值記 0）'
+MICRO_NOTES = {
+    'cooked_rice': '糖：A05002 稉米平均值 0.1 g × 41.0/77.8（生米到熟飯的碳水比例）；' + PLANT_NO_CHOLESTEROL,
+    'noodles': '糖：R2000201 油麵條（乾）1.6 g × 163/361（熱量比例）；' + PLANT_NO_CHOLESTEROL,
+    'instant_noodles': 'R2100201 × 0.4（泡開，同熱量）；鈉已含調味包',
+    'rice_noodles': '假設：R1100301 細米粉（乾）× 110/355；糖、飽和脂肪沒有資料；' + PLANT_NO_CHOLESTEROL,
+    'leafy_vegetable': ('三筆平均；E5600101 蕹菜缺的糖、飽和脂肪用 E5600102（4 月樣品），E3000101 甘藍缺的糖用 '
+                        'E30001 甘藍平均值、飽和脂肪用 E3000104；' + PLANT_NO_CHOLESTEROL),
+    'gourd_vegetable': PLANT_NO_CHOLESTEROL,
+    'pickles': '兩筆平均；R4401601 缺的糖、飽和脂肪用 R4400401 花瓜罐頭；' + PLANT_NO_CHOLESTEROL,
+    'egg': '糖：K01001 雞蛋平均值；' + ANIMAL_NO_FIBER,
+    'braised_egg': '糖：K0120101 雞滷蛋（市售）；' + ANIMAL_NO_FIBER,
+    'tofu': '糖：R4700902 傳統豆腐（2022 年樣品）；' + PLANT_NO_CHOLESTEROL,
+    'dried_tofu': '糖：R4700202 五香豆干；' + PLANT_NO_CHOLESTEROL,
+    'chicken': '÷ 烹調產率 0.75；' + ANIMAL_NO_FIBER,
+    'chicken_cutlet': '÷ 0.75；碳水 0 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'pork': '假設：I03104 豬絞肉平均值 ÷ 0.75 代表豬肉；' + ANIMAL_NO_FIBER,
+    'braised_pork_mince': '膳食纖維、糖沒有資料（含醬油、蔥乾）',
+    'beef': '÷ 0.70；糖：I0108302 牛後腿腱子心（2022 年樣品）；' + ANIMAL_NO_FIBER,
+    'fish': '÷ 0.80；碳水 0.3 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'thick_soup': '假設：R5900101 肉羹 × 1/4；勾芡湯底的調味沒有資料，鈉不算',
+    'clear_broth': '碳水 0.2 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'meatball_bawan': 'R0700101 各項都有資料',
+    'pancake_skin': 'R2700301 各項都有資料',
+    'batter_coating': '糖沒有資料；' + PLANT_NO_CHOLESTEROL,
+}
+
 # key: (name, oil g per 100 g (low, high), sugar g per 100 g (low, high), source note)
 COOKING_METHODS = {
     'none': ('生食／不另外調理', (D(0), D(0)), (D(0), D(0)), '—'),
@@ -82,6 +154,25 @@ COOKING_METHODS = {
     'braised': ('滷／紅燒', (D(0), D(2)), (D(2), D(4)), '滷肉食譜每 600 g 豬肉用約 60 g 冰糖、80 g 醬油（三立新聞）；肉約吸收 1/4–1/2'),
     'soup': ('煮湯', (D('0.5'), D(2)), (D(0), D('0.5')), '假設值：湯面浮油'),
     'sweet_sauce': ('糖醋／甜醬', (D(2), D(5)), (D(5), D(10)), '假設值：糖醋醬含糖高'),
+}
+
+# Sodium from salt and sauces, mg per 100 g of food (low, high), per cooking method. Like the oil and sugar, it is a
+# recipe prior and is skipped for ingredients whose TFDA value already includes the cooking.
+_SALT = SALT_SODIUM_MG_PER_G
+SEASONING_SODIUM = {
+    'none': ((D(0), D(0)), '不另外調味'),
+    'boiled_or_steamed': ((D(0), D(0)), '不另外加鹽；沾醬沒有算'),
+    'blanched_with_oil': ((5 * D('40.5'), 10 * D('40.5')),
+                          '假設每 100 g 淋 5–10 g 醬油膏 × TFDA P0700701 醬油膏 4050 mg / 100 g'),
+    'stir_fried': ((D('0.5') * _SALT, 1 * _SALT),
+                   '假設每 100 g 加 0.5–1 g 鹽（500 g 青菜 1 小匙約 5 g 鹽為上限）；對照 TFDA R2100101 炒板條 307 mg'),
+    'pan_fried': ((D(0), D('0.5') * _SALT),
+                  '假設 0–0.5 g 鹽；TFDA 煎蛋（不加油）145 mg 與 K01001 雞蛋平均值 138 mg 幾乎相同（實驗沒加鹽）'),
+    'deep_fried': ((D(0), D('0.5') * _SALT), '假設醃料 0–0.5 g 鹽；裹粉本身的鈉已算在裹粉食材'),
+    'braised': ((D(187) - D(69), D(1278) - D(124)),
+                'TFDA：R5101101 滷豬腳 187 − I0322201 生豬後腳 69 = 118；K0120102 雞滷蛋（現煮）1278 − K0111101 雞水煮蛋 124 = 1154'),
+    'soup': ((D('0.5') * _SALT, 1 * _SALT), '假設每 100 g 湯 0.5–1 g 鹽；對照 TFDA R2100401 擔仔麵（去湯）312 mg'),
+    'sweet_sauce': ((D('0.10') * 1858, D('0.20') * 1858), '假設醬汁佔 10–20% × TFDA P1003401 糖醋醬 1858 mg / 100 g'),
 }
 
 # Default composition for the 18 known food keys (used when Gemini gives none, and for hand-added dishes).
@@ -121,8 +212,11 @@ def food_nutrition(components, method):
     if not known or total == 0:
         return None
     oil, sugar = COOKING_METHODS.get(method, COOKING_METHODS['none'])[1:3]
+    sodium = SEASONING_SODIUM.get(method, SEASONING_SODIUM['none'])[0]
     density = visible = hidden_low = hidden_high = cooked_share = D(0)
     protein = fat = carb = D(0)
+    micros = {key: D(0) for key, *_ in NUTRIENTS}
+    partial = set()
     for key, share in known:
         _, kcal, ingredient_density, includes_cooking, _ = INGREDIENTS[key]
         weight = share / total
@@ -130,6 +224,11 @@ def food_nutrition(components, method):
         visible += weight * kcal
         p, f, c = MACROS[key]
         protein, fat, carb = protein + weight * p, fat + weight * f, carb + weight * c
+        for (name, *_), value in zip(NUTRIENTS, MICROS[key]):
+            if value is None:  # not analysed in TFDA: the food's amount becomes a lower bound
+                partial.add(name)
+            else:
+                micros[name] += weight * value
         if not includes_cooking:  # the TFDA value of a cooked dish already holds its oil and sugar
             cooked_share += weight
             hidden_low += weight * (oil[0] * OIL_KCAL_PER_G + sugar[0] * SUGAR_KCAL_PER_G)
@@ -142,6 +241,10 @@ def food_nutrition(components, method):
             'macros_per_100g': {'protein': protein, 'fat': fat, 'carb': carb},
             'hidden_fat_g_per_100g': (cooked_share * oil[0], cooked_share * oil[1]),
             'hidden_sugar_g_per_100g': (cooked_share * sugar[0], cooked_share * sugar[1]),
+            'nutrients_per_100g': micros, 'nutrients_partial': sorted(partial),
+            'hidden_sat_fat_g_per_100g': (cooked_share * oil[0] * OIL_SAT_FAT_PER_G,
+                                          cooked_share * oil[1] * OIL_SAT_FAT_PER_G),
+            'hidden_sodium_mg_per_100g': (cooked_share * sodium[0], cooked_share * sodium[1]),
             'method': COOKING_METHODS.get(method, COOKING_METHODS['none'])[0]}
 
 
@@ -162,3 +265,39 @@ def macros_for_grams(grams, nutrition):
     carb = m['carb'] + sum(nutrition['hidden_sugar_g_per_100g']) / 2
     return {'protein': (m['protein'] * mid).quantize(D('0.1')), 'carb': (carb * mid).quantize(D('0.1')),
             'fat': (fat * mid).quantize(D('0.1'))}
+
+
+def _q(value, step):
+    return value.quantize(step, rounding=ROUND_HALF_UP)
+
+
+def nutrients_for_grams(grams, nutrition):
+    """Other nutrients for the middle weight: {key: {'visible', 'hidden', 'hidden_low', 'hidden_high', 'partial'}}.
+
+    visible comes from the ingredients (TFDA); hidden is the recipe part (oil -> saturated fat, added sugar ->
+    sugar, seasoning -> sodium) as the middle of its range, with the range alongside. partial means an ingredient
+    has no TFDA value for this nutrient, so the real amount can only be higher.
+    """
+    mid = grams['mid'] / 100
+    recipe = {'sugar_g': nutrition['hidden_sugar_g_per_100g'], 'sat_fat_g': nutrition['hidden_sat_fat_g_per_100g'],
+              'sodium_mg': nutrition['hidden_sodium_mg_per_100g']}
+    out = {}
+    for key, _, _, step in NUTRIENTS:
+        low, high = recipe.get(key, (D(0), D(0)))
+        out[key] = {'visible': _q(nutrition['nutrients_per_100g'][key] * mid, step),
+                    'hidden': _q((low + high) / 2 * mid, step),
+                    'hidden_low': _q(low * mid, step), 'hidden_high': _q(high * mid, step),
+                    'partial': key in nutrition['nutrients_partial']}
+    return out
+
+
+def empty_nutrients():
+    return {key: {'visible': D(0), 'hidden': D(0), 'hidden_low': D(0), 'hidden_high': D(0), 'partial': False}
+            for key, *_ in NUTRIENTS}
+
+
+def add_nutrients(total, part):
+    """Add one dish's nutrients_for_grams result into a running total (returns a new dict)."""
+    return {key: {**{field: total[key][field] + part[key][field] for field in ('visible', 'hidden', 'hidden_low',
+                                                                              'hidden_high')},
+                  'partial': total[key]['partial'] or part[key]['partial']} for key in total}

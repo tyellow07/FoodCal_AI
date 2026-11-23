@@ -3,6 +3,8 @@ nutrition panel, numbered steps and the KEY RULE banner. Pure HTML/CSS strings; 
 """
 from html import escape
 
+from src.portion.nutrition_model import NUTRIENTS
+
 CSS = """
 <style>
 :root { --fc-bg:#f7f6f2; --fc-card:#ffffff; --fc-line:#e5e1d8; --fc-ink:#1f2a24; --fc-muted:#6f746c;
@@ -47,6 +49,10 @@ CSS = """
 .fc-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:.5rem; }
 .fc-note { background:#f6f8f3; border:1px solid #d5e0cf; border-radius:10px; padding:.6rem .75rem; font-size:.8rem;
            color:#3b4a3f; margin:.8rem 0; }
+.fc-sub { margin:1rem 0 .15rem; color:var(--fc-muted); font-size:.72rem; letter-spacing:.12em; font-weight:700; }
+.fc-nut { display:flex; justify-content:space-between; align-items:flex-start; gap:.6rem; padding:.35rem 0;
+          border-bottom:1px solid #e1e8dc; font-size:.88rem; }
+.fc-nut b { white-space:nowrap; }
 .fc-table { width:100%; border-collapse:collapse; font-size:.8rem; }
 .fc-table th { color:var(--fc-muted); font-weight:600; text-align:right; padding:.3rem .2rem; border-bottom:1px solid #d5e0cf; }
 .fc-table th:first-child, .fc-table td:first-child { text-align:left; }
@@ -61,7 +67,7 @@ STEPS = (('01', 'INPUT', '餐點照片', '照片由使用者提供'),
          ('02', 'DISH', 'Gemini 辨識菜色', '菜色 ≠ 食材'),
          ('03', 'VISION', '食材範圍與學生證', '只用看得到的'),
          ('04', 'ESTIMATION', '份量與食譜', '體積 × 密度；食譜補看不到的油糖'),
-         ('05', 'OUTPUT', '熱量與營養素', '熱量、蛋白質、醣類、脂肪'))
+         ('05', 'OUTPUT', '熱量與營養素', '熱量、三大營養素、鈉、纖維等'))
 
 MACRO_COLORS = {'protein': '#3d6b4f', 'carb': '#d9a35b', 'fat': '#8fa7c4'}
 PILL_COLORS = (('#dcebd3', '#5f8f52'), ('#fbe7c2', '#c58b2b'), ('#d6e6f5', '#4f7fb0'),
@@ -99,8 +105,38 @@ def item_header(index, name, meta, hidden=None):
             f'<div class="fc-meta">{escape(meta)}</div>{hidden_html}</div></div>')
 
 
-def nutrition_panel(total, macros, weight_text, rows, empty_reason=None):
-    """Big kcal number, macro bar and list, visible-vs-recipe note and per-dish table."""
+NUTRIENT_ORDER = ('sat_fat_g', 'sugar_g', 'fiber_g', 'sodium_mg', 'cholesterol_mg', 'potassium_mg', 'calcium_mg',
+                  'iron_mg')
+RECIPE_PART = {'sat_fat_g': '其中用油約 {hidden} g（食譜估計）',
+               'sugar_g': '其中加糖約 {hidden} g（食譜估計）',
+               'sodium_mg': '其中調味約 {hidden} mg（{low}–{high}，食譜估計）'}
+
+
+def nutrient_list(nutrients):
+    """Other nutrients (saturated fat, sugar, fibre, sodium, ...) with the recipe part on its own orange line."""
+    if not nutrients:
+        return ''
+    info = {key: (name, unit) for key, name, unit, _ in NUTRIENTS}
+    rows = []
+    for key in NUTRIENT_ORDER:
+        value = nutrients[key]
+        name, unit = info[key]
+        amount = value['visible'] + value['hidden']
+        recipe = ''
+        if key in RECIPE_PART and value['hidden_high'] > 0:
+            recipe = RECIPE_PART[key].format(hidden=value['hidden'], low=value['hidden_low'], high=value['hidden_high'])
+            recipe = f'<div class="fc-hidden">{escape(recipe)}</div>'
+        rows.append(f'<div class="fc-nut"><div>{escape(name)}{recipe}</div>'
+                    f'<b>{"≥ " if value["partial"] else ""}{amount} {unit}</b></div>')
+    partial_note = ('「≥」：有食材沒有這項資料，實際可能更多。' if any(nutrients[k]['partial'] for k in NUTRIENT_ORDER)
+                    else '')
+    return ('<div class="fc-sub">其他營養素 · OTHER NUTRIENTS</div>' + ''.join(rows) +
+            f'<div class="fc-meta" style="margin-top:.4rem">{partial_note}食材的數值來自衛福部食品營養成分資料庫；'
+            f'鈉大多來自調味，橘字依烹調方式估計，不是照片證據。</div>')
+
+
+def nutrition_panel(total, macros, weight_text, rows, empty_reason=None, nutrients=None):
+    """Big kcal number, macro bar and list, other nutrients, visible-vs-recipe note and per-dish table."""
     if total is None:
         return (f'<div class="fc-panel"><div class="fc-label">Nutrition · 營養估計</div>'
                 f'<div class="fc-empty">{escape(empty_reason or "辨識後，熱量和營養素會顯示在這裡。")}</div></div>')
@@ -119,6 +155,7 @@ def nutrition_panel(total, macros, weight_text, rows, empty_reason=None):
             f'<div class="fc-kcal">{total["mid"]}<small>kcal · 粗估 {total["low"]}–{total["high"]}</small></div>'
             f'<div class="fc-bar">{bar}</div>{macro_rows}'
             f'<div class="fc-macro"><span>這餐總重量（估）</span><b>{escape(weight_text)}</b></div>'
+            f'{nutrient_list(nutrients)}'
             f'<div class="fc-note">看得到的食材 {v} kcal ＋ 依食譜估計的油、糖 {h} kcal。'
             f'後者是看不到的部分，只是推估，不是照片證據。</div>'
             f'<table class="fc-table"><tr><th>菜色（kcal）</th><th>照片*</th><th>食譜*</th><th>合計</th></tr>'

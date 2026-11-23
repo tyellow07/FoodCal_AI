@@ -16,7 +16,8 @@ from src.ui.adapter import decode_upload, draw_items, draw_predictions, fixture_
 from src.ui.explain import food_name, reason_text, summarize
 from src.ui.portions import note_text, nutrition_of, portion_rows, read_food_reference_csv
 from src.portion.card_locator import load_card_reference, locate_card
-from src.portion.nutrition_model import COOKING_METHODS, INGREDIENTS, macros_for_grams
+from src.portion.nutrition_model import (COOKING_METHODS, INGREDIENTS, add_nutrients, empty_nutrients, macros_for_grams,
+                                         nutrients_for_grams)
 from src.portion.rough_volume import FOOD_TEMPLATES, cm_per_px
 from src.detection.claude_vision import RecognitionError
 from src.detection.gemini_vision import gemini_clients, mask_card, recognize_foods_gemini
@@ -121,7 +122,11 @@ def current_items(result):
 
 
 def compute(result):
-    """Portion rows, total and macros for the current photo, from session widget values."""
+    """Portion rows, total, macros and other nutrients for the current photo, from session widget values.
+
+    macros carries the other nutrients under 'nutrients'. A dish without a composition (only a per-food kcal from
+    the reference table) has no nutrient data, so every nutrient total is then marked partial.
+    """
     try:
         reference = read_food_reference_csv(FOOD_REFERENCE_PATH)
     except ValueError as error:
@@ -132,10 +137,15 @@ def compute(result):
     typed = {item['detection_id']: st.session_state.get(f"grams_{tag}_{item['detection_id']}") for item in items}
     rows, total, missing = portion_rows(items, st.session_state.get('card_box'), reference, typed)
     macros = {'protein': 0, 'carb': 0, 'fat': 0}
+    nutrients = empty_nutrients()
     for row in rows:
         if row['nutrition'] is not None and row['grams'] is not None:
             for name, value in macros_for_grams(row['grams'], row['nutrition']).items():
                 macros[name] += value
+            nutrients = add_nutrients(nutrients, nutrients_for_grams(row['grams'], row['nutrition']))
+        elif row['grams'] is not None:
+            nutrients = {key: {**value, 'partial': True} for key, value in nutrients.items()}
+    macros['nutrients'] = nutrients
     return items, rows, total, missing, macros, reference
 
 
@@ -280,8 +290,10 @@ def nutrition_card(result, rows, total, missing, macros):
         return
     weight = sum(r['grams']['mid'] for r in rows if r['grams'] is not None)
     per_dish = [(r['name'], r['kcal']['mid'], r['hidden_kcal']['mid'] if r['hidden_kcal'] else 0) for r in rows]
-    macros = {k: round(v, 1) for k, v in macros.items()}
-    st.markdown(theme.nutrition_panel(total, macros, f'約 {weight} g', per_dish), unsafe_allow_html=True)
+    nutrients = macros.get('nutrients')
+    macros = {k: round(macros[k], 1) for k in ('protein', 'carb', 'fat')}
+    st.markdown(theme.nutrition_panel(total, macros, f'約 {weight} g', per_dish, nutrients=nutrients),
+                unsafe_allow_html=True)
 
 
 def tools_section(result):

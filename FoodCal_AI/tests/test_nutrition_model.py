@@ -2,8 +2,9 @@
 from decimal import Decimal
 import unittest
 
-from src.portion.nutrition_model import (COOKING_METHODS, DEFAULT_COMPONENTS, INGREDIENTS, MACROS, energy_for_grams,
-                                         food_nutrition, macros_for_grams)
+from src.portion.nutrition_model import (COOKING_METHODS, DEFAULT_COMPONENTS, INGREDIENTS, MACROS, MICRO_NOTES, MICROS,
+                                         NUTRIENTS, SEASONING_SODIUM, add_nutrients, empty_nutrients, energy_for_grams,
+                                         food_nutrition, macros_for_grams, nutrients_for_grams)
 from src.portion.rough_volume import FOOD_TEMPLATES
 
 D = Decimal
@@ -54,6 +55,57 @@ class NutritionModelTests(unittest.TestCase):
         greens = food_nutrition([('leafy_vegetable', 100)], 'stir_fried')
         macros = macros_for_grams({'low': D(100), 'mid': D(100), 'high': D(100)}, greens)
         self.assertEqual(macros, {'protein': D('2.0'), 'carb': D('3.6'), 'fat': D('5.8')})  # + 5.5 g oil, 0.25 g sugar
+
+    def test_other_nutrient_tables_are_complete_and_sourced(self):
+        self.assertEqual(set(MICROS), set(INGREDIENTS))
+        self.assertEqual(set(MICRO_NOTES), set(INGREDIENTS))
+        self.assertEqual(set(SEASONING_SODIUM), set(COOKING_METHODS))
+        for key, values in MICROS.items():
+            self.assertEqual(len(values), len(NUTRIENTS), key)
+            self.assertTrue(all(v is None or v >= 0 for v in values), key)
+            self.assertTrue(MICRO_NOTES[key], key)
+            if None in values:  # every unknown value is explained
+                self.assertIn('沒有資料', MICRO_NOTES[key], key)
+        for method, ((low, high), note) in SEASONING_SODIUM.items():
+            self.assertTrue(0 <= low <= high and note, method)
+
+    def test_spot_values_follow_the_tfda_rows_and_conversions(self):
+        names = [key for key, *_ in NUTRIENTS]
+        def value(food, nutrient):
+            return MICROS[food][names.index(nutrient)]
+        self.assertEqual(value('cooked_rice', 'sodium_mg'), D('2'))           # A0550601 白飯
+        self.assertEqual(value('instant_noodles', 'sodium_mg'), D('830.8'))   # R2100201 2077 mg x 0.4
+        self.assertEqual(value('chicken', 'cholesterol_mg'), D('117.3'))      # I0404302 88 mg / 0.75
+        self.assertEqual(value('egg', 'fiber_g'), D('0'))                     # animal food: structural zero
+        self.assertIsNone(value('braised_pork_mince', 'fiber_g'))             # not analysed: unknown, not zero
+
+    def test_unknown_values_make_the_food_partial(self):
+        bowl = food_nutrition([('cooked_rice', 80), ('braised_pork_mince', 20)], 'none')
+        self.assertEqual(bowl['nutrients_partial'], ['fiber_g', 'sugar_g'])
+        self.assertEqual(bowl['nutrients_per_100g']['fiber_g'], D('0.480'))  # only the rice part: 0.8 x 0.6
+        self.assertEqual(food_nutrition([('cooked_rice', 100)], 'none')['nutrients_partial'], [])
+
+    def test_recipe_adds_sodium_saturated_fat_and_sugar(self):
+        greens = food_nutrition([('leafy_vegetable', 100)], 'stir_fried')
+        self.assertEqual(greens['hidden_sodium_mg_per_100g'], (D('196.5'), D('393')))  # 0.5-1 g salt x 393 mg/g
+        self.assertEqual(greens['hidden_sat_fat_g_per_100g'], (D('0.483'), D('1.288')))  # 3-8 g soybean oil x 16.1%
+        egg = food_nutrition([('braised_egg', 100)], 'braised')  # TFDA value already holds the braising
+        self.assertEqual(egg['hidden_sodium_mg_per_100g'], (D(0), D(0)))
+        plain = food_nutrition([('cooked_rice', 100)], 'none')
+        self.assertEqual(plain['hidden_sodium_mg_per_100g'], (D(0), D(0)))
+
+    def test_nutrients_for_grams_and_totals(self):
+        greens = food_nutrition([('leafy_vegetable', 100)], 'stir_fried')
+        part = nutrients_for_grams({'low': D(100), 'mid': D(100), 'high': D(100)}, greens)
+        self.assertEqual(part['sodium_mg'], {'visible': D('72'), 'hidden': D('295'), 'hidden_low': D('197'),
+                                             'hidden_high': D('393'), 'partial': False})
+        self.assertEqual((part['iron_mg']['visible'], part['fiber_g']['visible']), (D('2.2'), D('1.9')))
+        bowl = food_nutrition([('cooked_rice', 80), ('braised_pork_mince', 20)], 'none')
+        total = add_nutrients(add_nutrients(empty_nutrients(), part),
+                              nutrients_for_grams({'low': D(200), 'mid': D(200), 'high': D(200)}, bowl))
+        self.assertEqual(total['sodium_mg']['visible'], D('72') + D('380'))  # 200 g x (0.8 x 2 + 0.2 x 941) / 100 = 379.6
+        self.assertTrue(total['fiber_g']['partial'])
+        self.assertFalse(total['sodium_mg']['partial'])
 
     def test_energy_for_grams(self):
         greens = food_nutrition([('leafy_vegetable', 100)], 'stir_fried')

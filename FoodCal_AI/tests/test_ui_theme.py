@@ -4,6 +4,7 @@ import unittest
 
 from PIL import Image
 
+from src.portion.nutrition_model import empty_nutrients
 from src.ui import theme
 from src.ui.adapter import draw_items
 
@@ -24,6 +25,19 @@ class ThemeTests(unittest.TestCase):
         for text in ('480', '300–900', '蛋白質', '30.0 g', '約 400 g', '440', '>40<', '&lt;b&gt;白飯&lt;/b&gt;'):
             self.assertIn(text, html)
         self.assertNotIn('<b>白飯</b>', html)  # names from the vision answer are escaped
+        self.assertNotIn('其他營養素', html)  # no nutrient list unless nutrients are given
+
+    def test_nutrient_list_shows_recipe_part_and_lower_bounds(self):
+        nutrients = empty_nutrients()
+        nutrients['sodium_mg'] = {'visible': Decimal('120'), 'hidden': Decimal('300'), 'hidden_low': Decimal('200'),
+                                  'hidden_high': Decimal('400'), 'partial': False}
+        nutrients['fiber_g'] = {**nutrients['fiber_g'], 'visible': Decimal('2.5'), 'partial': True}
+        total = {'low': 1, 'mid': 2, 'high': 3, 'visible': {'mid': 2}, 'hidden': {'mid': 0}}
+        html = theme.nutrition_panel(total, {'protein': 1, 'carb': 1, 'fat': 1}, '約 1 g', [], nutrients=nutrients)
+        for text in ('其他營養素', '飽和脂肪', '膳食纖維', '膽固醇', '鉀', '鈣', '鐵', '420 mg', '其中調味約 300 mg（200–400，食譜估計',
+                     '≥ 2.5 g', '「≥」'):
+            self.assertIn(text, html)
+        self.assertNotIn('「≥」', theme.nutrient_list(empty_nutrients()))
 
     def test_item_header_escapes_and_numbers(self):
         html = theme.item_header(3, '<i>雞</i>', 'meta', '＋ 油')
