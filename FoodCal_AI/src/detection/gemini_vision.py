@@ -53,9 +53,10 @@ SCHEMA = {
                                    'share_percent': {'type': 'integer'}},
                     'required': ['ingredient', 'share_percent']}},
                 'cooking_method': {'type': 'string', 'enum': sorted(COOKING_METHODS)},
+                'shape': {'type': 'string', 'enum': ['mound', 'flat']},
             },
             'required': ['name_zh', 'name_en', 'food_key', 'container', 'box_2d', 'visible_ingredients', 'confidence',
-                         'components', 'cooking_method']}},
+                         'components', 'cooking_method', 'shape']}},
         'notes': {'type': 'string'},
     },
     'required': ['foods', 'notes'],
@@ -82,6 +83,8 @@ For every distinct food item you can see, report:
 {chr(10).join(f'  {key} = {INGREDIENTS[key][0]}' for key in sorted(INGREDIENTS))}
 - cooking_method: how it looks cooked, one of:
 {chr(10).join(f'  {key} = {COOKING_METHODS[key][0]}' for key in sorted(COOKING_METHODS))}
+- shape: "mound" when the food is piled up into a heap (rice, noodles, heaped vegetables or meat pieces), "flat" when
+  it lies in a thin layer (a fried egg, a cutlet, slices laid side by side).
 
 Report only what is visible in the photo. Do not estimate weights, portions or calories, and do not add ingredients
 a recipe would usually contain but the photo does not show. Ignore plates, trays, cutlery, hands, the grey
@@ -165,7 +168,8 @@ def _is_network_error(error):
     return root in ('httpx', 'httpx2', 'httpcore', 'httpcore2') or isinstance(error, (ConnectionError, TimeoutError))
 
 
-def _answer_from(response):
+def _parse_json(response):
+    """The answer's JSON, after the checks every answer needs (blocked, truncated, not JSON)."""
     feedback = getattr(response, 'prompt_feedback', None)
     if feedback is not None and getattr(feedback, 'block_reason', None):
         raise RecognitionError('gemini_blocked')
@@ -178,9 +182,13 @@ def _answer_from(response):
     if reason in BLOCKED:
         raise RecognitionError('gemini_blocked')
     try:
-        answer = json.loads(response.text)
+        return json.loads(response.text)
     except (TypeError, ValueError):
         raise RecognitionError('gemini_answer_unreadable') from None
+
+
+def _answer_from(response):
+    answer = _parse_json(response)
     if not isinstance(answer, dict) or not isinstance(answer.get('foods'), list):
         raise RecognitionError('gemini_answer_unreadable')
     foods = []
@@ -193,13 +201,13 @@ def _answer_from(response):
     return {'foods': foods, 'notes': answer.get('notes', '')}
 
 
-def recognize_foods_gemini(image, *, clients, models=None):
-    """{'items', 'notes', 'model', 'endpoint', 'usage', 'latency_s'} for one PIL image (already card-masked)."""
-    from google.genai import errors, types
-    width, height = image.size
-    contents = [types.Part.from_bytes(data=jpeg_bytes(image), mime_type='image/jpeg'),
-                'List the foods visible in this photo.']
+def _generate(contents, instructions, schema, clients, models=None):
+    """(response, model, endpoint, latency) from the first model that answers; RecognitionError otherwise.
 
+    Models are tried in order: a missing model, a used-up quota or an overloaded model moves on to the next one; a
+    key the endpoint refuses moves on to the next endpoint.
+    """
+    from google.genai import errors, types
     last = 'gemini_key_invalid'
     deadline = time.perf_counter() + TOTAL_BUDGET_S
     for endpoint, client in clients:
@@ -207,8 +215,8 @@ def recognize_foods_gemini(image, *, clients, models=None):
             if time.perf_counter() > deadline:
                 raise RecognitionError('gemini_too_slow')
             started = time.perf_counter()
-            config = types.GenerateContentConfig(system_instruction=INSTRUCTIONS, response_mime_type='application/json',
-                                                 response_json_schema=SCHEMA, thinking_config=_thinking(model, types))
+            config = types.GenerateContentConfig(system_instruction=instructions, response_mime_type='application/json',
+                                                 response_json_schema=schema, thinking_config=_thinking(model, types))
             try:
                 response = client.models.generate_content(model=model, contents=contents, config=config)
             except errors.ClientError as error:
@@ -232,15 +240,101 @@ def recognize_foods_gemini(image, *, clients, models=None):
                     raise RecognitionError('gemini_network_error') from None
                 raise
             latency = time.perf_counter() - started
-            answer = _answer_from(response)
             if models is None:
                 _LAST_GOOD[_cache_key(endpoint, client)] = model
                 _remember(model)
-            usage = getattr(response, 'usage_metadata', None)
-            return {'items': items_from_answer(answer, width, height, prefix='G'), 'notes': answer['notes'],
-                    'model': getattr(response, 'model_version', None) or model, 'endpoint': endpoint,
-                    'usage': {'input_tokens': getattr(usage, 'prompt_token_count', None),
-                              'output_tokens': getattr(usage, 'candidates_token_count', None),
-                              'thinking_tokens': getattr(usage, 'thoughts_token_count', None)},
-                    'latency_s': round(latency, 2)}
+            return response, model, endpoint, latency
     raise RecognitionError(last)
+
+
+def _meta(response, model, endpoint, latency):
+    usage = getattr(response, 'usage_metadata', None)
+    return {'model': getattr(response, 'model_version', None) or model, 'endpoint': endpoint,
+            'usage': {'input_tokens': getattr(usage, 'prompt_token_count', None),
+                      'output_tokens': getattr(usage, 'candidates_token_count', None),
+                      'thinking_tokens': getattr(usage, 'thoughts_token_count', None)},
+            'latency_s': round(latency, 2)}
+
+
+def recognize_foods_gemini(image, *, clients, models=None):
+    """{'items', 'notes', 'model', 'endpoint', 'usage', 'latency_s'} for one PIL image (already card-masked)."""
+    from google.genai import types
+    width, height = image.size
+    contents = [types.Part.from_bytes(data=jpeg_bytes(image), mime_type='image/jpeg'),
+                'List the foods visible in this photo.']
+    response, model, endpoint, latency = _generate(contents, INSTRUCTIONS, SCHEMA, clients, models)
+    answer = _answer_from(response)
+    return {'items': items_from_answer(answer, width, height, prefix='G'), 'notes': answer['notes'],
+            **_meta(response, model, endpoint, latency)}
+
+
+SIDE_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'dishes': {'type': 'array', 'items': {
+            'type': 'object',
+            'properties': {
+                'number': {'type': 'integer'},
+                'food_box_2d': {'type': 'array', 'items': {'type': 'integer'}, 'minItems': 4, 'maxItems': 4},
+                'container_box_2d': {'type': 'array', 'items': {'type': 'integer'}, 'minItems': 0, 'maxItems': 4},
+            },
+            'required': ['number', 'food_box_2d', 'container_box_2d']}},
+        'notes': {'type': 'string'},
+    },
+    'required': ['dishes', 'notes'],
+}
+
+SIDE_INSTRUCTIONS = f"""You see a second photo of a meal, taken from the side at a low angle. The dishes were already
+identified in a photo taken from above; the user lists them with their numbers.
+
+For every listed dish you can see in this side photo, report:
+- number: the dish's number from the list.
+- food_box_2d: [ymin, xmin, ymax, xmax], normalised to 0-{GRID}, the tightest box around the food itself as seen from
+  this angle: from the highest point of the food down to where it meets the plate. For a dish in a bowl or cup, box
+  the food you can see inside it (its surface, and any heap rising above the rim).
+- container_box_2d: for a dish in a bowl or cup, the box around the whole bowl or cup, from the top of its rim down to
+  where it stands on the table; an empty list for dishes on a plate.
+
+Skip listed dishes you cannot see. Report positions only: no sizes, weights or calories. Ignore the grey painted-over
+area, cutlery and hands. Use notes, in Traditional Chinese, for anything uncertain."""
+
+
+def _side_box(box, width, height):
+    if not (isinstance(box, list) and len(box) == 4 and all(isinstance(v, (int, float)) for v in box)):
+        return None
+    y0, x0, y1, x1 = (min(GRID, max(0, v)) for v in box)
+    x0, x1 = sorted((x0, x1))
+    y0, y1 = sorted((y0, y1))
+    if x1 - x0 < 5 or y1 - y0 < 5:
+        return None
+    return [round(x0 * width / GRID, 1), round(y0 * height / GRID, 1), round(x1 * width / GRID, 1),
+            round(y1 * height / GRID, 1)]
+
+
+def recognize_side_view(image, dishes, *, clients, models=None):
+    """{'boxes': {detection_id: {'food': [x0, y0, x1, y1], 'container': [...] or None}}, 'notes', model meta}.
+
+    image: the side photo, already card-masked. dishes: [(detection_id, name, container)] from the top photo, in
+    the page's order; Gemini answers with their numbers (1-based).
+    """
+    from google.genai import types
+    width, height = image.size
+    listing = '\n'.join(f'{index:02d} {name} ({container})' for index, (_, name, container) in enumerate(dishes, 1))
+    contents = [types.Part.from_bytes(data=jpeg_bytes(image), mime_type='image/jpeg'),
+                'Dishes from the photo taken from above:\n' + listing]
+    response, model, endpoint, latency = _generate(contents, SIDE_INSTRUCTIONS, SIDE_SCHEMA, clients, models)
+    answer = _parse_json(response)
+    if not isinstance(answer, dict) or not isinstance(answer.get('dishes'), list):
+        raise RecognitionError('gemini_answer_unreadable')
+    boxes = {}
+    for entry in answer['dishes']:
+        if not isinstance(entry, dict) or not isinstance(entry.get('number'), int):
+            continue
+        if not 1 <= entry['number'] <= len(dishes):
+            continue
+        food = _side_box(entry.get('food_box_2d'), width, height)
+        if food is None:
+            continue
+        boxes[dishes[entry['number'] - 1][0]] = {'food': food,
+                                                 'container': _side_box(entry.get('container_box_2d'), width, height)}
+    return {'boxes': boxes, 'notes': answer.get('notes', ''), **_meta(response, model, endpoint, latency)}

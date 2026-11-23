@@ -183,6 +183,11 @@
 !/src/portion/card_locator.py
 !/tools/setup_card_reference.py
 !/tests/test_card_locator.py
+!/docs/multi_view_volume_v0.md
+!/src/portion/multi_view.py
+!/src/evaluation/multi_view_sim.py
+!/tools/benchmark_multi_view.py
+!/tests/test_multi_view.py
 !/src/detection/claude_vision.py
 !/tests/test_claude_vision.py
 !/docs/claude_vision_v0.md

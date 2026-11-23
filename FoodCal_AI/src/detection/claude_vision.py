@@ -102,6 +102,8 @@ def _composition(food):
         out['components'] = parts
     if isinstance(food.get('cooking_method'), str):
         out['cooking_method'] = food['cooking_method']
+    if food.get('shape') in ('mound', 'flat'):  # piled up or lying flat: picks the height model for a side photo
+        out['shape'] = food['shape']
     return out
 
 

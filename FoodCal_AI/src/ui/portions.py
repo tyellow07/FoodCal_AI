@@ -8,6 +8,7 @@ import csv
 from decimal import Decimal
 from pathlib import Path
 
+from src.portion.multi_view import multi_view_volume
 from src.portion.nutrition_model import DEFAULT_COMPONENTS, energy_for_grams, food_nutrition
 from src.portion.rough_volume import REFERENCE_COLUMNS, kcal_for_grams, load_food_reference, rough_portion
 from .explain import food_name
@@ -20,6 +21,11 @@ NOTES = {
     'density_missing': '密度表還沒有這道菜，只能估體積；可以自己填重量',
     'kcal_missing': '熱量表還沒有這道菜，只能顯示重量',
     'composition_partly_unknown': '有些成分不在食材表裡，熱量只算認得的部分',
+    'side_photo_angle_out_of_range': '側面照的角度不對（要從桌面上方約 15–35 度拍），這道菜仍用單張照片估',
+    'side_container_box_missing': '側面照沒有框到整個碗，這道菜仍用單張照片估',
+    'side_height_not_measurable': '側面照量不出這道菜的高度，仍用單張照片估',
+    'side_bowl_not_measurable': '側面照量不出碗的深度，仍用單張照片估',
+    'invalid_side_box': '側面照的框不正確，這道菜仍用單張照片估',
 }
 
 
@@ -56,13 +62,37 @@ def _sum(intervals):
     return {k: sum(i[k] for i in intervals) for k in ('low', 'mid', 'high')}
 
 
-def portion_rows(items, card_box, reference, user_grams):
+def _with_side(row, rough, detection, box, card_box, side):
+    """Replace the single-photo volume with the two-photo one when the side photo has this dish; keep both."""
+    seen = (side or {}).get('boxes', {}).get(detection['detection_id'])
+    if not seen or not side.get('geometry'):
+        return rough
+    try:
+        both = multi_view_volume(detection['class_name'], box, card_box, seen['food'], side['geometry'],
+                                 detection.get('container'), seen.get('container'), detection.get('shape'))
+    except ValueError as error:
+        row['notes'].append(str(error).split(':')[0])
+        return rough
+    row.update(volume_method='side', single_volume_ml=rough['volume_ml'], height_cm=both['height_cm'],
+               shape=both['shape'])
+    rough = {**rough, 'volume_ml': both['volume_ml']}
+    density = (rough.get('reference') or {}).get('density')
+    if rough.get('grams') is not None and density is not None:
+        rough['grams'] = _scale(both['volume_ml'], density)
+        kcal = (rough.get('reference') or {}).get('kcal_per_100g')
+        rough['kcal'] = _scale(rough['grams'], kcal / 100) if kcal is not None else None
+    return rough
+
+
+def portion_rows(items, card_box, reference, user_grams, side=None):
     """(rows, total or None, missing names) for recognised and hand-added foods.
 
     Energy is split into 'kcal' (visible ingredients) and 'hidden_kcal' (recipe-based oil and sugar); the total
     carries both under 'visible' and 'hidden' next to its own low/mid/high. Items with a composition use the
     nutrition model; others fall back to the per-food reference table.
     user_grams maps detection_id -> grams typed by the user (None or 0 means not typed).
+    side: {'geometry': side_view_geometry(...), 'boxes': {detection_id: {'food': box, 'container': box or None}}}
+    from a side photo; dishes it covers get their height measured (multi_view.py) instead of assumed.
     """
     rows = []
     for detection in items:
@@ -73,7 +103,8 @@ def portion_rows(items, card_box, reference, user_grams):
         row = {'id': detection_id, 'class_name': class_name,
                'name': name or food_name(class_name),
                'volume_ml': None, 'grams': None, 'grams_source': None, 'kcal': None, 'hidden_kcal': None,
-               'nutrition': nutrition, 'notes': []}
+               'nutrition': nutrition, 'notes': [], 'volume_method': 'top', 'single_volume_ml': None,
+               'height_cm': None, 'shape': None}
         if card_box is None:
             row['notes'].append('card_missing')
         else:
@@ -82,6 +113,7 @@ def portion_rows(items, card_box, reference, user_grams):
             except ValueError as error:
                 row['notes'].append(str(error).split(':')[0])
             else:
+                rough = _with_side(row, rough, detection, box, card_box, side)
                 row['volume_ml'] = rough['volume_ml']
                 if nutrition is not None:
                     row['grams'], row['grams_source'] = _scale(rough['volume_ml'], nutrition['density']), 'rough'

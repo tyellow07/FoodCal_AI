@@ -55,6 +55,7 @@ python -B -m src.pipeline.diagnostic_demo
 - 2026-11-19 增補後（同環境，分支 tyellow-mvp-usability，自 tyellow-photo-item-review 分出）：491 tests，491 passed，0 failures，0 errors，0 skipped（新增 26 項：UI 方向 1、中文摘要 6、標註→證據 2、學生證比例尺份量 10、整餐評估 7；Streamlit AppTest 補摘要斷言）；diagnostic_demo exit 0，輸出與修改前逐位元組相同；Streamlit 實際啟動 health check 回 ok。合成資料端到端可算出熱量；所有數值皆為測試用合成數字。未取得或使用任何真實秤重、照片或 TFDA 資料。
 - 2026-11-13 加入照片食材來源審查 v0 後（同環境，分支 tyellow-photo-item-review）：465 tests，465 passed，0 failures，0 errors，0 skipped（新增 tests/test_photo_item_source_review.py 30 項，含第 9 節 14 個驗收案例與 48 個攻擊案例子測試）；Review v1／Context Provider／bootstrap 既有 72 項未修改即通過；標註相關五個模組 51 項通過；diagnostic_demo exit 0，輸出與修改前逐位元組相同。共用 helper 抽出另以 176,490 筆變異輸入比對新舊 validator，狀態、錯誤碼與路徑 0 差異。
 - 2026-11-23 營養區加上其他營養素（`docs/nutrition_model_v0.md` 第 6 節；飽和脂肪、糖、膳食纖維、鈉、膽固醇、鉀、鈣、鐵，取自 TFDA 開放資料集同一筆整合編號，調味鈉依烹調方式估計）：580 tests，580 passed，0 skipped；網頁用範例 1 實測一次。
+- 2026-11-23 多角度份量估計（`docs/multi_view_volume_v0.md`，`src/portion/multi_view.py`、`src/evaluation/multi_view_sim.py`、`tests/test_multi_view.py`）：只在模擬場景與合成學生證圖片驗證；真實準確度要依該文件第 5 節收秤重資料。
 
 ## 私有測試與缺席資源
 

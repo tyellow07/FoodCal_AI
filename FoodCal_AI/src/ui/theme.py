@@ -170,6 +170,29 @@ def nutrient_list(nutrients):
             f'鈉大多來自調味，橘字依烹調方式估計，不是照片證據。</div>')
 
 
+def side_table(rows):
+    """Per dish with a side photo: grams from the top photo alone vs with the side photo, and what was measured."""
+    from decimal import Decimal
+    body = []
+    for row in rows:
+        if row.get('volume_method') != 'side':
+            continue
+        density, single = (row.get('nutrition') or {}).get('density'), row.get('single_volume_ml')
+        one = (f"{(single['low'] * density).quantize(Decimal('1'))}–{(single['high'] * density).quantize(Decimal('1'))} g"
+               if single is not None and density is not None else '—')
+        grams = row.get('grams')
+        two = ('你填的' if row.get('grams_source') == 'user' else
+               f"{grams['low']}–{grams['high']} g" if grams else '—')
+        h = row['height_cm']
+        body.append(f'<tr><td>{escape(row["name"])}</td><td>{one}</td><td>{two}</td>'
+                    f'<td>{"碗深" if row.get("shape") == "bowl" else "高"} {h["low"]}–{h["high"]}</td></tr>')
+    if not body:
+        return '<div class="fc-meta">側面照裡沒有可以量的菜。</div>'
+    return ('<table class="fc-table"><tr><th>菜色</th><th>只用俯視照</th><th>加側面照</th><th>量到（cm）</th></tr>'
+            + ''.join(body) + '</table><div class="fc-meta" style="margin-top:.5rem">有側面照的菜，用量到的高度（碗是深度和'
+            '裝多滿）取代預設厚度。仍是粗估：只在模擬場景驗證過，還沒有用秤重的真實餐點驗證。</div>')
+
+
 def mobile_summary(total, macros, nutrients=None):
     """Phone-only card at the top of the page: kcal, macros and sodium, so the answer is not three screens down.
 

@@ -15,12 +15,13 @@ from src.ui import theme
 from src.ui.adapter import decode_upload, draw_items, draw_predictions, fixture_demo
 from src.ui.explain import food_name, reason_text, summarize
 from src.ui.portions import note_text, nutrition_of, portion_rows, read_food_reference_csv
-from src.portion.card_locator import load_card_reference, locate_card
+from src.portion.card_locator import SIDE_SQUASHES, load_card_reference, locate_card
+from src.portion.multi_view import side_view_geometry
 from src.portion.nutrition_model import (COOKING_METHODS, INGREDIENTS, add_nutrients, empty_nutrients, macros_for_grams,
                                          nutrients_for_grams)
 from src.portion.rough_volume import FOOD_TEMPLATES, cm_per_px
 from src.detection.claude_vision import RecognitionError
-from src.detection.gemini_vision import gemini_clients, mask_card, recognize_foods_gemini
+from src.detection.gemini_vision import gemini_clients, mask_card, recognize_foods_gemini, recognize_side_view
 
 ROOT = Path(__file__).resolve().parents[2]
 MODE_UPLOAD = '上傳照片辨識'
@@ -45,8 +46,12 @@ PHOTO_ERRORS = {
     'invalid_image_content': '圖片檔損壞或讀不出來，請換一張。',
 }
 PHOTO_ERROR_DEFAULT = '圖片無法讀取，請換一張 JPG／PNG／WebP 照片。'
-SESSION_KEYS = ('result', 'image', 'input_key', 'card_box', 'card_source', 'card_auto', 'manual_items', 'sample')
-PER_PHOTO_KEYS = ('result', 'image', 'card_box', 'card_source', 'card_auto', 'manual_items')
+SESSION_KEYS = ('result', 'image', 'input_key', 'card_box', 'card_source', 'card_auto', 'manual_items', 'sample',
+                'side')
+PER_PHOTO_KEYS = ('result', 'image', 'card_box', 'card_source', 'card_auto', 'manual_items', 'side')
+SIDE_HELP = ('**怎麼拍**：學生證留在原位、背面朝上平放，長邊朝向你；蹲低一點，從桌面上方約 15–35 度拍，'
+             '整盤菜和學生證都要入鏡，學生證放在菜的旁邊（不要在前面或後面）。碗裝的菜角度低一點（15–25 度）更準。')
+SIDE_ANGLE_ERROR = ('側面照的角度不對：請蹲低，從桌面上方約 15–35 度拍；學生證要平放、背面朝上、長邊朝向你。')
 FOOD_REFERENCE_PATH = ROOT / 'data/food_reference/food_reference.csv'
 CARD_REFERENCE_DIR = ROOT / 'data/card_reference'
 SAMPLES_DIR = ROOT / 'data/samples'  # optional local sample photos (Git-ignored)
@@ -142,7 +147,7 @@ def compute(result):
     _, _, items = current_items(result)
     tag = input_tag()
     typed = {item['detection_id']: st.session_state.get(f"grams_{tag}_{item['detection_id']}") for item in items}
-    rows, total, missing = portion_rows(items, st.session_state.get('card_box'), reference, typed)
+    rows, total, missing = portion_rows(items, st.session_state.get('card_box'), reference, typed, side_args())
     macros = {'protein': 0, 'carb': 0, 'fat': 0}
     nutrients = empty_nutrients()
     for row in rows:
@@ -251,6 +256,9 @@ def row_meta(row, item):
     if row['grams'] is not None:
         source = '你填的' if row['grams_source'] == 'user' else f"約 {row['grams']['low']}–{row['grams']['high']} g"
         bits.append(f"{source} · 看得到的約 {row['kcal']['mid'] if row['kcal'] else '—'} kcal")
+    if row.get('volume_method') == 'side' and row.get('height_cm'):
+        h = row['height_cm']
+        bits.append(f"側面照：{'碗深' if row.get('shape') == 'bowl' else '高度'}約 {h['low']}–{h['high']} cm")
     bits += [note_text(code) for code in row['notes']]
     return ' · '.join(bits)
 
@@ -306,6 +314,108 @@ def nutrition_card(result, rows, total, missing, macros):
     macros = {k: round(macros[k], 1) for k in ('protein', 'carb', 'fat')}
     st.markdown(theme.nutrition_panel(total, macros, f'約 {weight} g', per_dish, nutrients=nutrients),
                 unsafe_allow_html=True)
+
+
+def side_args():
+    """The side photo's geometry and boxes for portion_rows, or None before a side photo was analysed."""
+    side = st.session_state.get('side') or {}
+    if side.get('geometry') and side.get('boxes'):
+        return {'geometry': side['geometry'], 'boxes': side['boxes']}
+    return None
+
+
+def _quad(card):
+    if isinstance(card[0], (list, tuple)):
+        return card
+    x0, y0, x1, y1 = card
+    return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+
+
+def run_side_view(image, card, source, items, key):
+    """Read the camera angle from the card, paint the card over, ask Gemini where each dish is; store the outcome."""
+    side = {'image': image, 'card': card, 'card_source': source}
+    try:
+        geometry = side_view_geometry(card)
+    except ValueError as error:
+        code = str(error).split(':')[0]
+        side['error'] = SIDE_ANGLE_ERROR if code == 'side_photo_angle_out_of_range' else '學生證的框不正確，請重框。'
+        side['need_card'] = source == 'manual'
+        st.session_state['side'] = side
+        return
+    dishes = [(i['detection_id'], i.get('display_name') or food_name(i['class_name']), i.get('container') or 'plate')
+              for i in items]
+    try:
+        with st.spinner('Gemini 看側面照中…'):
+            found = recognize_side_view(mask_card(image, _quad(card)), dishes, clients=gemini_clients(key))
+    except RecognitionError as error:
+        side['error'] = GEMINI_ERRORS.get(str(error), str(error))
+        st.session_state['side'] = side
+        return
+    st.session_state['side'] = {**side, 'geometry': geometry, **found}
+
+
+def side_section(result, items, rows, key):
+    """Optional second photo from the side: measures dish heights (multi_view.py) instead of assuming them."""
+    if not result or not items:
+        return
+    tag = input_tag()
+    side = st.session_state.get('side') or {}
+    consent = st.session_state.get('gemini_consent')
+    with st.expander('多角度：加一張側面照，讓份量更準（選填）', expanded=bool(side)):
+        st.markdown(SIDE_HELP)
+        upload = st.file_uploader('＋ 側面照（手機可以直接拍照）', type=['png', 'jpg', 'jpeg', 'webp'],
+                                  key=f'side_upload_{tag}')
+        if not consent:
+            st.caption('要先在上面勾選同意把照片傳給 Google Gemini；側面照的學生證一樣會先塗掉。')
+        if st.button('分析側面照 →', type='primary', disabled=not (upload and consent and key),
+                     key=f'side_go_{tag}'):
+            try:
+                image = decode_upload(upload.getvalue())
+            except (ValueError, OSError) as error:
+                st.session_state['side'] = {'error': PHOTO_ERRORS.get(str(error), PHOTO_ERROR_DEFAULT)}
+            else:
+                reference, card = card_reference(), None
+                if reference is not None:
+                    with st.spinner('找學生證中…'):
+                        card = locate_card(image, reference, SIDE_SQUASHES)
+                if card:
+                    run_side_view(image, card['quad'], 'auto', items, key)
+                else:
+                    st.session_state['side'] = {'image': image, 'card': None, 'need_card': True}
+            st.rerun()
+        side = st.session_state.get('side') or {}
+        if side.get('error'):
+            st.error(side['error'])
+        if side.get('need_card') and side.get('image') is not None:
+            st.info('沒有自動找到學生證：在側面照上拖曳框出學生證，再按「用這個框繼續」。')
+            box = box_picker(side['image'], key='side_card_' + tag, name='card')
+            if st.button('用這個框繼續 →', disabled=box is None or not (consent and key), key='side_card_go_' + tag):
+                run_side_view(side['image'], box, 'manual', items, key)
+                st.rerun()
+        if side.get('geometry') and side.get('boxes') is not None:
+            numbered, unseen = [], []
+            for index, item in enumerate(items, 1):
+                name = item.get('display_name') or food_name(item['class_name'])
+                seen = side['boxes'].get(item['detection_id'])
+                if seen:
+                    numbered.append({'detection_id': item['detection_id'], 'display_name': name, 'number': index,
+                                     'bounding_box': dict(zip(('x_min', 'y_min', 'x_max', 'y_max'), seen['food']))})
+                else:
+                    unseen.append(name)
+            left, right = st.columns([1, 1.15], gap='medium')
+            left.image(draw_items(side['image'], numbered, _quad(side['card'])), width='stretch')
+            g = side['geometry']
+            left.caption(f"相機仰角約 {g['elevation_deg']:.0f}°（建議 15–35°）· 學生證"
+                         f"{'自動找到（綠框）' if side.get('card_source') == 'auto' else '你框的（綠框）'}，已在送出前塗掉 · "
+                         f"模型 {side.get('model')} · {side.get('latency_s')} 秒")
+            right.markdown(theme.side_table(rows), unsafe_allow_html=True)
+            if unseen:
+                right.caption('側面照沒看到：' + '、'.join(unseen) + '（仍用單張照片估）')
+            if side.get('notes'):
+                right.caption('Gemini：' + side['notes'])
+        if side and st.button('清除側面照', key=f'side_clear_{tag}'):
+            st.session_state.pop('side', None)
+            st.rerun()
 
 
 def tools_section(result):
@@ -478,6 +588,7 @@ def main():
             recognition_card(result, rows, items)
     with right:
         nutrition_card(result, rows, total, missing, macros)
+    side_section(result, items, rows, key)
     tools_section(result)
     if result:
         unknown = [i.get('display_name') or i['class_name'] for i in items if nutrition_of(i) is None]

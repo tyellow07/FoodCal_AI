@@ -212,13 +212,13 @@ def draw_items(image, items, card=None, show_boxes=True):
     if not show_boxes:
         return canvas
     for index, item in enumerate(items, 1):
-        fill, edge = PILLS[(index - 1) % len(PILLS)]
+        fill, edge = PILLS[(item.get('number', index) - 1) % len(PILLS)]
         box = item['bounding_box']
         draw.rounded_rectangle(tuple(box[k] for k in ('x_min', 'y_min', 'x_max', 'y_max')), radius=max(6, line * 3),
                                outline=edge, width=line)
-    for index, (text, (left, top, right, bottom), offset) in enumerate(tag_layout(draw, font, items, canvas.size, line,
-                                                                                  has_cjk), 1):
-        fill, edge = PILLS[(index - 1) % len(PILLS)]
+    tags = tag_layout(draw, font, items, canvas.size, line, has_cjk)
+    for index, (item, (text, (left, top, right, bottom), offset)) in enumerate(zip(items, tags), 1):
+        fill, edge = PILLS[(item.get('number', index) - 1) % len(PILLS)]
         draw.rounded_rectangle((left, top, right, bottom), radius=8, fill=fill, outline=edge, width=max(1, line // 2))
         draw.text((left + offset[0], top + offset[1]), text, font=font, anchor='lt', fill='#1f2a24')
     return canvas
@@ -235,6 +235,7 @@ def tag_layout(draw, font, items, size, line, has_cjk=True):
     for index, item in enumerate(items, 1):
         box = item['bounding_box']
         name = item.get('display_name') if has_cjk else None
+        index = item.get('number', index)  # the side photo keeps each dish's number from the top photo
         text = f'{index:02d} {name}' if name else f'{index:02d} {item["detection_id"]}'
         b = draw.textbbox((0, 0), text, font=font, anchor='lt')
         width, height = b[2] - b[0] + 16, b[3] - b[1] + 11
