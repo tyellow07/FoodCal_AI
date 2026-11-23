@@ -1,6 +1,6 @@
 # FoodCal AI — 開發交接版
 
-更新：2026-11-08；2026-11-19 增補（見「2026-11-19 增補」）。此目錄整合原始專案經審查的最新工作樹（含未 Commit 的 AI 輔助標註），供既有團隊 Repository 使用。先讀本頁，再讀 `AGENTS.md`、`HANDOFF.md` 與 `INTEGRATION_REPORT.md`。Repository 根目錄 README、菜單與團隊歷史保持原樣。
+更新：2026-11-08；2026-11-19 增補（見「2026-11-19 增補」）。此目錄整合原始專案經審查的最新工作樹（含未 Commit 的 AI 輔助標註），供既有團隊 Repository 使用。先讀本頁，再讀 `AGENTS.md`、`HANDOFF.md` 與 `INTEGRATION_REPORT.md`。Repository 根目錄 README 與團隊歷史保持原樣；三份校園菜單在根目錄的 `菜單/`（2026-11-24 整理，原本放在根目錄）。
 
 核心原則：**Recipe candidates may explain hidden calories, but are not visual proof.** 食譜候選只能提供隱藏食材／熱量的先驗；料理分類不能直接展開為照片食材，食譜份量不能當成照片重量。
 
