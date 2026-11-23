@@ -49,7 +49,7 @@ CSS = """
 .fc-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:.5rem; }
 .fc-note { background:#f6f8f3; border:1px solid #d5e0cf; border-radius:10px; padding:.6rem .75rem; font-size:.8rem;
            color:#3b4a3f; margin:.8rem 0; }
-.fc-sub { margin:1rem 0 .15rem; color:var(--fc-muted); font-size:.72rem; letter-spacing:.12em; font-weight:700; }
+.fc-nut-head { margin:1rem 0 .15rem; color:var(--fc-muted); font-size:.72rem; letter-spacing:.12em; font-weight:700; }
 .fc-nut { display:flex; justify-content:space-between; align-items:flex-start; gap:.6rem; padding:.35rem 0;
           border-bottom:1px solid #e1e8dc; font-size:.88rem; }
 .fc-nut b { white-space:nowrap; }
@@ -59,7 +59,42 @@ CSS = """
 .fc-table td { text-align:right; padding:.35rem .2rem; border-bottom:1px solid #e1e8dc; }
 .fc-table tr.total td { font-weight:700; border-bottom:none; }
 .fc-empty { color:var(--fc-muted); font-size:.9rem; padding:1.4rem 0; }
+.st-key-fc_mobile_summary { display:none !important; }
+.fc-mobile-summary { background:var(--fc-green-soft); border:1px solid #d5e0cf; border-radius:14px;
+                     padding:.75rem .9rem; margin:0 0 .8rem; }
+.fc-ms-kcal { font-size:2.2rem; font-weight:650; color:var(--fc-ink); line-height:1.05; margin-top:.15rem; }
+.fc-ms-kcal small { font-size:.8rem; color:var(--fc-muted); font-weight:500; margin-left:.3rem; }
+.fc-ms-row { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:.3rem; margin:.55rem 0 .35rem; }
+.fc-ms-row div { background:#f6f8f3; border-radius:8px; padding:.3rem .35rem; font-size:.7rem; color:var(--fc-muted); }
+.fc-ms-row b { display:block; color:var(--fc-ink); font-size:.92rem; white-space:nowrap; }
 @media (max-width: 760px) { .fc-steps { grid-template-columns:repeat(2, minmax(0,1fr)); } .fc-title { font-size:1.9rem; } }
+/* Phones: the answer first, compact chrome, thumbnails side by side, no iOS zoom on number boxes. */
+@media (max-width: 640px) {
+  .block-container { padding: 2.8rem .85rem 2rem !important; }
+  .fc-brand { font-size:.6rem; letter-spacing:.08em; }
+  .fc-badge { display:none; }
+  .fc-title { font-size:1.55rem; }
+  .fc-tagline { font-size:.88rem; margin:.2rem 0 .5rem; }
+  .fc-steps { grid-template-columns:repeat(5, minmax(0,1fr)); gap:.25rem; margin:.1rem 0 .5rem; }
+  .fc-step { padding:.3rem .1rem; border-radius:8px; text-align:center; }
+  .fc-step .n { font-size:.8rem; }
+  .fc-step .t { font-size:.54rem; letter-spacing:0; margin-top:0; }
+  .fc-step .d, .fc-step .s { display:none; }
+  .fc-rule { flex-direction:column; align-items:flex-start; gap:.2rem; padding:.5rem .75rem; margin:.1rem 0 .7rem; }
+  .fc-rule b { font-size:.66rem; }
+  .fc-rule span { font-size:.78rem; line-height:1.35; }
+  .st-key-fc_mobile_summary { display:block !important; }
+  [data-testid="stHorizontalBlock"] { gap:.8rem !important; }
+  .st-key-fc_plate, .st-key-fc_recognition { padding:.8rem .85rem !important; }
+  .st-key-fc_samples [data-testid="stHorizontalBlock"] { flex-wrap:nowrap !important; gap:.5rem !important; }
+  .st-key-fc_samples [data-testid="stColumn"] { min-width:0 !important; width:auto !important; flex:1 1 0 !important; }
+  .st-key-fc_samples img { height:96px !important; object-fit:cover; }
+  .fc-dish { font-size:1.3rem; }
+  .fc-row { margin-bottom:.5rem; }
+  .fc-kcal { font-size:2.6rem; }
+  .fc-panel { padding:.9rem .95rem; }
+  input, textarea { font-size:16px !important; }
+}
 </style>
 """
 
@@ -130,9 +165,27 @@ def nutrient_list(nutrients):
                     f'<b>{"≥ " if value["partial"] else ""}{amount} {unit}</b></div>')
     partial_note = ('「≥」：有食材沒有這項資料，實際可能更多。' if any(nutrients[k]['partial'] for k in NUTRIENT_ORDER)
                     else '')
-    return ('<div class="fc-sub">其他營養素 · OTHER NUTRIENTS</div>' + ''.join(rows) +
+    return ('<div class="fc-nut-head">其他營養素 · OTHER NUTRIENTS</div>' + ''.join(rows) +
             f'<div class="fc-meta" style="margin-top:.4rem">{partial_note}食材的數值來自衛福部食品營養成分資料庫；'
             f'鈉大多來自調味，橘字依烹調方式估計，不是照片證據。</div>')
+
+
+def mobile_summary(total, macros, nutrients=None):
+    """Phone-only card at the top of the page: kcal, macros and sodium, so the answer is not three screens down.
+
+    Hidden on wide screens by CSS (the full nutrition panel is already in view there).
+    """
+    if total is None:
+        return ''
+    cells = [('蛋白質', f"{macros['protein']} g"), ('醣類', f"{macros['carb']} g"), ('脂肪', f"{macros['fat']} g")]
+    if nutrients:
+        sodium = nutrients['sodium_mg']
+        cells.append(('鈉', f"{'≥ ' if sodium['partial'] else ''}{sodium['visible'] + sodium['hidden']} mg"))
+    row = ''.join(f'<div>{escape(name)}<b>{escape(value)}</b></div>' for name, value in cells)
+    return (f'<div class="fc-mobile-summary"><div class="fc-label">這餐估計 · Estimate</div>'
+            f'<div class="fc-ms-kcal">{total["mid"]}<small>kcal · 粗估 {total["low"]}–{total["high"]}</small></div>'
+            f'<div class="fc-ms-row">{row}</div>'
+            f'<div class="fc-meta">每道菜、完整營養素和依食譜估計的部分在下面 ↓</div></div>')
 
 
 def nutrition_panel(total, macros, weight_text, rows, empty_reason=None, nutrients=None):

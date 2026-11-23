@@ -39,6 +39,23 @@ class ThemeTests(unittest.TestCase):
             self.assertIn(text, html)
         self.assertNotIn('「≥」', theme.nutrient_list(empty_nutrients()))
 
+    def test_mobile_summary_and_phone_css(self):
+        self.assertEqual(theme.mobile_summary(None, None), '')
+        nutrients = empty_nutrients()
+        nutrients['sodium_mg'] = {**nutrients['sodium_mg'], 'visible': Decimal('300'), 'hidden': Decimal('600'),
+                                  'partial': True}
+        total = {'low': 300, 'mid': 640, 'high': 1380}
+        html = theme.mobile_summary(total, {'protein': Decimal('47.0'), 'carb': Decimal('47.8'), 'fat': Decimal('28.4')},
+                                    nutrients)
+        for text in ('fc-mobile-summary', '640', '300–1380', '47.0 g', '28.4 g', '≥ 900 mg'):
+            self.assertIn(text, html)
+        self.assertNotIn('鈉', theme.mobile_summary(total, {'protein': 1, 'carb': 1, 'fat': 1}))
+        css = theme.CSS
+        self.assertIn('@media (max-width: 640px)', css)
+        self.assertIn('.st-key-fc_mobile_summary { display:none !important; }', css)  # hidden on wide screens
+        self.assertIn('font-size:16px', css)  # iOS Safari zooms into inputs smaller than 16 px
+        self.assertEqual(css.count('.fc-sub {'), 1)  # the nutrient heading has its own class
+
     def test_item_header_escapes_and_numbers(self):
         html = theme.item_header(3, '<i>雞</i>', 'meta', '＋ 油')
         self.assertIn('03', html)
@@ -58,6 +75,22 @@ class DrawItemsTests(unittest.TestCase):
         self.assertEqual(hidden.getpixel((100, 300)), (255, 255, 255))
         self.assertNotEqual(hidden.getpixel((600, 400)), (255, 255, 255))
         self.assertEqual(image.getpixel((100, 300)), (255, 255, 255))  # the original is untouched
+
+    def test_food_tags_do_not_cover_each_other(self):
+        from PIL import ImageDraw
+        from src.ui.adapter import label_font, tag_layout
+        image = Image.new('RGB', (800, 600), 'white')
+        items = [{'detection_id': f'G{i}', 'display_name': name,
+                  'bounding_box': {'x_min': x, 'y_min': 40, 'x_max': x + 300, 'y_max': 400}}
+                 for i, (name, x) in enumerate((('炒高麗菜', 240), ('醬燒雞肉', 330), ('白斬雞', 790)), 1)]
+        font, has_cjk = label_font(32)
+        tags = tag_layout(ImageDraw.Draw(image), font, items, image.size, 4, has_cjk)
+        rects = [rect for _, rect, _ in tags]
+        for i, a in enumerate(rects):
+            self.assertTrue(0 <= a[0] and a[2] <= 800 and 0 <= a[1] and a[3] <= 600)  # inside the photo
+            for b in rects[i + 1:]:
+                self.assertFalse(a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3], (a, b))
+        self.assertEqual([text[:2] for text, _, _ in tags], ['01', '02', '03'])
 
 
 if __name__ == '__main__':

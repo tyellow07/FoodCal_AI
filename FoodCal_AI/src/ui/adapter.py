@@ -201,12 +201,36 @@ def draw_items(image, items, card=None, show_boxes=True):
     for index, item in enumerate(items, 1):
         fill, edge = PILLS[(index - 1) % len(PILLS)]
         box = item['bounding_box']
-        x0, y0, x1, y1 = (box[k] for k in ('x_min', 'y_min', 'x_max', 'y_max'))
-        draw.rounded_rectangle((x0, y0, x1, y1), radius=max(6, line * 3), outline=edge, width=line)
+        draw.rounded_rectangle(tuple(box[k] for k in ('x_min', 'y_min', 'x_max', 'y_max')), radius=max(6, line * 3),
+                               outline=edge, width=line)
+    for index, (text, (left, top, right, bottom), offset) in enumerate(tag_layout(draw, font, items, canvas.size, line,
+                                                                                  has_cjk), 1):
+        fill, edge = PILLS[(index - 1) % len(PILLS)]
+        draw.rounded_rectangle((left, top, right, bottom), radius=8, fill=fill, outline=edge, width=max(1, line // 2))
+        draw.text((left + offset[0], top + offset[1]), text, font=font, anchor='lt', fill='#1f2a24')
+    return canvas
+
+
+def tag_layout(draw, font, items, size, line, has_cjk=True):
+    """[(text, tag rectangle, text offset)] for the numbered food tags.
+
+    A tag sits just above its box's top-left corner, stays inside the photo, and moves down when it would cover an
+    earlier tag (boxes that start close together otherwise hide each other's names).
+    """
+    width_limit, height_limit = size
+    placed = []
+    for index, item in enumerate(items, 1):
+        box = item['bounding_box']
         name = item.get('display_name') if has_cjk else None
         text = f'{index:02d} {name}' if name else f'{index:02d} {item["detection_id"]}'
-        left, top = x0 + line, max(0, y0 - font.size - 10)
-        tx0, ty0, tx1, ty1 = draw.textbbox((left + 8, top + 4), text, font=font, anchor='lt')
-        draw.rounded_rectangle((tx0 - 8, ty0 - 5, tx1 + 8, ty1 + 6), radius=8, fill=fill, outline=edge, width=max(1, line // 2))
-        draw.text((left + 8, top + 4), text, font=font, anchor='lt', fill='#1f2a24')
-    return canvas
+        b = draw.textbbox((0, 0), text, font=font, anchor='lt')
+        width, height = b[2] - b[0] + 16, b[3] - b[1] + 11
+        left = max(0, min(box['x_min'] + line, width_limit - width))
+        top = max(0, min(box['y_min'] - height - 2, height_limit - height))
+        for _ in range(len(placed) + 1):
+            hits = [r for _, r, _ in placed if left < r[2] and r[0] < left + width and top < r[3] and r[1] < top + height]
+            if not hits:
+                break
+            top = min(max(r[3] for r in hits) + 2, height_limit - height)
+        placed.append((text, (left, top, left + width, top + height), (8 - b[0], 5 - b[1])))
+    return placed

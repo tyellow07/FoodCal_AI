@@ -186,13 +186,14 @@ def plate_card(result, raw, items, key):
     else:
         st.markdown('<div class="fc-empty">上傳一張餐點照片。把學生證<b>背面朝上</b>平放在餐盤旁，'
                     '程式會自動找到它來換算大小。</div>', unsafe_allow_html=True)
-    st.file_uploader('＋ 上傳照片', type=['png', 'jpg', 'jpeg', 'webp'],
+    st.file_uploader('＋ 上傳照片（手機可以直接拍照）', type=['png', 'jpg', 'jpeg', 'webp'],
                      key=f"upload_{st.session_state.get('upload_generation', 0)}")
     st.caption('JPG、PNG、WebP，最多 10 MB；照片和結果只留在這次的記憶體。')
     samples = sample_photos()
     if samples:
         st.markdown('<span class="fc-label">Or try a sample · 或試試範例</span>', unsafe_allow_html=True)
-        columns = st.columns(len(samples))
+        with st.container(key='fc_samples'):  # CSS keeps these side by side on phones
+            columns = st.columns(len(samples))
         for index, (column, path) in enumerate(zip(columns, samples), 1):
             with column:
                 st.image(str(path), width='stretch')
@@ -453,6 +454,10 @@ def main():
         items, rows, total, missing, macros, _ = compute(result)
     steps_slot.markdown(theme.steps(5 if total is not None else 4 if result else 1 if raw else 0),
                         unsafe_allow_html=True)
+    if total is not None:
+        with st.container(key='fc_mobile_summary'):  # shown on phones only (CSS)
+            st.markdown(theme.mobile_summary(total, {k: round(macros[k], 1) for k in ('protein', 'carb', 'fat')},
+                                             macros.get('nutrients')), unsafe_allow_html=True)
     left, middle, right = st.columns([1.15, 1.15, 0.95], gap='large')
     with left:
         with st.container(key='fc_plate'):
