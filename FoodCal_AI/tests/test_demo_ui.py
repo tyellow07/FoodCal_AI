@@ -111,6 +111,31 @@ class UIAdapterTests(unittest.TestCase):
         self.assertNotIn('exif', decoded.info)
         self.assertEqual(len(decoded.getexif()), 0)
 
+    def test_large_phone_photos_are_shrunk_not_rejected(self):
+        from src.ui import adapter
+        source = Image.new('RGB', (1600, 1200), 'white')
+        source.paste((255, 0, 0), (0, 0, 80, 80))
+        exif = Image.Exif()
+        exif[0x0112] = 6  # stored sideways, like many phone photos
+        buffer = BytesIO()
+        source.save(buffer, format='JPEG', exif=exif.tobytes(), quality=90)
+        # Scaled-down stand-in for a 48 MP photo (8064 x 6048) against the 20 MP limit and 4032 px long side.
+        with patch.object(adapter, 'MAX_PIXELS', 1_000_000), patch.object(adapter, 'MAX_LONG_SIDE', 800):
+            decoded = decode_upload(buffer.getvalue())
+        self.assertEqual(decoded.size, (600, 800))  # upright and shrunk to the long-side limit
+        self.assertGreater(decoded.getpixel((decoded.width - 10, 10))[0], 200)  # orientation still applied
+        self.assertEqual(len(decoded.getexif()), 0)
+        with patch.object(adapter, 'HARD_MAX_PIXELS', 1_000_000):
+            with self.assertRaisesRegex(ValueError, 'image_too_large'):
+                decode_upload(buffer.getvalue())
+        self.assertEqual(decode_upload(image_bytes()).size, (640, 480))  # small photos keep their size
+
+    def test_every_decode_error_has_a_message(self):
+        from src.ui.app import PHOTO_ERRORS
+        self.assertEqual(set(PHOTO_ERRORS), {'invalid_upload_size', 'unsupported_image_signature', 'image_too_large',
+                                             'invalid_image_content'})
+        self.assertIn('HEIC', PHOTO_ERRORS['unsupported_image_signature'])
+
     def test_overlay_only_predictions_not_gt(self):
         result, image = fixture_demo()
         result['evaluation'] = {'gt': [{'box': [0, 0, 640, 480]}]}

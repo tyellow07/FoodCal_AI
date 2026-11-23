@@ -14,11 +14,17 @@ from src.pipeline.diagnostic_demo import DEFAULT_FIXTURES, run_demo
 from src.portion import diagnostic_photo_energy
 
 
-MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-MAX_PIXELS = 20_000_000
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+MAX_PIXELS = 20_000_000  # bigger photos (48 MP phone cameras) are shrunk, not rejected
+MAX_LONG_SIDE = 4032  # the size of a 12 MP phone photo: plenty for the card finder; Gemini gets 1568 px anyway
+HARD_MAX_PIXELS = 100_000_000  # refuse anything larger outright (decompression-bomb guard)
 
 
 def decode_upload(raw):
+    """Upright RGB image without metadata; photos over MAX_PIXELS come back with a long side of MAX_LONG_SIDE.
+
+    Errors (ValueError): invalid_upload_size, unsupported_image_signature, image_too_large, invalid_image_content.
+    """
     if not isinstance(raw, bytes) or not raw or len(raw) > MAX_UPLOAD_BYTES:
         raise ValueError('invalid_upload_size')
     # Avoid Ultralytics' global Image.open HEIF fallback/automatic dependency installer.
@@ -29,12 +35,19 @@ def decode_upload(raw):
         raise ValueError('unsupported_image_signature')
     try:
         with decoder(BytesIO(raw)) as source:
-            if source.width * source.height > MAX_PIXELS:
-                raise ValueError('unsupported_or_large_image')
+            pixels = source.width * source.height
+            if pixels > HARD_MAX_PIXELS:
+                raise ValueError('image_too_large')
+            shrink = pixels > MAX_PIXELS
+            if shrink:  # JPEG can decode straight at 1/2, 1/4 or 1/8 size: fast and light on memory
+                scale = MAX_LONG_SIDE / max(source.size)
+                source.draft('RGB', (round(source.width * scale), round(source.height * scale)))
             source.load()
             # Phone photos store rotation in EXIF; apply it before EXIF is discarded so the display,
             # the detector input and the drawn boxes all use the upright image the user took.
             image = ImageOps.exif_transpose(source).convert('RGB')
+            if shrink and max(image.size) > MAX_LONG_SIDE:
+                image.thumbnail((MAX_LONG_SIDE, MAX_LONG_SIDE), Image.LANCZOS)
             image.info.clear()  # Do not carry user EXIF or filenames into the display object.
             return image
     except (OSError, SyntaxError) as error:

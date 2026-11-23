@@ -38,6 +38,13 @@ GEMINI_ERRORS = {
     'gemini_answer_unreadable': 'Gemini 的回答格式不對，請再試一次。',
     'gemini_bad_request': '送給 Gemini 的請求不被接受，請換一張照片再試。',
 }
+PHOTO_ERRORS = {
+    'invalid_upload_size': '照片超過 20 MB，請縮小後再上傳。',
+    'unsupported_image_signature': '只接受 JPG、PNG、WebP。iPhone 的 HEIC 請先轉成 JPG（用手機瀏覽器上傳時通常會自動轉）。',
+    'image_too_large': '照片超過 1 億像素，請縮小後再上傳。',
+    'invalid_image_content': '圖片檔損壞或讀不出來，請換一張。',
+}
+PHOTO_ERROR_DEFAULT = '圖片無法讀取，請換一張 JPG／PNG／WebP 照片。'
 SESSION_KEYS = ('result', 'image', 'input_key', 'card_box', 'card_source', 'card_auto', 'manual_items', 'sample')
 PER_PHOTO_KEYS = ('result', 'image', 'card_box', 'card_source', 'card_auto', 'manual_items')
 FOOD_REFERENCE_PATH = ROOT / 'data/food_reference/food_reference.csv'
@@ -150,7 +157,11 @@ def compute(result):
 
 
 def start_recognition(raw, key):
-    image = decode_upload(raw)
+    try:
+        image = decode_upload(raw)
+    except (ValueError, OSError) as error:  # show why instead of crashing the page
+        st.session_state['gemini_error'] = PHOTO_ERRORS.get(str(error), PHOTO_ERROR_DEFAULT)
+        return
     reference, card = card_reference(), None
     if reference is not None:
         with st.spinner('找學生證中…'):
@@ -181,14 +192,14 @@ def plate_card(result, raw, items, key):
     elif raw:
         try:
             st.image(decode_upload(raw), caption='照片預覽（還沒開始辨識）', width='stretch')
-        except (ValueError, OSError):
-            st.error('圖片無法讀取，請換一張 PNG／JPEG／WEBP 照片。')
+        except (ValueError, OSError) as error:
+            st.error(PHOTO_ERRORS.get(str(error), PHOTO_ERROR_DEFAULT))
     else:
         st.markdown('<div class="fc-empty">上傳一張餐點照片。把學生證<b>背面朝上</b>平放在餐盤旁，'
                     '程式會自動找到它來換算大小。</div>', unsafe_allow_html=True)
     st.file_uploader('＋ 上傳照片（手機可以直接拍照）', type=['png', 'jpg', 'jpeg', 'webp'],
                      key=f"upload_{st.session_state.get('upload_generation', 0)}")
-    st.caption('JPG、PNG、WebP，最多 10 MB；照片和結果只留在這次的記憶體。')
+    st.caption('JPG、PNG、WebP，最多 20 MB；4800 萬畫素的手機照片會自動縮小。照片和結果只留在這次的記憶體。')
     samples = sample_photos()
     if samples:
         st.markdown('<span class="fc-label">Or try a sample · 或試試範例</span>', unsafe_allow_html=True)

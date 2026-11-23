@@ -11,7 +11,7 @@
 .\.venv\Scripts\python.exe -m streamlit run src/ui/app.py  # Windows
 ```
 
-瀏覽 http://127.0.0.1:8501。服務預設只綁定 loopback，關閉 Streamlit usage telemetry，限制上傳 10 MB。
+瀏覽 http://127.0.0.1:8501。服務預設只綁定 loopback，關閉 Streamlit usage telemetry，限制上傳 20 MB（2026-11-23 從 10 MB 調高，見最後一節）。
 停止服務使用 Ctrl+C。
 
 新環境可建立獨立 UI 環境；下列命令假設基底 Python 已具有專案原有 Python 依賴，並非完整依賴鎖定：
@@ -131,3 +131,15 @@ CLI 的 validation YOLO 路徑會寫入私有 audit 並要求 validation 核准�
 - 照片上的編號標籤不再互相蓋住：兩個框靠很近時，後面的標籤往下移、不超出照片（`adapter.tag_layout`）。桌面版也一樣受益。
 - 同時修正：營養素清單的標題原本和辨識卡的副標題共用 `.fc-sub` class，讓 Gemini 的備註變成小字粗體；改用 `.fc-nut-head`。
 - 限制：只用模擬器看過，沒有在真的 iPhone／Android 上測；「修正工具」裡用拖曳框選學生證的圖表在觸控螢幕上是否好用，還沒驗證。
+
+## 大張手機照片（2026-11-23）
+
+使用者用 iPhone 18 Pro 拍的照片（8064 × 6048，約 4880 萬畫素）不能用：`decode_upload` 原本超過 2000 萬畫素就拒絕，
+預覽顯示「圖片無法讀取」，按「開始辨識」時沒有接住錯誤，整頁跳出 traceback。修正：
+
+- **自動縮小，不再拒絕**：超過 2000 萬畫素的照片縮成長邊 4032 px（等於 1200 萬畫素手機照片的大小）。JPEG 用 Pillow 的
+  `draft` 直接以 1/2 解碼，這張照片 0.09 秒；縮小後學生證照樣找得到（配對 0.93）。送給 Gemini 的本來就只有長邊 1568 px，
+  份量用的是學生證和菜在同一張圖的像素比例，縮小不影響。超過 1 億像素才拒絕（避免解壓縮炸彈）。
+- **上傳上限 10 MB → 20 MB**（`.streamlit/config.toml` 與 `MAX_UPLOAD_BYTES`）：4800 萬畫素的 JPEG 常常超過 10 MB。
+- **錯誤講清楚**：太大、格式不對（HEIC 要先轉 JPG）、檔案壞掉各有中文說明（`PHOTO_ERRORS`）；「開始辨識」遇到讀不了的照片會顯示原因，不會當掉。
+- 測試：`tests/test_demo_ui.py` 新增縮小（含 EXIF 方向）、超過上限拒絕、每個錯誤代碼都有說明。
