@@ -224,9 +224,9 @@ class StreamlitOfflineTests(unittest.TestCase):
         self.assertFalse(app.exception)
         load.assert_not_called()
         self.assertNotIn('result', app.session_state)
-        self.assertTrue(next(b for b in app.button if b.label == '開始辨識 →').disabled)
+        self.assertFalse(any(b.label == '開始辨識 →' for b in app.button))  # nothing to start before a photo
         self.assertTrue(any('KEY RULE' in m.value for m in app.markdown))
-        self.assertTrue(any('Nutrition' in m.value for m in app.markdown))
+        self.assertTrue(any('class="fc-tips"' in m.value for m in app.markdown))  # the upload step with its photo tips
 
     def test_clear_discards_session_results(self):
         app = self.app()
@@ -235,6 +235,50 @@ class StreamlitOfflineTests(unittest.TestCase):
         next(b for b in app.button if b.label == '清除本次圖片與結果').click().run()
         self.assertFalse(app.exception)
         self.assertNotIn('result', app.session_state)
+
+    def photo_app(self):
+        """The page with a chosen photo, before recognition (the upload box is gone by then)."""
+        app = AppTest.from_file(str(Path(__file__).resolve().parents[1]/'src/ui/app.py'), default_timeout=10)
+        app.session_state['mode'] = '上傳照片辨識'
+        app.session_state['photo'] = {'raw': image_bytes(), 'name': 'lunch.png', 'source': 'upload'}
+        return app.run()
+
+    @staticmethod
+    def recognised(app):
+        """Session state as a recognition of the chosen photo leaves it: one rice dish and a card box."""
+        app.session_state['image'] = decode_upload(app.session_state['photo']['raw'])
+        app.session_state['card_box'], app.session_state['card_source'] = [20, 20, 180, 120], 'manual'
+        app.session_state['result'] = {
+            'engine': 'gemini', 'card_masked': False, 'model': 'test-model', 'latency_s': 1, 'usage': {}, 'notes': '',
+            'items': [{'detection_id': 'G1', 'class_name': 'cooked_rice_region', 'display_name': '白飯',
+                       'container': 'plate', 'components': [('cooked_rice', 100)], 'cooking_method': 'none',
+                       'bounding_box': {'x_min': 240, 'y_min': 120, 'x_max': 480, 'y_max': 360}}]}
+        return app
+
+    def test_chosen_photo_waits_for_consent_and_can_be_changed(self):
+        app = self.photo_app()
+        self.assertFalse(app.exception)
+        self.assertTrue(next(b for b in app.button if b.label == '開始辨識 →').disabled)  # no consent yet
+        self.assertTrue(any('lunch.png' in c.value and '還沒開始辨識' in c.value for c in app.caption))
+        self.assertFalse(any('class="fc-tips"' in m.value for m in app.markdown))  # the upload step is gone
+        next(b for b in app.button if b.label == '換一張照片').click().run()
+        self.assertFalse(app.exception)
+        self.assertNotIn('photo', app.session_state)
+        self.assertTrue(any('class="fc-tips"' in m.value for m in app.markdown))
+        self.assertFalse(any(b.label == '開始辨識 →' for b in app.button))
+
+    def test_result_shows_dishes_under_photo_and_total_beside_it(self):
+        app = self.photo_app()
+        app.checkbox(key='gemini_consent').check().run()
+        self.recognised(app).run()
+        self.assertFalse(app.exception)
+        self.assertFalse(any(b.label == '開始辨識 →' for b in app.button))
+        self.assertTrue(any(b.label == '換一張照片' for b in app.button))
+        self.assertTrue(any('class="fc-kcal"' in m.value for m in app.markdown))  # the nutrition panel has a total
+        self.assertTrue(any('class="fc-name"' in m.value and '白飯' in m.value for m in app.markdown))
+        app.run()  # the consent checkbox is not drawn any more, but the answer stays for the side photo
+        self.assertTrue(app.session_state['gemini_consent'])
+        self.assertFalse(any(c.key == 'gemini_consent' for c in app.checkbox))
 
 
 if __name__ == '__main__':

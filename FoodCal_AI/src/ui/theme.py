@@ -11,8 +11,48 @@ CSS = """
         --fc-green:#3d6b4f; --fc-green-soft:#e9efe4; --fc-step:#f2efe9; }
 .stApp { background: var(--fc-bg); }
 .block-container { padding-top: 3.6rem; max-width: 1280px; }
-.st-key-fc_plate, .st-key-fc_recognition { background: var(--fc-card); border-radius: 16px !important;
-  border: 1px solid var(--fc-line) !important; padding: 1rem 1.1rem !important; box-shadow: 0 1px 2px rgba(31,42,36,.04); }
+.st-key-fc_plate, .st-key-fc_recognition, .st-key-fc_start, .st-key-fc_upload, .st-key-fc_samples {
+  background: var(--fc-card); border-radius: 16px !important; border: 1px solid var(--fc-line) !important;
+  padding: 1rem 1.1rem !important; box-shadow: 0 1px 2px rgba(31,42,36,.04); }
+.st-key-fc_plate [data-testid="stImage"] img { max-height: 62vh; object-fit: contain; }
+/* Before a photo is chosen: one centred column, the upload box first and the samples apart below it. */
+.st-key-fc_upload, .st-key-fc_samples, .fc-or { max-width: 780px; width: 100%; margin-left: auto !important;
+  margin-right: auto !important; }
+.st-key-fc_upload, .st-key-fc_samples { padding: 1.3rem 1.5rem 1.2rem !important; }
+.fc-title2 { font-size:1.45rem; font-weight:700; color:var(--fc-ink); line-height:1.3; margin:.2rem 0 .15rem; }
+.fc-title3 { font-size:1.08rem; font-weight:650; color:var(--fc-ink); line-height:1.3; margin:.15rem 0 .1rem; }
+.fc-lead { color:var(--fc-muted); font-size:.9rem; line-height:1.5; margin-bottom:.35rem; }
+/* Streamlit's upload box, enlarged into one big drop area with Chinese text (the whole area opens the picker). */
+.st-key-fc_upload [data-testid="stFileUploaderDropzone"] { min-height:210px; border:2px dashed #b9cdb4;
+  border-radius:14px; background:#f6f8f3; flex-direction:column !important; align-items:center; justify-content:center;
+  gap:.55rem; padding:1.4rem 1rem; text-align:center; transition:background .15s ease, border-color .15s ease; }
+.st-key-fc_upload [data-testid="stFileUploaderDropzone"]:hover { background:#eef3ea; border-color:var(--fc-green); }
+.st-key-fc_upload [data-testid="stFileUploaderDropzone"]::before { content:''; order:0; width:54px; height:54px;
+  border-radius:50%; background:#e2ebdc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233d6b4f' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z'/%3E%3Ccircle cx='12' cy='13' r='3.5'/%3E%3C/svg%3E") center / 28px no-repeat; }
+.st-key-fc_upload [data-testid="stFileUploaderDropzoneInstructions"] { order:1; width:100%; margin:0 !important;
+  justify-content:center; text-align:center; }
+.st-key-fc_upload [data-testid="stFileUploaderDropzoneInstructions"] > div { align-items:center; }
+.st-key-fc_upload [data-testid="stFileUploaderDropzoneInstructions"] span { display:none; }
+.st-key-fc_upload [data-testid="stFileUploaderDropzoneInstructions"] > div::before { content:'把餐點照片拖曳到這裡';
+  color:var(--fc-ink); font-weight:650; font-size:1.05rem; }
+.st-key-fc_upload [data-testid="stFileUploaderDropzone"] > span { order:2; }
+.st-key-fc_upload [data-testid="stFileUploaderDropzone"]::after { content:'JPG、PNG、WebP，最多 20 MB · 手機可以直接拍照';
+  order:3; color:var(--fc-muted); font-size:.78rem; }
+.st-key-fc_upload [data-testid="stFileUploaderDropzone"] button { background:var(--fc-green); border-color:var(--fc-green);
+  color:#fff; border-radius:10px; padding:.45rem 1.3rem; }
+.st-key-fc_upload [data-testid="stFileUploaderDropzone"] button:hover { background:#335b43; border-color:#335b43; color:#fff; }
+.st-key-fc_upload [data-testid="stFileUploaderDropzone"] button p { display:none; }
+.st-key-fc_upload [data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"]::after {
+  content:'選擇照片'; font-weight:600; }
+.fc-tips { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:.9rem; margin:.9rem 0 .45rem; }
+.fc-tip { display:flex; gap:.6rem; align-items:flex-start; color:var(--fc-muted); font-size:.8rem; line-height:1.45; }
+.fc-tip svg { flex:0 0 34px; }
+.fc-tip b { display:block; color:var(--fc-ink); font-size:.86rem; font-weight:650; }
+.fc-or { display:flex; align-items:center; gap:.8rem; color:var(--fc-muted); font-size:.82rem; margin-top:.5rem;
+  margin-bottom:.5rem; }
+.fc-or::before, .fc-or::after { content:''; flex:1; height:1px; background:var(--fc-line); }
+.st-key-fc_samples [data-testid="stImage"] img { height:150px; object-fit:cover; border-radius:10px; }
+.fc-sample-name { font-weight:650; color:var(--fc-ink); font-size:.9rem; margin:.05rem 0 -.25rem; }
 .fc-brand { display:flex; justify-content:space-between; align-items:center; color:var(--fc-muted);
             font-size:.78rem; letter-spacing:.14em; text-transform:uppercase; font-weight:600; }
 .fc-badge { background:#1f2a24; color:#fff; border-radius:6px; padding:2px 8px; font-size:.7rem; letter-spacing:.08em; }
@@ -85,10 +125,19 @@ CSS = """
   .fc-rule span { font-size:.78rem; line-height:1.35; }
   .st-key-fc_mobile_summary { display:block !important; }
   [data-testid="stHorizontalBlock"] { gap:.8rem !important; }
-  .st-key-fc_plate, .st-key-fc_recognition { padding:.8rem .85rem !important; }
+  .st-key-fc_plate, .st-key-fc_recognition, .st-key-fc_start, .st-key-fc_samples { padding:.8rem .85rem !important; }
+  .st-key-fc_upload { padding:1rem .95rem .9rem !important; }
+  .st-key-fc_plate [data-testid="stImage"] img { max-height:48vh; }
+  .fc-title2 { font-size:1.2rem; }
+  .st-key-fc_upload [data-testid="stFileUploaderDropzone"] { min-height:168px; padding:1.1rem .8rem; }
+  .st-key-fc_upload [data-testid="stFileUploaderDropzoneInstructions"] > div::before { content:'拍一張或選一張餐點照片'; }
+  .st-key-fc_upload [data-testid="stFileUploaderDropzone"]::after { content:'JPG、PNG、WebP，最多 20 MB'; }
+  .st-key-fc_upload [data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"]::after {
+    content:'拍照或選照片'; }
+  .fc-tips { grid-template-columns:1fr; gap:.55rem; margin:.75rem 0 .5rem; }
   .st-key-fc_samples [data-testid="stHorizontalBlock"] { flex-wrap:nowrap !important; gap:.5rem !important; }
   .st-key-fc_samples [data-testid="stColumn"] { min-width:0 !important; width:auto !important; flex:1 1 0 !important; }
-  .st-key-fc_samples img { height:96px !important; object-fit:cover; }
+  .st-key-fc_samples [data-testid="stImage"] img { height:104px; }
   .fc-dish { font-size:1.3rem; }
   .fc-row { margin-bottom:.5rem; }
   .fc-kcal { font-size:2.6rem; }
@@ -127,6 +176,55 @@ def steps(done):
 def key_rule():
     return ('<div class="fc-rule"><b>KEY RULE</b><span>Recipe candidates may explain hidden calories, but are not visual '
             'proof. 食譜只能解釋看不到的熱量，不能當作照片證據。</span></div>')
+
+
+ICON_ATTRS = ('width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="#3d6b4f" stroke-width="1.6" '
+              'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"')
+PHOTO_TIPS = (  # (icon, title, detail): how to take a photo the page can measure
+    (f'<svg {ICON_ATTRS}><circle cx="13" cy="17" r="10"/><circle cx="13" cy="17" r="6" stroke-opacity=".4"/>'
+     f'<rect x="25.5" y="11" width="6.5" height="12" rx="1.4"/></svg>',
+     '學生證放旁邊', '背面朝上、平放在餐盤旁，用來換算大小'),
+    (f'<svg {ICON_ATTRS}><rect x="10" y="2.5" width="14" height="9" rx="2"/><circle cx="17" cy="7" r="2"/>'
+     f'<path d="M17 14.5v6" stroke-dasharray="2 2"/><path d="M14.5 18.5l2.5 2.5 2.5-2.5"/>'
+     f'<ellipse cx="17" cy="27.5" rx="11" ry="3.8"/></svg>',
+     '從正上方拍', '整盤菜和學生證都要拍進去'),
+    (f'<svg {ICON_ATTRS}><rect x="9" y="15" width="16" height="13" rx="2.5"/>'
+     f'<path d="M12.5 15v-3.5a4.5 4.5 0 0 1 9 0V15"/><circle cx="17" cy="21.5" r="1.5"/></svg>',
+     '照片不會保存', '只留在這次的記憶體；請不要拍到人臉'),
+)
+
+
+def upload_intro():
+    """Heading of the upload card shown before a photo is chosen."""
+    return (card_head('Your plate · 你的餐盤') +
+            '<div class="fc-title2">拍下這一餐，看看有多少熱量</div>'
+            '<div class="fc-lead">上傳一張從正上方拍的餐點照片：Gemini 會辨識每道菜，再用旁邊的學生證換算份量。</div>')
+
+
+def photo_tips():
+    """Three short tips under the upload box: card beside the plate, shot from above, photo not kept."""
+    tips = ''.join(f'<div class="fc-tip">{icon}<div><b>{escape(title)}</b>{escape(detail)}</div></div>'
+                   for icon, title, detail in PHOTO_TIPS)
+    return f'<div class="fc-tips">{tips}</div>'
+
+
+def or_divider():
+    return '<div class="fc-or">或</div>'
+
+
+def samples_intro():
+    """Heading of the sample photos, a card of their own below the upload box."""
+    return (card_head('Samples · 範例照片') +
+            '<div class="fc-title3">沒有照片？先用範例看看</div>'
+            '<div class="fc-lead">選一張範例照片，下一步一樣要按「開始辨識」才會送出。</div>')
+
+
+def start_intro():
+    """Heading of the start card next to the chosen photo."""
+    return (card_head('Next · 下一步') +
+            '<div class="fc-title2">開始辨識這張照片</div>'
+            '<div class="fc-lead">Gemini 會列出每道菜、看得到的食材和烹調方式，通常 5–30 秒。'
+            '辨識完，這裡會換成熱量和營養素。</div>')
 
 
 def card_head(label, chip=None):

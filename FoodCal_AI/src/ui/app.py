@@ -1,9 +1,11 @@
 """Streamlit page: a real photo recognised by Google Gemini with rough portions, or the synthetic demo.
 
-Layout follows the proposal deck: workflow steps and the KEY RULE banner on top, then three cards - your plate
-(photo with numbered tags, upload, samples, start), food recognition (numbered dishes with editable grams) and the
-nutrition panel (big kcal, macro bar, visible-vs-recipe split). User images and results stay in session memory;
-photos go to Gemini only after the user agrees, with the student card painted over.
+Layout follows the proposal deck: workflow steps and the KEY RULE banner on top. Before a photo is chosen the page
+shows one centred upload box with photo tips, and the sample photos apart below it. Once a photo is chosen it has two
+columns: the photo (after recognition with numbered tags, then the numbered dishes with editable grams) on the left,
+and on the right the start card - after recognition the nutrition panel (big kcal, macro bar, visible-vs-recipe
+split). User images and results stay in session memory; photos go to Gemini only after the user agrees, with the
+student card painted over.
 """
 import sys
 from pathlib import Path
@@ -46,9 +48,14 @@ PHOTO_ERRORS = {
     'invalid_image_content': '圖片檔損壞或讀不出來，請換一張。',
 }
 PHOTO_ERROR_DEFAULT = '圖片無法讀取，請換一張 JPG／PNG／WebP 照片。'
-SESSION_KEYS = ('result', 'image', 'input_key', 'card_box', 'card_source', 'card_auto', 'manual_items', 'sample',
-                'side')
-PER_PHOTO_KEYS = ('result', 'image', 'card_box', 'card_source', 'card_auto', 'manual_items', 'side')
+SESSION_KEYS = ('result', 'image', 'input_key', 'card_box', 'card_source', 'card_auto', 'manual_items', 'photo',
+                'preview', 'side')
+PER_PHOTO_KEYS = ('result', 'image', 'preview', 'card_box', 'card_source', 'card_auto', 'manual_items', 'side')
+SAMPLE_LABELS = {'campus_buffet': '校園自助餐', 'white_rice': '白飯'}
+KEY_MISSING = ('還沒有設定 Gemini API 金鑰：在 `FoodCal_AI/.streamlit/secrets.toml` 加一行 '
+               '`GEMINI_API_KEY = "你的金鑰"`，再重新整理這個頁面。')
+PRIVACY_NOTE = ('只送縮小過、沒有拍攝資訊（含 GPS）的照片，學生證會先自動塗掉。依 Google 免費版條款，'
+                '照片可能被用來改進產品並由人員審閱，請不要拍到人臉。')
 SIDE_HELP = ('**怎麼拍**：學生證留在原位、背面朝上平放，長邊朝向你；蹲低一點，從桌面上方約 15–35 度拍，'
              '整盤菜和學生證都要入鏡，學生證放在菜的旁邊（不要在前面或後面）。碗裝的菜角度低一點（15–25 度）更準。')
 SIDE_ANGLE_ERROR = ('側面照的角度不對：請蹲低，從桌面上方約 15–35 度拍；學生證要平放、背面朝上、長邊朝向你。')
@@ -124,6 +131,32 @@ def sample_photos():
     return sorted(p for p in SAMPLES_DIR.iterdir() if p.suffix.lower() in ('.jpg', '.jpeg', '.png', '.webp'))[:4]
 
 
+def sample_label(path):
+    """Name shown under a sample photo: campus_buffet_01.jpg -> 校園自助餐."""
+    stem = path.stem.rstrip('0123456789').rstrip('_-')
+    return SAMPLE_LABELS.get(stem) or stem.replace('_', ' ') or path.stem
+
+
+def change_photo():
+    """Back to the upload step: forget this photo and its results; a fresh upload box replaces the old one."""
+    clear_session()
+    st.session_state.pop('gemini_error', None)
+    st.session_state['upload_generation'] = st.session_state.get('upload_generation', 0) + 1
+    st.rerun()
+
+
+def preview_image(raw):
+    """{'image': decoded photo} or {'error': message}; decoded once per photo, then reused."""
+    preview = st.session_state.get('preview')
+    if preview is None:
+        try:
+            preview = {'image': decode_upload(raw)}
+        except (ValueError, OSError) as error:  # show why instead of crashing the page
+            preview = {'error': PHOTO_ERRORS.get(str(error), PHOTO_ERROR_DEFAULT)}
+        st.session_state['preview'] = preview
+    return preview
+
+
 def current_items(result):
     """(base items left after exclusions, excluded items, items used for portions incl. hand-added ones)."""
     tag = input_tag()
@@ -162,11 +195,11 @@ def compute(result):
 
 
 def start_recognition(raw, key):
-    try:
-        image = decode_upload(raw)
-    except (ValueError, OSError) as error:  # show why instead of crashing the page
-        st.session_state['gemini_error'] = PHOTO_ERRORS.get(str(error), PHOTO_ERROR_DEFAULT)
+    preview = preview_image(raw)
+    if 'image' not in preview:
+        st.session_state['gemini_error'] = preview['error']
         return
+    image = preview['image']
     reference, card = card_reference(), None
     if reference is not None:
         with st.spinner('找學生證中…'):
@@ -187,63 +220,84 @@ def start_recognition(raw, key):
     st.session_state['image'] = image
 
 
-def plate_card(result, raw, items, key):
-    image = st.session_state.get('image')
-    chip = '辨識完成' if result else '已選照片' if raw else '尚未上傳'
-    st.markdown(theme.card_head('Your plate · 你的餐盤', chip), unsafe_allow_html=True)
-    if result and image is not None:
-        show = st.checkbox('顯示框', value=True, key='show_boxes')
-        st.image(draw_items(image, items, st.session_state.get('card_box'), show), width='stretch')
-    elif raw:
-        try:
-            st.image(decode_upload(raw), caption='照片預覽（還沒開始辨識）', width='stretch')
-        except (ValueError, OSError) as error:
-            st.error(PHOTO_ERRORS.get(str(error), PHOTO_ERROR_DEFAULT))
-    else:
-        st.markdown('<div class="fc-empty">上傳一張餐點照片。把學生證<b>背面朝上</b>平放在餐盤旁，'
-                    '程式會自動找到它來換算大小。</div>', unsafe_allow_html=True)
-    st.file_uploader('＋ 上傳照片（手機可以直接拍照）', type=['png', 'jpg', 'jpeg', 'webp'],
-                     key=f"upload_{st.session_state.get('upload_generation', 0)}")
-    st.caption('JPG、PNG、WebP，最多 20 MB；4800 萬畫素的手機照片會自動縮小。照片和結果只留在這次的記憶體。')
+def upload_stage(key):
+    """No photo yet: one large upload box with the photo tips; the sample photos sit apart below it."""
+    with st.container(key='fc_upload'):
+        st.markdown(theme.upload_intro(), unsafe_allow_html=True)
+        st.file_uploader('上傳餐點照片（手機可以直接拍照）', type=['png', 'jpg', 'jpeg', 'webp'],
+                         key=f"upload_{st.session_state.get('upload_generation', 0)}", label_visibility='collapsed')
+        st.markdown(theme.photo_tips(), unsafe_allow_html=True)
+        if not key:
+            st.warning(KEY_MISSING)
     samples = sample_photos()
-    if samples:
-        st.markdown('<span class="fc-label">Or try a sample · 或試試範例</span>', unsafe_allow_html=True)
-        with st.container(key='fc_samples'):  # CSS keeps these side by side on phones
-            columns = st.columns(len(samples))
+    if not samples:
+        return
+    st.markdown(theme.or_divider(), unsafe_allow_html=True)
+    with st.container(key='fc_samples'):
+        st.markdown(theme.samples_intro(), unsafe_allow_html=True)
+        columns = st.columns(len(samples), gap='medium')
         for index, (column, path) in enumerate(zip(columns, samples), 1):
             with column:
                 st.image(str(path), width='stretch')
-                if st.button(f'範例 {index}', key=f'sample_{index}', width='stretch'):
-                    st.session_state['sample'] = str(path)
-                    st.session_state['upload_generation'] = st.session_state.get('upload_generation', 0) + 1
+                st.markdown(f'<div class="fc-sample-name">{theme.escape(sample_label(path))}</div>',
+                            unsafe_allow_html=True)
+                if st.button('用這張照片', key=f'sample_{index}', width='stretch'):
+                    st.session_state['photo'] = {'raw': path.read_bytes(), 'name': sample_label(path),
+                                                 'source': 'sample'}
                     st.rerun()
-    if not key:
-        st.warning('還沒有設定 Gemini API 金鑰：在 `FoodCal_AI/.streamlit/secrets.toml` 加一行 '
-                   '`GEMINI_API_KEY = "你的金鑰"`，再重新整理這個頁面。')
+
+
+def recognition_caption(result):
+    """Where the card came from and which model answered, under the recognised photo."""
+    auto, source = st.session_state.get('card_auto'), st.session_state.get('card_source')
+    card_text = ('自動找到學生證（綠框）' if source == 'auto' else '學生證：你手動框的（綠框）' if source == 'manual' else
+                 '沒有找到學生證，到下方「修正工具」框出來')
+    score = f"（配對 {auto['score']:.2f}）" if auto and source == 'auto' else ''
+    masked = '，已在送出前塗掉' if result.get('card_masked') else ''
+    usage = result.get('usage') or {}
+    return (f"{card_text}{score}{masked}。模型 {result.get('model')} · {result.get('latency_s')} 秒 · "
+            f"{usage.get('input_tokens')}/{usage.get('output_tokens')} tokens（免費額度）")
+
+
+def plate_card(result, raw, items):
+    """The chosen photo: a preview before recognition, then the photo with numbered tags and the card box."""
+    image = st.session_state.get('image')
+    photo = st.session_state.get('photo') or {}
+    chip = '辨識完成' if result else '範例照片' if photo.get('source') == 'sample' else '已選照片'
+    st.markdown(theme.card_head('Your plate · 你的餐盤', chip), unsafe_allow_html=True)
+    if result and image is not None:
+        st.image(draw_items(image, items, st.session_state.get('card_box'), st.session_state.get('show_boxes', True)),
+                 width='stretch')
+        st.caption(recognition_caption(result))
+        toggle_column, button_column = st.columns(2, vertical_alignment='center')
+        toggle_column.toggle('顯示辨識框', value=True, key='show_boxes')
+        if button_column.button('換一張照片', key='change_photo_done', width='stretch'):
+            change_photo()
+        return
+    preview = preview_image(raw)
+    if 'error' in preview:
+        st.error(preview['error'])
+    else:
+        st.image(preview['image'], width='stretch')
+    st.caption(f"{photo.get('name') or '照片'} · 還沒開始辨識")
+
+
+def start_card(raw, key):
+    """Next to the chosen photo: consent, then start; or pick another photo."""
+    st.markdown(theme.start_intro(), unsafe_allow_html=True)
     consent = st.checkbox('我了解並同意把這張照片傳給 Google Gemini 辨識', key='gemini_consent')
-    st.caption('只送縮小過、沒有拍攝資訊（含 GPS）的照片，學生證會先自動塗掉。依 Google 免費版條款，'
-               '照片可能被用來改進產品並由人員審閱，請不要拍到人臉。')
-    if st.button('開始辨識 →', type='primary', disabled=not raw or not (consent and key), width='stretch'):
+    st.caption(PRIVACY_NOTE)
+    readable = 'image' in preview_image(raw)
+    if st.button('開始辨識 →', type='primary', disabled=not (readable and consent and key), width='stretch'):
         st.session_state.pop('gemini_error', None)
         start_recognition(raw, key)
         st.rerun()
     if st.session_state.get('gemini_error'):
         st.error(st.session_state['gemini_error'])
-    if result:
-        auto = st.session_state.get('card_auto')
-        card_text = ('自動找到學生證（綠框）' if st.session_state.get('card_source') == 'auto' else
-                     '學生證：你手動框的（綠框）' if st.session_state.get('card_source') == 'manual' else
-                     '沒有找到學生證，到下方「修正工具」框出來')
-        masked = '，已在送出前塗掉' if result.get('card_masked') else ''
-        score = f"（配對 {auto['score']:.2f}）" if auto and st.session_state.get('card_source') == 'auto' else ''
-        usage = result.get('usage') or {}
-        st.caption(f"{card_text}{score}{masked}。模型 {result.get('model')} · {result.get('latency_s')} 秒 · "
-                   f"{usage.get('input_tokens')}/{usage.get('output_tokens')} tokens（免費額度）")
-    if st.button('清除本次圖片與結果', width='stretch'):
-        clear_session()
-        st.session_state.pop('gemini_error', None)
-        st.session_state['upload_generation'] = st.session_state.get('upload_generation', 0) + 1
-        st.rerun()
+    if not key:
+        st.warning(KEY_MISSING)
+    if st.button('換一張照片', key='change_photo_start', width='stretch'):
+        change_photo()
 
 
 def row_meta(row, item):
@@ -268,10 +322,6 @@ def recognition_card(result, rows, items):
     model = (result or {}).get('model')
     st.markdown(theme.card_head('Food recognition · 食物辨識', model.replace('gemini-', '') if model else None),
                 unsafe_allow_html=True)
-    if not result:
-        st.markdown('<div class="fc-empty">按「開始辨識」後，Gemini 會列出照片裡的每道菜、看得到的食材和烹調方式。</div>',
-                    unsafe_allow_html=True)
-        return
     names = '、'.join(i.get('display_name') or food_name(i['class_name']) for i in items) or '沒有找到食物'
     st.markdown(f'<div class="fc-dish">{theme.escape(names)}</div>'
                 f'<div class="fc-sub">{theme.escape(result.get("notes") or "Gemini 看照片辨識；框的位置是大概的。")}</div>',
@@ -298,9 +348,6 @@ def recognition_card(result, rows, items):
 
 
 def nutrition_card(result, rows, total, missing, macros):
-    if not result:
-        st.markdown(theme.nutrition_panel(None, None, '', []), unsafe_allow_html=True)
-        return
     if total is None:
         reason = ('還沒有學生證可以換算大小：到下方「修正工具」框出學生證，或直接填每道菜的克數。'
                   if st.session_state.get('card_box') is None else
@@ -522,13 +569,16 @@ def show_result(result):
 
 
 def photo_bytes():
-    """Raw bytes of the uploaded photo, else of the chosen sample; resets per-photo state when the photo changes."""
+    """Raw bytes of the chosen photo (uploaded or a sample), or None before one is chosen.
+
+    The bytes live in session state because the upload box goes away once a photo is chosen (a widget that is not
+    drawn loses its value). Per-photo state resets when the photo changes.
+    """
     uploaded = st.session_state.get(f"upload_{st.session_state.get('upload_generation', 0)}")
-    raw = uploaded.getvalue() if uploaded else None
-    if raw:
-        st.session_state.pop('sample', None)
-    elif st.session_state.get('sample') and Path(st.session_state['sample']).is_file():
-        raw = Path(st.session_state['sample']).read_bytes()
+    if uploaded:
+        st.session_state['photo'] = {'raw': uploaded.getvalue(), 'name': uploaded.name, 'source': 'upload'}
+    photo = st.session_state.get('photo')
+    raw = photo['raw'] if photo else None
     if raw:
         from hashlib import sha256
         input_key = (sha256(raw).hexdigest(), False)
@@ -551,6 +601,8 @@ def main():
     if st.session_state.get('mode') != mode:
         clear_session()
         st.session_state['mode'] = mode
+    if 'gemini_consent' in st.session_state:  # keep the answer while its checkbox is not drawn (after recognition)
+        st.session_state['gemini_consent'] = st.session_state['gemini_consent']
     steps_slot = st.empty()
     st.markdown(theme.key_rule(), unsafe_allow_html=True)
     if mode == MODE_DEMO:
@@ -575,19 +627,26 @@ def main():
         items, rows, total, missing, macros, _ = compute(result)
     steps_slot.markdown(theme.steps(5 if total is not None else 4 if result else 1 if raw else 0),
                         unsafe_allow_html=True)
+    if not raw:
+        upload_stage(key)
+        return
     if total is not None:
         with st.container(key='fc_mobile_summary'):  # shown on phones only (CSS)
             st.markdown(theme.mobile_summary(total, {k: round(macros[k], 1) for k in ('protein', 'carb', 'fat')},
                                              macros.get('nutrients')), unsafe_allow_html=True)
-    left, middle, right = st.columns([1.15, 1.15, 0.95], gap='large')
+    left, right = st.columns([1.45, 1], gap='large')
     with left:
         with st.container(key='fc_plate'):
-            plate_card(result, raw, items, key)
-    with middle:
-        with st.container(key='fc_recognition'):
-            recognition_card(result, rows, items)
+            plate_card(result, raw, items)
+        if result:
+            with st.container(key='fc_recognition'):
+                recognition_card(result, rows, items)
     with right:
-        nutrition_card(result, rows, total, missing, macros)
+        if result:
+            nutrition_card(result, rows, total, missing, macros)
+        else:
+            with st.container(key='fc_start'):
+                start_card(raw, key)
     side_section(result, items, rows, key)
     tools_section(result)
     if result:

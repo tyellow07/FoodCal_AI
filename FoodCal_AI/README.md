@@ -20,6 +20,7 @@
   - 2026-11-23：營養區加上其他營養素（飽和脂肪、糖、膳食纖維、鈉、膽固醇、鉀、鈣、鐵；`docs/nutrition_model_v0.md` 第 6 節），數值取自同一筆 TFDA 資料；調味的鈉、用油的飽和脂肪、加的糖依烹調方式估計，橘字分開顯示；沒有資料的標「≥」。
   - 2026-11-23：手機版面（`docs/demo_ui_v0.md` 最後一節）：辨識後最上方先顯示「這餐估計」卡，流程卡與 KEY RULE 精簡、範例照片並排、輸入框 16 px 避免 iPhone 放大；照片上的編號標籤不再互相蓋住。
   - 2026-11-23：多角度份量估計（`docs/multi_view_volume_v0.md`）：選填的側面照（桌面上方 15–35 度）量每道菜的高度、碗深和裝多滿，取代單張照片假設的厚度；學生證算出相機角度與比例尺，含透視。模擬場景（`python -B -m tools.benchmark_multi_view`）中位誤差：白飯堆 11%、片狀 19%、碗裝 8%（單張約 32–41% MAPE）；還沒用秤重的真實餐點驗證。
+  - 2026-11-24：網頁版面重整（`docs/demo_ui_v0.md` 最後一節）：還沒選照片時只有置中的大上傳區和拍照提醒，範例照片另外一張卡、用「或」隔開；選好照片後改成兩欄（左邊照片和菜色清單，右邊「開始辨識」，辨識後換成營養估計），取代原本的三欄。
   - 2026-11-20：網頁辨識改用 Google Gemini 免費 API（`docs/gemini_vision_v0.md`）；YOLO 與 Claude（`docs/claude_vision_v0.md`）先放棄，程式保留。
   - 2026-11-20：網頁改用粗估份量（`docs/rough_volume_estimation_v0.md`）：自動找學生證背面的悠遊卡 logo（設定：`python -m tools.setup_card_reference`），找不到再手動框，用學生證當比例尺，依形狀模板估體積，再乘上密度表的密度；可以手動加菜、自己填重量；密度與熱量表放在 `data/food_reference/food_reference.csv`（格式見 `docs/examples/food_reference_template.csv`）。
   - 2026-11-20：「體積 × 密度」方法 `reference_card_volume_density` v0（同一份文件第 5 節）：密度表填網路公開資料並留來源，有效高度由秤重照片學出；沒秤重的同形狀食物只給未驗證的體積與重量，不進熱量。
