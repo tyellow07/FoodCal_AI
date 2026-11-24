@@ -53,6 +53,40 @@ CSS = """
 .fc-or::before, .fc-or::after { content:''; flex:1; height:1px; background:var(--fc-line); }
 .st-key-fc_samples [data-testid="stImage"] img { height:150px; object-fit:cover; border-radius:10px; }
 .fc-sample-name { font-weight:650; color:var(--fc-ink); font-size:.9rem; margin:.05rem 0 -.25rem; }
+.fc-divider { height:1px; background:var(--fc-line); margin:.75rem 0 .6rem; }
+/* Box pickers keep the photo's size; on a narrow screen they scroll inside the card instead of spilling out. */
+.st-key-fc_plate [data-testid="stVegaLiteChart"] { overflow-x:auto; }
+.st-key-fc_plate [data-testid="stFullScreenFrame"]:has([data-testid="stVegaLiteChart"]) [data-testid="stElementToolbar"] {
+  display:none; }  /* "show data / download PNG / copy spec" mean nothing on a box picker */
+/* The optional side photo: a slim upload box - icon, two lines of text and the button in one row. */
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzone"] { min-height:74px; border:1.5px dashed #c9d6c3;
+  border-radius:12px; background:#fafbf8; flex-direction:row !important; align-items:center; gap:.75rem;
+  padding:.6rem .8rem; transition:background .15s ease, border-color .15s ease; }
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzone"]:hover { background:#f1f5ed; border-color:var(--fc-green); }
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzone"]::before { content:''; order:0; flex:0 0 42px; height:42px;
+  border-radius:10px; background:#e9efe4 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%233d6b4f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 26.5h26'/%3E%3Cpath d='M15.5 20.5h13c0 3-2.9 5.5-6.5 5.5s-6.5-2.5-6.5-5.5z'/%3E%3Crect x='2.5' y='8.5' width='9' height='6.5' rx='1.3'/%3E%3Ccircle cx='7' cy='11.75' r='1.6'/%3E%3Cpath d='M12.5 13.5l4.5 4' stroke-dasharray='1.6 1.8'/%3E%3C/svg%3E") center / 30px no-repeat; }
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzoneInstructions"] { order:1; flex:1 1 auto; margin:0 !important;
+  text-align:left; }
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzoneInstructions"] > div { align-items:flex-start; }
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzoneInstructions"] span { display:none; }
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzoneInstructions"] > div::before { content:'＋ 加一張側面照（選填）';
+  color:var(--fc-ink); font-weight:650; font-size:.93rem; }
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzoneInstructions"] > div::after {
+  content:'蹲低斜拍，份量會更準'; color:var(--fc-muted); font-size:.76rem; }
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzone"] > span { order:2; }
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzone"] button { border-radius:10px; }
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzone"] button p { display:none; }
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"]::after {
+  content:'選擇照片'; font-weight:600; }
+/* A chosen side photo: small thumbnail beside its name (after the plate image rule, so the thumbnail wins). */
+.st-key-fc_side_staged { background:#fafbf8; border:1px solid var(--fc-line); border-radius:12px;
+  padding:.55rem .65rem !important; }
+.st-key-fc_side_staged [data-testid="stHorizontalBlock"] { flex-wrap:nowrap !important; gap:.75rem !important; }
+.st-key-fc_side_staged [data-testid="stColumn"]:first-child { flex:0 0 112px !important; width:112px !important;
+  min-width:112px !important; }
+.st-key-fc_side_staged [data-testid="stColumn"]:last-child { flex:1 1 auto !important; width:auto !important;
+  min-width:0 !important; }
+.st-key-fc_side_staged [data-testid="stImage"] img { height:84px; object-fit:cover; border-radius:8px; }
 .fc-brand { display:flex; justify-content:space-between; align-items:center; color:var(--fc-muted);
             font-size:.78rem; letter-spacing:.14em; text-transform:uppercase; font-weight:600; }
 .fc-badge { background:#1f2a24; color:#fff; border-radius:6px; padding:2px 8px; font-size:.7rem; letter-spacing:.08em; }
@@ -135,6 +169,10 @@ CSS = """
   .st-key-fc_upload [data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"]::after {
     content:'拍照或選照片'; }
   .fc-tips { grid-template-columns:1fr; gap:.55rem; margin:.75rem 0 .5rem; }
+  .st-key-fc_plate_actions [data-testid="stHorizontalBlock"] { flex-wrap:wrap !important; gap:.5rem !important; }
+  .st-key-fc_plate_actions [data-testid="stColumn"] { flex:1 1 calc(50% - .5rem) !important;
+    width:calc(50% - .5rem) !important; min-width:calc(50% - .5rem) !important; }
+  .st-key-fc_side_drop [data-testid="stFileUploaderDropzone"]::before { display:none; }
   .st-key-fc_samples [data-testid="stHorizontalBlock"] { flex-wrap:nowrap !important; gap:.5rem !important; }
   .st-key-fc_samples [data-testid="stColumn"] { min-width:0 !important; width:auto !important; flex:1 1 0 !important; }
   .st-key-fc_samples [data-testid="stImage"] img { height:104px; }
@@ -225,6 +263,21 @@ def start_intro():
             '<div class="fc-title2">開始辨識這張照片</div>'
             '<div class="fc-lead">Gemini 會列出每道菜、看得到的食材和烹調方式，通常 5–30 秒。'
             '辨識完，這裡會換成熱量和營養素。</div>')
+
+
+def pick_intro(title, lead):
+    """Heading over the photo while it is a box picker (boxing the card or a missed dish)."""
+    return f'<div class="fc-title3">{escape(title)}</div><div class="fc-lead">{escape(lead)}</div>'
+
+
+def side_offer():
+    """One line on why a side photo helps, above its upload box under the recognised photo."""
+    return '<div class="fc-lead">俯視照只量得到面積；加一張側面照，可以量每道菜的高度和碗裝多滿。</div>'
+
+
+def side_staged(name, note):
+    """Name and state of a chosen side photo, beside its thumbnail."""
+    return f'<div class="fc-name">側面照</div><div class="fc-meta">{escape(name)} · {escape(note)}</div>'
 
 
 def card_head(label, chip=None):

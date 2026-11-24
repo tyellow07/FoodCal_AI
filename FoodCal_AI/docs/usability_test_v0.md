@@ -50,7 +50,7 @@
 
 | 檢查項 | 怎麼確認 |
 | --- | --- |
-| no_raw_json_on_main_screen | 不展開「開發者細節」時，主畫面沒有 JSON 或程式欄位名 |
+| no_raw_json_on_main_screen | 網址沒有加 `?dev=1` 時，主畫面沒有 JSON 或程式欄位名（合成展示模式：不展開「開發者細節」時） |
 | chinese_reasons_and_next_steps | 無法估算與錯誤時，畫面有中文原因與下一步 |
 | phone_width_t1_without_side_scroll | 手機（約 390 px 寬）連到同一網路的 Streamlit，完成 T1 不需左右捲動 |
 

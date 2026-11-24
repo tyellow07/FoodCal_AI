@@ -280,6 +280,97 @@ class StreamlitOfflineTests(unittest.TestCase):
         self.assertTrue(app.session_state['gemini_consent'])
         self.assertFalse(any(c.key == 'gemini_consent' for c in app.checkbox))
 
+    @staticmethod
+    def side_box(app):
+        return [u for u in app.file_uploader if u.label == '側面照（選填）']
+
+    def test_side_photo_can_join_before_the_start_without_opening_anything(self):
+        app = self.photo_app()
+        self.assertFalse(app.expander)  # nothing a user needs is folded away
+        self.assertEqual(len(self.side_box(app)), 1)
+        self.assertTrue(any('15–35 度' in c.value for c in app.caption))  # how to take it, in view
+        self.side_box(app)[0].set_value(('side.png', image_bytes(), 'image/png')).run()
+        self.assertFalse(app.exception)
+        self.assertEqual(app.session_state['side_photo']['name'], 'side.png')
+        self.assertFalse(self.side_box(app))  # the thumbnail replaces the upload box
+        self.assertTrue(any('再看側面照' in c.value for c in app.caption))
+        app.run()  # the upload box is gone; the photo stays
+        self.assertEqual(app.session_state['side_photo']['name'], 'side.png')
+        next(b for b in app.button if b.label == '移除側面照').click().run()
+        self.assertNotIn('side_photo', app.session_state)
+        self.assertEqual(len(self.side_box(app)), 1)
+
+    def test_side_photo_chosen_first_is_analysed_right_after_the_top_photo(self):
+        app = self.photo_app()
+        app.secrets['GEMINI_API_KEY'] = 'test-key'
+        self.side_box(app)[0].set_value(('side.png', image_bytes(), 'image/png')).run()
+        app.checkbox(key='gemini_consent').check().run()
+        found = {'model': 'test-model', 'latency_s': 1, 'usage': {}, 'notes': '',
+                 'items': [{'detection_id': 'G1', 'class_name': 'cooked_rice_region', 'display_name': '白飯',
+                            'container': 'plate', 'components': [('cooked_rice', 100)], 'cooking_method': 'none',
+                            'bounding_box': {'x_min': 240, 'y_min': 120, 'x_max': 480, 'y_max': 360}}]}
+        with patch('src.detection.gemini_vision.recognize_foods_gemini', return_value=found), \
+                patch('src.detection.gemini_vision.gemini_clients', return_value=[]), \
+                patch('src.portion.card_locator.load_card_reference', return_value=None):
+            next(b for b in app.button if b.label == '開始辨識 →').click().run()
+        self.assertFalse(app.exception)
+        self.assertEqual(app.session_state['result']['items'][0]['display_name'], '白飯')
+        self.assertTrue(app.session_state['side']['need_card'])  # no card found in it: waits for a drawn box
+        self.assertTrue(any('側面照裡的學生證' in i.value for i in app.info))
+        self.assertTrue(next(b for b in app.button if b.label == '用這個框繼續 →').disabled)
+
+    def test_tools_are_buttons_under_the_photo(self):
+        app = self.photo_app()
+        app.checkbox(key='gemini_consent').check().run()
+        self.recognised(app).run()
+        self.assertFalse(app.expander)
+        self.assertEqual(len(self.side_box(app)), 1)  # the side photo can still be added after recognition
+        app.toggle(key='show_boxes').set_value(False).run()
+        next(b for b in app.button if b.label == '＋ 加一道菜').click().run()
+        self.assertEqual(app.session_state['plate_mode'], 'add')
+        self.assertTrue(any(s.label == '哪一道菜' for s in app.selectbox))
+        self.assertTrue(next(b for b in app.button if b.label == '加入這道菜').disabled)  # nothing boxed yet
+        next(b for b in app.button if b.label == '取消').click().run()
+        self.assertIsNone(app.session_state['plate_mode'])
+        self.assertFalse(app.toggle(key='show_boxes').value)  # kept while the switch was hidden
+        next(b for b in app.button if b.label == '重框學生證').click().run()
+        self.assertTrue(any('框出學生證' in m.value for m in app.markdown))
+        next(b for b in app.button if b.label == '取消').click().run()
+        self.assertFalse(app.exception)
+        self.assertTrue(any(b.label == '重框學生證' for b in app.button))
+
+    def test_missing_card_points_to_the_button_under_the_photo(self):
+        app = self.photo_app()
+        app.checkbox(key='gemini_consent').check().run()
+        self.recognised(app)
+        app.session_state['card_box'], app.session_state['card_source'] = None, None
+        app.run()
+        self.assertFalse(app.exception)
+        self.assertEqual(next(b for b in app.button if b.key == 'card_mode').label, '框出學生證')
+        self.assertTrue(any('框出學生證' in w.value for w in app.warning))
+        self.assertFalse(any('修正工具' in m.value for m in app.markdown))
+
+    def test_hand_added_dish_has_its_own_remove_button(self):
+        app = self.photo_app()
+        app.checkbox(key='gemini_consent').check().run()
+        self.recognised(app)
+        app.session_state['manual_items'] = [{'detection_id': 'M1', 'class_name': 'beef_noodles',
+                                              'bounding_box': {'x_min': 40, 'y_min': 300, 'x_max': 200, 'y_max': 460}}]
+        app.run()
+        self.assertTrue(any('（手動加入）' in m.value for m in app.markdown))
+        next(b for b in app.button if b.label == '移除').click().run()
+        self.assertFalse(app.exception)
+        self.assertEqual(app.session_state['manual_items'], [])
+
+    def test_raw_answer_only_with_dev_in_the_address(self):
+        app = self.photo_app()
+        app.checkbox(key='gemini_consent').check().run()
+        self.recognised(app).run()
+        self.assertFalse(app.json)
+        app.query_params['dev'] = '1'
+        app.run()
+        self.assertTrue(app.json)
+
 
 if __name__ == '__main__':
     unittest.main()

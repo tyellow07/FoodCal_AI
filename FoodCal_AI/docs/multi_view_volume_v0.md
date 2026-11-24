@@ -2,7 +2,7 @@
 
 狀態：已實作，只在模擬場景驗證過，還沒有用秤重的真實餐點驗證。
 程式：`src/portion/multi_view.py`（幾何與體積）、`src/portion/card_locator.py`（側面照找學生證）、
-`src/detection/gemini_vision.py`（`recognize_side_view`）、`src/ui/portions.py`、`src/ui/app.py`（「多角度」區塊）；
+`src/detection/gemini_vision.py`（`recognize_side_view`）、`src/ui/portions.py`、`src/ui/app.py`（側面照區塊）；
 模擬與評估：`src/evaluation/multi_view_sim.py`、`tools/benchmark_multi_view.py`；測試：`tests/test_multi_view.py`。
 
 核心原則不變：**Recipe candidates may explain hidden calories, but are not visual proof.** 側面照只量看得到的高度。
@@ -18,7 +18,8 @@
 - 第一張照常：從上往下拍，學生證背面朝上平放在餐盤旁。
 - 第二張：**學生證不要動**，長邊朝向自己；蹲低一點，從桌面上方約 **15–35 度**拍，整盤菜和學生證都要入鏡，
   學生證放在菜的旁邊（不要放在菜的前面或後面）。碗裝的菜角度低一點（15–25 度）更準。
-- 網頁：辨識完第一張後，展開「多角度：加一張側面照，讓份量更準（選填）」，上傳後按「分析側面照」。
+- 網頁（2026-11-24 起不用點開任何區塊）：選好俯視照後，在「開始辨識」卡裡加側面照（選填），按「開始辨識」會接著分析；
+  辨識完才想加，就用照片下方的側面照上傳框，再按「分析側面照」。
   學生證一樣會先在本機找到並塗掉才送出；找不到時可以手動框。
 
 ## 3. 計算方式
