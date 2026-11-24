@@ -107,8 +107,16 @@ def _composition(food):
     return out
 
 
+NAME_FIELDS = (('zh-TW', 'name_zh'), ('en', 'name_en'), ('ja', 'name_ja'), ('ko', 'name_ko'), ('id', 'name_id'),
+               ('vi', 'name_vi'))  # page language -> the answer field naming the dish in it (Gemini fills all six)
+
+
 def items_from_answer(answer, width, height, prefix='C'):
-    """Schema answer -> page items (detection_id C1.., class_name, display_name, pixel box, container, ...)."""
+    """Schema answer -> page items (detection_id C1.., class_name, display_name, names, pixel box, container, ...).
+
+    display_name is the Chinese name (English when there is none); names maps each page language to the name the
+    answer gave in it, for the page to show in the visitor's language.
+    """
     items = []
     for index, food in enumerate(answer.get('foods', []), 1):
         box = food['box']
@@ -121,6 +129,8 @@ def items_from_answer(answer, width, height, prefix='C'):
             'detection_id': f'{prefix}{index}',
             'class_name': food['food_key'] if known else _snake(food['name_en']),
             'display_name': food['name_zh'] or food['name_en'],
+            'names': {code: food[field].strip() for code, field in NAME_FIELDS
+                      if isinstance(food.get(field), str) and food[field].strip()},
             'container': food['container'] if food['container'] in CONTAINERS else 'plate',
             'confidence': food['confidence'] if food['confidence'] in CONFIDENCE else 'low',
             'visible_ingredients': list(food.get('visible_ingredients') or []),

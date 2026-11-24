@@ -1,0 +1,1100 @@
+"""Every text on the web page, in the six page languages (i18n.py picks one).
+
+Each entry lists its languages in page order: Traditional Chinese, English, Japanese, Korean, Indonesian,
+Vietnamese. Entries made with _o() hold only the other languages: their Chinese stays in the table the code already
+uses (food names, ingredients, cooking methods, nutrients, portion notes, diagnostic reasons), so each Chinese text
+has one source. Developer-only texts and rarely seen diagnostic reasons are in Chinese and English only, and the
+other languages fall back to English. A {placeholder} must appear in every language of its entry (tested).
+"""
+
+
+def _(zh, en, ja=None, ko=None, idn=None, vi=None):
+    texts = {'zh-TW': zh, 'en': en, 'ja': ja, 'ko': ko, 'id': idn, 'vi': vi}
+    return {code: text for code, text in texts.items() if text is not None}
+
+
+def _o(en, ja=None, ko=None, idn=None, vi=None):
+    texts = {'en': en, 'ja': ja, 'ko': ko, 'id': idn, 'vi': vi}
+    return {code: text for code, text in texts.items() if text is not None}
+
+
+MESSAGES = {
+    # ---- Separators ------------------------------------------------------------------------------------------
+    'sep.list': _('、', ', ', '、', ', ', ', ', ', '),
+    'sep.sentence': _('', ' ', '', ' ', ' ', ' '),
+
+    # ---- Page chrome -----------------------------------------------------------------------------------------
+    'page.title': _('FoodCal AI 餐點熱量估算', 'FoodCal AI · Meal calorie estimate', 'FoodCal AI · 食事のカロリー推定',
+                    'FoodCal AI · 식사 칼로리 추정', 'FoodCal AI · Perkiraan kalori makanan',
+                    'FoodCal AI · Ước tính calo bữa ăn'),
+    'lang.label': _('語言', 'Language', '言語', '언어', 'Bahasa', 'Ngôn ngữ'),
+    'header.title': _('FoodCal AI · 餐點熱量估算', 'FoodCal AI · Meal calories', 'FoodCal AI · 食事のカロリー推定',
+                      'FoodCal AI · 식사 칼로리 추정', 'FoodCal AI · Kalori makanan', 'FoodCal AI · Calo bữa ăn'),
+    'header.tagline': _(
+        'Understand the meal, not just the label — 拍一張照片，看懂這餐的熱量。',
+        'Understand the meal, not just the label — one photo shows what this meal adds up to.',
+        'Understand the meal, not just the label — 写真1枚で、この食事のカロリーがわかる。',
+        'Understand the meal, not just the label — 사진 한 장으로 이 식사의 칼로리를 알아보세요.',
+        'Understand the meal, not just the label — satu foto untuk memahami kalori makanan ini.',
+        'Understand the meal, not just the label — một tấm ảnh để hiểu lượng calo của bữa ăn.'),
+    'rule.text': _(
+        'Recipe candidates may explain hidden calories, but are not visual proof. 食譜只能解釋看不到的熱量，不能當作照片證據。',
+        'Recipe candidates may explain hidden calories, but are not visual proof.',
+        'Recipe candidates may explain hidden calories, but are not visual proof. '
+        'レシピは見えないカロリーを説明できても、写真の証拠にはなりません。',
+        'Recipe candidates may explain hidden calories, but are not visual proof. '
+        '레시피는 보이지 않는 칼로리를 설명할 수 있지만 사진 증거는 아닙니다.',
+        'Recipe candidates may explain hidden calories, but are not visual proof. '
+        'Resep bisa menjelaskan kalori yang tak terlihat, tetapi bukan bukti dari foto.',
+        'Recipe candidates may explain hidden calories, but are not visual proof. '
+        'Công thức có thể giải thích calo không nhìn thấy, nhưng không phải bằng chứng từ ảnh.'),
+    'mode.label': _('模式', 'Mode', 'モード', '모드', 'Mode', 'Chế độ'),
+    'mode.upload': _('上傳照片辨識', 'Recognise a photo', '写真を認識', '사진 인식', 'Kenali foto', 'Nhận diện ảnh'),
+    'mode.demo': _('合成展示（不需模型）', 'Synthetic demo (no model)', '合成デモ（モデル不要）', '합성 데모(모델 불필요)',
+                   'Demo sintetis (tanpa model)', 'Bản demo tổng hợp (không cần mô hình)'),
+
+    # The five workflow cards (their English titles INPUT, DISH ... stay as they are).
+    'step.1.d': _('餐點照片', 'Meal photo', '食事の写真', '식사 사진', 'Foto makanan', 'Ảnh bữa ăn'),
+    'step.1.s': _('照片由使用者提供', 'Photo from the user', '写真はユーザーが用意', '사진은 사용자가 제공',
+                  'Foto dari pengguna', 'Ảnh do người dùng cung cấp'),
+    'step.2.d': _('Gemini 辨識菜色', 'Gemini names the dishes', 'Gemini が料理を認識', 'Gemini가 요리 인식',
+                  'Gemini mengenali hidangan', 'Gemini nhận diện món'),
+    'step.2.s': _('菜色 ≠ 食材', 'Dish ≠ ingredients', '料理 ≠ 食材', '요리 ≠ 재료', 'Hidangan ≠ bahan',
+                  'Món ≠ nguyên liệu'),
+    'step.3.d': _('食材範圍與學生證', 'Ingredient areas and the student card', '食材の範囲と学生証', '재료 영역과 학생증',
+                  'Area bahan dan kartu mahasiswa', 'Vùng nguyên liệu và thẻ sinh viên'),
+    'step.3.s': _('只用看得到的', 'Only what is visible', '見えるものだけ', '보이는 것만 사용', 'Hanya yang terlihat',
+                  'Chỉ dùng phần nhìn thấy'),
+    'step.4.d': _('份量與食譜', 'Portions and recipes', '分量とレシピ', '양과 레시피', 'Porsi dan resep',
+                  'Khẩu phần và công thức'),
+    'step.4.s': _('體積 × 密度；食譜補看不到的油糖', 'Volume × density; recipes add unseen oil and sugar',
+                  '体積 × 密度、見えない油・砂糖はレシピで補う', '부피 × 밀도, 안 보이는 기름·설탕은 레시피로 보충',
+                  'Volume × densitas; resep menambah minyak & gula tak terlihat',
+                  'Thể tích × mật độ; công thức bù dầu, đường không thấy'),
+    'step.5.d': _('熱量與營養素', 'Calories and nutrients', 'カロリーと栄養素', '칼로리와 영양소', 'Kalori dan zat gizi',
+                  'Calo và chất dinh dưỡng'),
+    'step.5.s': _('熱量、三大營養素、鈉、纖維等', 'Calories, macros, sodium, fibre and more',
+                  'カロリー、三大栄養素、ナトリウム、食物繊維など', '칼로리, 3대 영양소, 나트륨, 식이섬유 등',
+                  'Kalori, makronutrien, natrium, serat, dll.', 'Calo, ba chất đa lượng, natri, chất xơ…'),
+
+    # Card labels: the small English heading, then the page language (English pages show it once).
+    'head.plate': _('Your plate · 你的餐盤', 'Your plate', 'Your plate · あなたの食事', 'Your plate · 내 식판',
+                    'Your plate · Piring Anda', 'Your plate · Khay của bạn'),
+    'head.samples': _('Samples · 範例照片', 'Samples', 'Samples · サンプル写真', 'Samples · 예시 사진',
+                      'Samples · Foto contoh', 'Samples · Ảnh mẫu'),
+    'head.next': _('Next · 下一步', 'Next', 'Next · 次へ', 'Next · 다음 단계', 'Next · Berikutnya', 'Next · Bước tiếp theo'),
+    'head.recognition': _('Food recognition · 食物辨識', 'Food recognition', 'Food recognition · 料理の認識',
+                          'Food recognition · 음식 인식', 'Food recognition · Pengenalan makanan',
+                          'Food recognition · Nhận diện món ăn'),
+    'head.grams': _('食材與份量', 'Ingredients & portions', '食材と分量', '재료와 양', 'Bahan & porsi',
+                    'Nguyên liệu & khẩu phần'),
+    'head.side': _('Side view · 側面照', 'Side view', 'Side view · 側面写真', 'Side view · 측면 사진',
+                   'Side view · Foto samping', 'Side view · Ảnh chụp nghiêng'),
+    'head.nutrition': _('Nutrition · 營養估計', 'Nutrition', 'Nutrition · 栄養の推定', 'Nutrition · 영양 추정',
+                        'Nutrition · Perkiraan gizi', 'Nutrition · Ước tính dinh dưỡng'),
+    'head.estimate': _('這餐估計 · Estimate', 'Estimate', 'この食事の推定 · Estimate', '이 식사 추정 · Estimate',
+                       'Perkiraan · Estimate', 'Ước tính · Estimate'),
+
+    # Upload-box wording drawn by CSS (theme.lang_css); the phone versions are shorter.
+    'css.drop_title': _('把餐點照片拖曳到這裡', 'Drag a meal photo here', '食事の写真をここにドラッグ', '식사 사진을 여기로 끌어오세요',
+                        'Seret foto makanan ke sini', 'Kéo ảnh bữa ăn vào đây'),
+    'css.drop_note': _('JPG、PNG、WebP，最多 20 MB · 手機可以直接拍照', 'JPG, PNG, WebP, up to 20 MB · phones can take a photo directly',
+                       'JPG・PNG・WebP、最大 20 MB · スマホならその場で撮影できます', 'JPG, PNG, WebP, 최대 20MB · 휴대폰은 바로 촬영 가능',
+                       'JPG, PNG, WebP, maks. 20 MB · ponsel bisa langsung memotret',
+                       'JPG, PNG, WebP, tối đa 20 MB · điện thoại có thể chụp ngay'),
+    'css.choose': _('選擇照片', 'Choose a photo', '写真を選ぶ', '사진 선택', 'Pilih foto', 'Chọn ảnh'),
+    'css.side_title': _('＋ 加一張側面照（選填）', '+ Add a side photo (optional)', '＋ 側面写真を追加（任意）',
+                        '+ 측면 사진 추가(선택)', '+ Tambah foto samping (opsional)', '+ Thêm ảnh chụp nghiêng (không bắt buộc)'),
+    'css.side_note': _('蹲低斜拍，份量會更準', 'Crouch and shoot at an angle for better portions',
+                       'しゃがんで斜めから撮ると分量がより正確に', '몸을 낮춰 비스듬히 찍으면 양이 더 정확해요',
+                       'Rendahkan badan dan potret miring agar porsi lebih akurat',
+                       'Hạ thấp và chụp nghiêng để khẩu phần chính xác hơn'),
+    'css.drop_title_phone': _('拍一張或選一張餐點照片', 'Take or choose a meal photo', '食事の写真を撮るか選ぶ',
+                              '식사 사진을 찍거나 고르세요', 'Potret atau pilih foto makanan', 'Chụp hoặc chọn ảnh bữa ăn'),
+    'css.drop_note_phone': _('JPG、PNG、WebP，最多 20 MB', 'JPG, PNG, WebP, up to 20 MB', 'JPG・PNG・WebP、最大 20 MB',
+                             'JPG, PNG, WebP, 최대 20MB', 'JPG, PNG, WebP, maks. 20 MB', 'JPG, PNG, WebP, tối đa 20 MB'),
+    'css.choose_phone': _('拍照或選照片', 'Take or choose', '撮影・選択', '촬영 또는 선택', 'Potret atau pilih', 'Chụp hoặc chọn'),
+
+    # ---- Upload step -----------------------------------------------------------------------------------------
+    'upload.title': _('拍下這一餐，看看有多少熱量', 'Snap this meal and see its calories', 'この食事を撮って、カロリーを見てみよう',
+                      '이 식사를 찍고 칼로리를 확인하세요', 'Potret makanan ini dan lihat kalorinya',
+                      'Chụp bữa ăn này và xem bao nhiêu calo'),
+    'upload.lead': _(
+        '上傳一張從正上方拍的餐點照片：Gemini 會辨識每道菜，再用旁邊的學生證換算份量。',
+        'Upload a meal photo taken from straight above: Gemini recognises each dish, and the student card beside it '
+        'sets the scale for portions.',
+        '真上から撮った食事の写真をアップロードしてください。Gemini が料理を一つずつ認識し、横の学生証を基準に分量を換算します。',
+        '바로 위에서 찍은 식사 사진을 올려 주세요. Gemini가 요리를 하나씩 인식하고, 옆의 학생증으로 양을 환산합니다.',
+        'Unggah foto makanan yang diambil tepat dari atas: Gemini mengenali tiap hidangan, lalu kartu mahasiswa di '
+        'sampingnya dipakai untuk menghitung porsi.',
+        'Tải lên ảnh bữa ăn chụp thẳng từ trên xuống: Gemini nhận diện từng món, rồi dùng thẻ sinh viên bên cạnh để '
+        'quy đổi khẩu phần.'),
+    'upload.label': _('上傳餐點照片（手機可以直接拍照）', 'Upload a meal photo (phones can take one directly)',
+                      '食事の写真をアップロード（スマホならその場で撮影できます）', '식사 사진 올리기(휴대폰은 바로 촬영 가능)',
+                      'Unggah foto makanan (ponsel bisa langsung memotret)',
+                      'Tải ảnh bữa ăn lên (điện thoại có thể chụp ngay)'),
+    'tip.card.title': _('學生證放旁邊', 'Student card beside it', '学生証を横に置く', '학생증을 옆에',
+                        'Kartu mahasiswa di samping', 'Đặt thẻ sinh viên bên cạnh'),
+    'tip.card.detail': _('背面朝上、平放在餐盤旁，用來換算大小', 'Back up, flat next to the plate; it sets the scale',
+                         '裏面を上にして皿の横に平らに置くと、大きさの基準になります', '뒷면이 위로 오게 식판 옆에 평평하게 두면 크기 기준이 됩니다',
+                         'Sisi belakang di atas, datar di samping piring; jadi patokan ukuran',
+                         'Mặt sau lên trên, đặt phẳng cạnh khay; dùng để quy đổi kích thước'),
+    'tip.top.title': _('從正上方拍', 'Shoot from straight above', '真上から撮る', '바로 위에서 찍기', 'Potret tepat dari atas',
+                       'Chụp thẳng từ trên xuống'),
+    'tip.top.detail': _('整盤菜和學生證都要拍進去', 'Get the whole meal and the card in the frame', '料理全体と学生証を入れて撮ります',
+                        '음식 전체와 학생증이 모두 나오게', 'Seluruh makanan dan kartu harus masuk bingkai',
+                        'Cả khay đồ ăn và thẻ đều phải lọt khung'),
+    'tip.private.title': _('照片不會保存', 'Photos are not kept', '写真は保存されません', '사진은 저장되지 않아요',
+                           'Foto tidak disimpan', 'Ảnh không được lưu'),
+    'tip.private.detail': _('只留在這次的記憶體；請不要拍到人臉', 'Only in memory for this visit; keep faces out of the shot',
+                            'この回のメモリにだけ残ります。顔が写らないようにしてください', '이번 접속의 메모리에만 남아요. 얼굴이 찍히지 않게 해 주세요',
+                            'Hanya di memori untuk kunjungan ini; jangan sampai ada wajah',
+                            'Chỉ lưu trong bộ nhớ của lần này; đừng để lọt khuôn mặt'),
+    'or': _('或', 'or', 'または', '또는', 'atau', 'hoặc'),
+    'samples.title': _('沒有照片？先用範例看看', 'No photo? Try a sample first', '写真がない？まずはサンプルで試そう',
+                       '사진이 없나요? 먼저 예시로 해 보세요', 'Belum punya foto? Coba contoh dulu', 'Chưa có ảnh? Thử ảnh mẫu trước'),
+    'samples.lead': _(
+        '選一張範例照片，下一步一樣要按「開始辨識」才會送出。',
+        'Pick a sample photo; it is only sent after you press "Start recognition" in the next step.',
+        'サンプル写真を選んでも、次のステップで「認識を開始」を押すまでは送信されません。',
+        '예시 사진을 골라도 다음 단계에서 "인식 시작"을 눌러야 전송됩니다.',
+        'Pilih foto contoh; foto baru dikirim setelah Anda menekan "Mulai kenali" di langkah berikutnya.',
+        'Chọn một ảnh mẫu; ảnh chỉ được gửi khi bạn bấm "Bắt đầu nhận diện" ở bước sau.'),
+    'sample.use': _('用這張照片', 'Use this photo', 'この写真を使う', '이 사진 사용', 'Pakai foto ini', 'Dùng ảnh này'),
+    'sample.campus_buffet': _('校園自助餐', 'Campus buffet', 'キャンパスのビュッフェ', '캠퍼스 뷔페', 'Prasmanan kampus',
+                              'Cơm tự chọn trong trường'),
+    'sample.white_rice': _('白飯', 'White rice', '白ごはん', '흰쌀밥', 'Nasi putih', 'Cơm trắng'),
+    'key.missing': _(
+        '還沒有設定 Gemini API 金鑰：在 `FoodCal_AI/.streamlit/secrets.toml` 加一行 `GEMINI_API_KEY = "你的金鑰"`，'
+        '再重新整理這個頁面。',
+        'No Gemini API key yet: add the line `GEMINI_API_KEY = "your key"` to `FoodCal_AI/.streamlit/secrets.toml`, '
+        'then reload this page.',
+        'Gemini API キーがまだ設定されていません。`FoodCal_AI/.streamlit/secrets.toml` に '
+        '`GEMINI_API_KEY = "あなたのキー"` の1行を追加し、このページを再読み込みしてください。',
+        '아직 Gemini API 키가 설정되지 않았습니다. `FoodCal_AI/.streamlit/secrets.toml`에 '
+        '`GEMINI_API_KEY = "내 키"` 한 줄을 추가한 뒤 이 페이지를 새로 고침하세요.',
+        'Kunci API Gemini belum diatur: tambahkan baris `GEMINI_API_KEY = "kunci Anda"` ke '
+        '`FoodCal_AI/.streamlit/secrets.toml`, lalu muat ulang halaman ini.',
+        'Chưa có khóa API Gemini: thêm dòng `GEMINI_API_KEY = "khóa của bạn"` vào '
+        '`FoodCal_AI/.streamlit/secrets.toml`, rồi tải lại trang này.'),
+
+    # ---- Chosen photo and the start card ---------------------------------------------------------------------
+    'chip.recognised': _('辨識完成', 'Recognised', '認識完了', '인식 완료', 'Selesai dikenali', 'Đã nhận diện'),
+    'chip.sample': _('範例照片', 'Sample photo', 'サンプル写真', '예시 사진', 'Foto contoh', 'Ảnh mẫu'),
+    'chip.chosen': _('已選照片', 'Photo chosen', '選択した写真', '선택한 사진', 'Foto dipilih', 'Ảnh đã chọn'),
+    'photo.fallback_name': _('照片', 'Photo', '写真', '사진', 'Foto', 'Ảnh'),
+    'photo.waiting': _('{name} · 俯視照 · 還沒開始辨識', '{name} · top-down photo · not recognised yet',
+                       '{name} · 真上からの写真 · まだ認識していません', '{name} · 위에서 찍은 사진 · 아직 인식 전',
+                       '{name} · foto dari atas · belum dikenali', '{name} · ảnh chụp từ trên xuống · chưa nhận diện'),
+    'start.title': _('開始辨識這張照片', 'Recognise this photo', 'この写真を認識する', '이 사진 인식하기', 'Kenali foto ini',
+                     'Nhận diện ảnh này'),
+    'start.lead': _(
+        'Gemini 會列出每道菜、看得到的食材和烹調方式，通常 5–30 秒。辨識完，這裡會換成熱量和營養素。',
+        'Gemini lists each dish, its visible ingredients and how it was cooked, usually in 5–30 s. Afterwards, '
+        'calories and nutrients appear here.',
+        'Gemini が料理ごとに見える食材と調理法を挙げます（通常 5〜30 秒）。認識が終わると、ここにカロリーと栄養素が表示されます。',
+        'Gemini가 요리마다 보이는 재료와 조리법을 정리합니다(보통 5–30초). 인식이 끝나면 여기에 칼로리와 영양소가 표시됩니다.',
+        'Gemini mencantumkan tiap hidangan, bahan yang terlihat, dan cara memasaknya, biasanya 5–30 detik. Setelah '
+        'itu, kalori dan zat gizi muncul di sini.',
+        'Gemini liệt kê từng món, nguyên liệu nhìn thấy và cách nấu, thường mất 5–30 giây. Xong rồi, calo và chất '
+        'dinh dưỡng sẽ hiện ở đây.'),
+    'consent.label': _('我了解並同意把照片傳給 Google Gemini 辨識',
+                       'I understand and agree to send the photo to Google Gemini for recognition',
+                       '写真を Google Gemini に送って認識することを理解し、同意します',
+                       '사진을 Google Gemini로 보내 인식하는 것을 이해하고 동의합니다',
+                       'Saya mengerti dan setuju foto dikirim ke Google Gemini untuk dikenali',
+                       'Tôi hiểu và đồng ý gửi ảnh cho Google Gemini để nhận diện'),
+    'consent.privacy': _(
+        '只送縮小過、沒有拍攝資訊（含 GPS）的照片，學生證會先自動塗掉。依 Google 免費版條款，照片可能被用來改進產品並由人員審閱，'
+        '請不要拍到人臉。',
+        'Only a downscaled photo without camera data (including GPS) is sent, and the student card is painted over '
+        'first. Under the Google free-tier terms, photos may be used to improve products and reviewed by people, so '
+        'keep faces out of the shot.',
+        '送るのは縮小済みで撮影情報（GPS を含む）のない写真だけで、学生証は先に自動で塗りつぶします。Google 無料版の規約により、'
+        '写真は製品改善に使われ、人が確認する場合があります。顔が写らないようにしてください。',
+        '크기를 줄이고 촬영 정보(GPS 포함)를 지운 사진만 보내며, 학생증은 먼저 자동으로 가립니다. Google 무료 버전 약관에 따라 '
+        '사진이 제품 개선에 쓰이고 사람이 검토할 수 있으니 얼굴이 찍히지 않게 해 주세요.',
+        'Yang dikirim hanya foto yang sudah diperkecil tanpa data kamera (termasuk GPS), dan kartu mahasiswa ditutup '
+        'otomatis lebih dulu. Menurut ketentuan versi gratis Google, foto bisa dipakai untuk meningkatkan produk dan '
+        'ditinjau oleh manusia, jadi jangan sampai ada wajah di foto.',
+        'Chỉ gửi ảnh đã thu nhỏ, không có thông tin chụp (kể cả GPS), và thẻ sinh viên được tự động che trước. Theo '
+        'điều khoản bản miễn phí của Google, ảnh có thể được dùng để cải thiện sản phẩm và do con người xem xét, vì '
+        'vậy đừng để lọt khuôn mặt vào ảnh.'),
+    'btn.start': _('開始辨識 →', 'Start recognition →', '認識を開始 →', '인식 시작 →', 'Mulai kenali →', 'Bắt đầu nhận diện →'),
+    'start.side_caption': _(
+        '會先辨識俯視照，再看側面照量高度（多一次 Gemini，約多 5–30 秒）。',
+        'The top-down photo is recognised first, then the side photo measures heights (one more Gemini call, about '
+        '5–30 s extra).',
+        'まず真上からの写真を認識し、次に側面写真で高さを測ります（Gemini をもう1回使うので 5〜30 秒ほど長くかかります）。',
+        '먼저 위에서 찍은 사진을 인식한 뒤 측면 사진으로 높이를 잽니다(Gemini를 한 번 더 써서 5–30초 정도 더 걸립니다).',
+        'Foto dari atas dikenali dulu, lalu foto samping dipakai untuk mengukur tinggi (satu panggilan Gemini lagi, '
+        'sekitar 5–30 detik lebih lama).',
+        'Ảnh chụp từ trên xuống được nhận diện trước, sau đó ảnh chụp nghiêng dùng để đo chiều cao (gọi Gemini thêm '
+        'một lần, lâu hơn khoảng 5–30 giây).'),
+    'btn.change_photo': _('換一張照片', 'Choose another photo', '別の写真にする', '다른 사진 선택', 'Ganti foto', 'Đổi ảnh khác'),
+    'btn.cancel': _('取消', 'Cancel', 'キャンセル', '취소', 'Batal', 'Hủy'),
+    'btn.remove': _('移除', 'Remove', '削除', '삭제', 'Hapus', 'Gỡ'),
+    'spin.card': _('找學生證中…', 'Looking for the student card…', '学生証を探しています…', '학생증을 찾는 중…',
+                   'Mencari kartu mahasiswa…', 'Đang tìm thẻ sinh viên…'),
+    'spin.gemini': _('Gemini 辨識中…（通常 5–30 秒，免費版忙的時候會更久）',
+                     'Gemini is recognising… (usually 5–30 s, longer when the free tier is busy)',
+                     'Gemini が認識中…（通常 5〜30 秒、無料版が混んでいるともっとかかります）',
+                     'Gemini 인식 중… (보통 5–30초, 무료 버전이 붐비면 더 걸립니다)',
+                     'Gemini sedang mengenali… (biasanya 5–30 detik, lebih lama bila versi gratis sedang sibuk)',
+                     'Gemini đang nhận diện… (thường 5–30 giây, lâu hơn khi bản miễn phí đông)'),
+
+    # ---- Recognised photo and its tools ----------------------------------------------------------------------
+    'caption.card_auto': _('自動找到學生證（綠框）', 'Student card found automatically (green outline)', '学生証を自動で検出（緑の枠）',
+                           '학생증 자동 감지(초록 테두리)', 'Kartu mahasiswa ditemukan otomatis (garis hijau)',
+                           'Đã tự tìm thấy thẻ sinh viên (khung xanh lá)'),
+    'caption.card_manual': _('學生證：你手動框的（綠框）', 'Student card: boxed by you (green outline)',
+                             '学生証：手動で囲んだもの（緑の枠）', '학생증: 직접 표시함(초록 테두리)',
+                             'Kartu mahasiswa: ditandai manual (garis hijau)', 'Thẻ sinh viên: do bạn tự khoanh (khung xanh lá)'),
+    'caption.card_none': _('沒有找到學生證', 'No student card found', '学生証が見つかりません', '학생증을 찾지 못함',
+                           'Kartu mahasiswa tidak ditemukan', 'Không tìm thấy thẻ sinh viên'),
+    'caption.score': _('（配對 {score}）', ' (match {score})', '（一致度 {score}）', ' (일치도 {score})', ' (kecocokan {score})',
+                       ' (độ khớp {score})'),
+    'caption.masked': _('，已在送出前塗掉', ', painted over before sending', '、送信前に塗りつぶし済み', ', 전송 전에 가림',
+                        ', ditutup sebelum dikirim', ', đã che trước khi gửi'),
+    'caption.model': _('。模型 {model} · {seconds} 秒 · {tokens_in}/{tokens_out} tokens（免費額度）',
+                       '. Model {model} · {seconds} s · {tokens_in}/{tokens_out} tokens (free quota)',
+                       '。モデル {model} · {seconds} 秒 · {tokens_in}/{tokens_out} トークン（無料枠）',
+                       '. 모델 {model} · {seconds}초 · {tokens_in}/{tokens_out} 토큰(무료 한도)',
+                       '. Model {model} · {seconds} dtk · {tokens_in}/{tokens_out} token (kuota gratis)',
+                       '. Mô hình {model} · {seconds} giây · {tokens_in}/{tokens_out} token (hạn mức miễn phí)'),
+    'warn.no_card': _(
+        '沒有學生證就換算不了份量：按「框出學生證」在照片上框出來，或在下面直接填每道菜的克數。',
+        'Without the student card the portions cannot be scaled: press "Box the student card" to mark it on the '
+        'photo, or type the grams of each dish below.',
+        '学生証がないと分量を換算できません。「学生証を囲む」を押して写真の上で囲むか、下で各料理のグラム数を直接入力してください。',
+        '학생증이 없으면 양을 환산할 수 없습니다. "학생증 표시하기"를 눌러 사진에 표시하거나, 아래에 요리별 그램 수를 직접 입력하세요.',
+        'Tanpa kartu mahasiswa porsi tidak bisa dihitung: tekan "Tandai kartu mahasiswa" untuk menandainya di foto, '
+        'atau isi gram tiap hidangan di bawah.',
+        'Không có thẻ sinh viên thì không quy đổi được khẩu phần: bấm "Khoanh thẻ sinh viên" để đánh dấu trên ảnh, '
+        'hoặc nhập số gam của từng món bên dưới.'),
+    'toggle.boxes': _('顯示辨識框', 'Show boxes', '認識枠を表示', '인식 박스 표시', 'Tampilkan kotak', 'Hiện khung'),
+    'btn.card_box': _('框出學生證', 'Box the student card', '学生証を囲む', '학생증 표시하기', 'Tandai kartu mahasiswa',
+                      'Khoanh thẻ sinh viên'),
+    'btn.card_rebox': _('重框學生證', 'Re-box the student card', '学生証を囲み直す', '학생증 다시 표시', 'Tandai ulang kartu',
+                        'Khoanh lại thẻ'),
+    'btn.card_help': _('在照片上拖曳框住學生證，用來換算份量',
+                       'Drag a box around the student card on the photo; it sets the scale for portions',
+                       '写真の上でドラッグして学生証を囲みます。分量の換算に使います',
+                       '사진 위에서 드래그해 학생증을 표시합니다. 양을 환산하는 기준이 됩니다',
+                       'Seret kotak di sekeliling kartu mahasiswa pada foto; dipakai untuk menghitung porsi',
+                       'Kéo một khung quanh thẻ sinh viên trên ảnh; dùng để quy đổi khẩu phần'),
+    'btn.add_dish': _('＋ 加一道菜', '+ Add a dish', '＋ 料理を追加', '+ 요리 추가', '+ Tambah hidangan', '+ Thêm món'),
+    'btn.add_help': _('Gemini 漏掉的菜，自己在照片上框出來', 'Box a dish Gemini missed on the photo yourself',
+                      'Gemini が見落とした料理を、写真の上で自分で囲みます', 'Gemini가 놓친 요리를 사진 위에 직접 표시합니다',
+                      'Tandai sendiri di foto hidangan yang terlewat oleh Gemini', 'Tự khoanh trên ảnh món mà Gemini bỏ sót'),
+    'plate_mode.card': _('框學生證', 'Box the card', '学生証を囲む', '학생증 표시', 'Tandai kartu', 'Khoanh thẻ'),
+    'plate_mode.add': _('加一道菜', 'Add a dish', '料理を追加', '요리 추가', 'Tambah hidangan', 'Thêm món'),
+    'pick.card_lead': _(
+        '在照片上按住滑鼠拖曳，框住整張學生證（平放、邊緣大致和照片邊緣平行），放開就會套用。',
+        'Press and drag on the photo to box the whole student card (lying flat, edges roughly parallel to the photo '
+        'edges); it applies when you let go.',
+        '写真の上でマウスを押したままドラッグし、学生証全体を囲みます（平らに置き、辺が写真の縁とほぼ平行）。離すと反映されます。',
+        '사진 위에서 마우스를 누른 채 드래그해 학생증 전체를 표시하세요(평평하게, 가장자리가 사진 테두리와 거의 평행). 놓으면 바로 적용됩니다.',
+        'Tekan dan seret di foto untuk menandai seluruh kartu mahasiswa (datar, tepinya kira-kira sejajar tepi '
+        'foto); langsung diterapkan saat dilepas.',
+        'Nhấn giữ và kéo trên ảnh để khoanh trọn thẻ sinh viên (nằm phẳng, các cạnh gần song song với mép ảnh); thả '
+        'tay là áp dụng.'),
+    'pick.add_lead': _(
+        '選菜名，再在照片上拖曳框住這道菜（碗裝的菜框整個碗口）。',
+        'Pick the dish, then drag a box around it on the photo (for a bowl, box the whole rim).',
+        '料理名を選び、写真の上でドラッグしてその料理を囲みます（お椀の料理は口全体を囲む）。',
+        '요리 이름을 고른 뒤 사진 위에서 드래그해 그 요리를 표시하세요(그릇에 담긴 요리는 그릇 입구 전체).',
+        'Pilih nama hidangan, lalu seret kotak di sekelilingnya pada foto (untuk mangkuk, tandai seluruh bibir mangkuk).',
+        'Chọn tên món, rồi kéo khung quanh món đó trên ảnh (món trong bát thì khoanh cả miệng bát).'),
+    'pick.which_dish': _('哪一道菜', 'Which dish', 'どの料理', '어떤 요리', 'Hidangan apa', 'Món nào'),
+    'btn.add_this': _('加入這道菜', 'Add this dish', 'この料理を追加', '이 요리 추가', 'Tambahkan hidangan ini', 'Thêm món này'),
+
+    # ---- Recognised dishes and grams -------------------------------------------------------------------------
+    'recog.none': _('沒有找到食物', 'No food found', '料理が見つかりません', '음식을 찾지 못했습니다',
+                    'Tidak ada makanan ditemukan', 'Không tìm thấy món ăn'),
+    'recog.sub_default': _('Gemini 看照片辨識；框的位置是大概的。', 'Gemini recognised the photo; box positions are approximate.',
+                           'Gemini が写真から認識しました。枠の位置はおおよそです。', 'Gemini가 사진을 보고 인식했습니다. 박스 위치는 대략적입니다.',
+                           'Gemini mengenali dari foto; posisi kotak hanya perkiraan.',
+                           'Gemini nhận diện từ ảnh; vị trí khung chỉ là tương đối.'),
+    'recog.hidden': _('＋ 看不到的油、糖約 {kcal} kcal（依食譜估計）', '+ about {kcal} kcal of unseen oil and sugar (recipe estimate)',
+                      '＋ 見えない油・砂糖 約 {kcal} kcal（レシピから推定）', '+ 보이지 않는 기름·설탕 약 {kcal} kcal(레시피 기반 추정)',
+                      '+ sekitar {kcal} kcal minyak dan gula yang tak terlihat (perkiraan dari resep)',
+                      '+ khoảng {kcal} kcal dầu, đường không nhìn thấy (ước tính theo công thức)'),
+    'recog.manual_tag': _('（手動加入）', ' (added by hand)', '（手動で追加）', ' (직접 추가)', ' (ditambah manual)',
+                          ' (thêm thủ công)'),
+    'recog.placeholder_about': _('約 {grams}', 'about {grams}', '約 {grams}', '약 {grams}', 'sekitar {grams}', 'khoảng {grams}'),
+    'recog.placeholder_grams': _('克數', 'grams', 'グラム', '그램', 'gram', 'số gam'),
+    'recog.grams_label': _('克', 'Grams', 'グラム', '그램', 'Gram', 'Gam'),
+    'recog.wrong': _('認錯了', 'Wrong dish', '誤認識', '잘못 인식', 'Salah kenali', 'Nhận nhầm'),
+    'recog.excluded': _('已排除「{label}」（取消勾選就恢復）', 'Excluded "{label}" (untick to restore)',
+                        '「{label}」を除外しました（チェックを外すと戻ります）', '"{label}" 제외됨(체크를 풀면 복구)',
+                        '"{label}" dikecualikan (hapus centang untuk mengembalikan)', 'Đã loại "{label}" (bỏ chọn để khôi phục)'),
+    'recog.grams_caption': _('克數框不填就用粗估；知道實際重量就直接填。',
+                             'Leave the gram box empty to use the rough estimate; type the real weight if you know it.',
+                             'グラム欄が空なら概算を使います。実際の重さが分かれば入力してください。',
+                             '그램 칸을 비워 두면 대략 추정치를 씁니다. 실제 무게를 알면 바로 입력하세요.',
+                             'Kosongkan kotak gram untuk memakai perkiraan kasar; isi berat sebenarnya bila tahu.',
+                             'Để trống ô số gam thì dùng ước tính sơ bộ; biết cân nặng thật thì nhập luôn.'),
+    'conf.high': _('把握高', 'high confidence', '確信度：高', '신뢰도 높음', 'keyakinan tinggi', 'độ tin cậy cao'),
+    'conf.medium': _('把握中', 'medium confidence', '確信度：中', '신뢰도 보통', 'keyakinan sedang', 'độ tin cậy trung bình'),
+    'conf.low': _('把握低', 'low confidence', '確信度：低', '신뢰도 낮음', 'keyakinan rendah', 'độ tin cậy thấp'),
+    'meta.typed': _('你填的', 'typed by you', '入力値', '직접 입력', 'diisi sendiri', 'bạn tự nhập'),
+    'meta.grams_range': _('約 {low}–{high} g', 'about {low}–{high} g', '約 {low}〜{high} g', '약 {low}–{high} g',
+                          'sekitar {low}–{high} g', 'khoảng {low}–{high} g'),
+    'meta.visible_kcal': _('看得到的約 {kcal} kcal', 'visible about {kcal} kcal', '見える分 約 {kcal} kcal',
+                           '보이는 부분 약 {kcal} kcal', 'yang terlihat sekitar {kcal} kcal', 'phần nhìn thấy khoảng {kcal} kcal'),
+    'meta.side_height': _('側面照：高度約 {low}–{high} cm', 'side photo: height about {low}–{high} cm',
+                          '側面写真：高さ 約 {low}〜{high} cm', '측면 사진: 높이 약 {low}–{high} cm',
+                          'foto samping: tinggi sekitar {low}–{high} cm', 'ảnh chụp nghiêng: cao khoảng {low}–{high} cm'),
+    'meta.side_bowl': _('側面照：碗深約 {low}–{high} cm', 'side photo: bowl depth about {low}–{high} cm',
+                        '側面写真：お椀の深さ 約 {low}〜{high} cm', '측면 사진: 그릇 깊이 약 {low}–{high} cm',
+                        'foto samping: kedalaman mangkuk sekitar {low}–{high} cm',
+                        'ảnh chụp nghiêng: bát sâu khoảng {low}–{high} cm'),
+    'unknown.caption': _(
+        '{names} 不在食材表裡，只能估體積；可以填克數，或把它加進 `src/portion/nutrition_model.py`。',
+        '{names}: not in the ingredient table, so only the volume can be estimated; type the grams, or add it to '
+        '`src/portion/nutrition_model.py`.',
+        '{names} は食材表にないため、体積しか推定できません。グラム数を入力するか、`src/portion/nutrition_model.py` に追加してください。',
+        '{names}은(는) 재료 표에 없어 부피만 추정할 수 있습니다. 그램 수를 입력하거나 `src/portion/nutrition_model.py`에 추가하세요.',
+        '{names} tidak ada di tabel bahan, jadi hanya volumenya yang bisa diperkirakan; isi gramnya, atau tambahkan '
+        'ke `src/portion/nutrition_model.py`.',
+        '{names} không có trong bảng nguyên liệu nên chỉ ước tính được thể tích; hãy nhập số gam, hoặc thêm vào '
+        '`src/portion/nutrition_model.py`.'),
+
+    # ---- Nutrition panel -------------------------------------------------------------------------------------
+    'nut.reason_no_card': _(
+        '還沒有學生證可以換算大小：按照片下面的「框出學生證」，或直接填每道菜的克數。',
+        'No student card to scale sizes yet: press "Box the student card" under the photo, or type the grams of each '
+        'dish.',
+        'サイズを換算する学生証がまだありません。写真の下の「学生証を囲む」を押すか、各料理のグラム数を直接入力してください。',
+        '크기를 환산할 학생증이 아직 없습니다. 사진 아래의 "학생증 표시하기"를 누르거나 요리별 그램 수를 직접 입력하세요.',
+        'Belum ada kartu mahasiswa untuk menghitung ukuran: tekan "Tandai kartu mahasiswa" di bawah foto, atau isi '
+        'gram tiap hidangan.',
+        'Chưa có thẻ sinh viên để quy đổi kích thước: bấm "Khoanh thẻ sinh viên" dưới ảnh, hoặc nhập số gam của từng món.'),
+    'nut.reason_missing': _(
+        '還不能算合計：{names} 沒有熱量數字，請填克數或排除。',
+        'No total yet: there is no calorie figure for {names}; type the grams or exclude it.',
+        'まだ合計を出せません：{names} のカロリーがありません。グラム数を入力するか除外してください。',
+        '아직 합계를 낼 수 없습니다: {names}의 칼로리 수치가 없습니다. 그램 수를 입력하거나 제외하세요.',
+        'Total belum bisa dihitung: {names} belum punya angka kalori; isi gramnya atau kecualikan.',
+        'Chưa tính được tổng: {names} chưa có số calo; hãy nhập số gam hoặc loại bỏ.'),
+    'nut.reason_wait': _('辨識後，熱量和營養素會顯示在這裡。', 'After recognition, calories and nutrients appear here.',
+                         '認識が終わると、ここにカロリーと栄養素が表示されます。', '인식이 끝나면 여기에 칼로리와 영양소가 표시됩니다.',
+                         'Setelah dikenali, kalori dan zat gizi muncul di sini.',
+                         'Sau khi nhận diện, calo và chất dinh dưỡng sẽ hiện ở đây.'),
+    'nut.weight': _('約 {grams} g', 'about {grams} g', '約 {grams} g', '약 {grams} g', 'sekitar {grams} g', 'khoảng {grams} g'),
+    'nut.weight_label': _('這餐總重量（估）', 'Meal weight (est.)', 'この食事の総重量（推定）', '이 식사 총무게(추정)',
+                          'Berat total (perkiraan)', 'Tổng khối lượng (ước tính)'),
+    'kcal.rough': _('kcal · 粗估 {low}–{high}', 'kcal · rough {low}–{high}', 'kcal · 概算 {low}〜{high}',
+                    'kcal · 대략 {low}–{high}', 'kcal · kisaran {low}–{high}', 'kcal · khoảng {low}–{high}'),
+    'macro.protein': _('蛋白質', 'Protein', 'たんぱく質', '단백질', 'Protein', 'Chất đạm'),
+    'macro.carb': _('醣類', 'Carbs', '炭水化物', '탄수화물', 'Karbohidrat', 'Chất bột đường'),
+    'macro.fat': _('脂肪', 'Fat', '脂質', '지방', 'Lemak', 'Chất béo'),
+    'nut.other_head': _('其他營養素 · OTHER NUTRIENTS', 'OTHER NUTRIENTS', 'その他の栄養素 · OTHER NUTRIENTS',
+                        '기타 영양소 · OTHER NUTRIENTS', 'Zat gizi lain · OTHER NUTRIENTS',
+                        'Chất dinh dưỡng khác · OTHER NUTRIENTS'),
+    'nut.partial_note': _('「≥」：有食材沒有這項資料，實際可能更多。',
+                          '"≥": some ingredients lack this value, so the real amount may be higher.',
+                          '「≥」：この項目のデータがない食材があり、実際はもっと多い可能性があります。',
+                          '"≥": 이 항목 자료가 없는 재료가 있어 실제로는 더 많을 수 있습니다.',
+                          '"≥": sebagian bahan tidak punya data ini, jadi jumlah sebenarnya bisa lebih besar.',
+                          '"≥": một số nguyên liệu thiếu số liệu này, thực tế có thể cao hơn.'),
+    'nut.source_note': _(
+        '食材的數值來自衛福部食品營養成分資料庫；鈉大多來自調味，橘字依烹調方式估計，不是照片證據。',
+        'Ingredient values come from the Taiwan FDA food composition database; most sodium comes from seasoning, and '
+        'the orange lines are estimated from the cooking method, not photo evidence.',
+        '食材の数値は台湾衛生福利部の食品栄養成分データベースによるものです。ナトリウムの多くは調味料由来で、オレンジ色の行は調理法からの推定で、'
+        '写真の証拠ではありません。',
+        '재료 수치는 대만 위생복리부 식품영양성분 데이터베이스에서 가져왔습니다. 나트륨은 대부분 양념에서 오며, 주황색 줄은 조리법으로 '
+        '추정한 값으로 사진 증거가 아닙니다.',
+        'Nilai bahan berasal dari basis data komposisi gizi Taiwan FDA; sebagian besar natrium berasal dari bumbu, '
+        'dan baris oranye diperkirakan dari cara memasak, bukan bukti foto.',
+        'Số liệu nguyên liệu lấy từ cơ sở dữ liệu thành phần dinh dưỡng của Taiwan FDA; phần lớn natri đến từ gia '
+        'vị, và các dòng màu cam được ước tính theo cách nấu, không phải bằng chứng từ ảnh.'),
+    'recipe.sat_fat_g': _('其中用油約 {hidden} g（食譜估計）', 'of which about {hidden} g from cooking oil (recipe estimate)',
+                          'うち調理油 約 {hidden} g（レシピから推定）', '그중 조리용 기름 약 {hidden} g(레시피 추정)',
+                          'di antaranya sekitar {hidden} g dari minyak masak (perkiraan resep)',
+                          'trong đó khoảng {hidden} g từ dầu ăn (ước tính theo công thức)'),
+    'recipe.sugar_g': _('其中加糖約 {hidden} g（食譜估計）', 'of which about {hidden} g added sugar (recipe estimate)',
+                        'うち加えた砂糖 約 {hidden} g（レシピから推定）', '그중 첨가당 약 {hidden} g(레시피 추정)',
+                        'di antaranya sekitar {hidden} g gula tambahan (perkiraan resep)',
+                        'trong đó khoảng {hidden} g đường thêm vào (ước tính theo công thức)'),
+    'recipe.sodium_mg': _('其中調味約 {hidden} mg（{low}–{high}，食譜估計）',
+                          'of which about {hidden} mg from seasoning ({low}–{high}, recipe estimate)',
+                          'うち調味料 約 {hidden} mg（{low}〜{high}、レシピから推定）',
+                          '그중 양념 약 {hidden} mg({low}–{high}, 레시피 추정)',
+                          'di antaranya sekitar {hidden} mg dari bumbu ({low}–{high}, perkiraan resep)',
+                          'trong đó khoảng {hidden} mg từ gia vị ({low}–{high}, ước tính theo công thức)'),
+    'nut.split_note': _(
+        '看得到的食材 {visible} kcal ＋ 依食譜估計的油、糖 {hidden} kcal。後者是看不到的部分，只是推估，不是照片證據。',
+        'Visible ingredients {visible} kcal + recipe-estimated oil and sugar {hidden} kcal. The latter cannot be seen: '
+        'it is only an estimate, not photo evidence.',
+        '見える食材 {visible} kcal ＋ レシピから推定した油・砂糖 {hidden} kcal。後者は見えない部分の推定にすぎず、写真の証拠ではありません。',
+        '보이는 재료 {visible} kcal + 레시피로 추정한 기름·설탕 {hidden} kcal. 뒤의 것은 보이지 않는 부분의 추정일 뿐 사진 증거가 아닙니다.',
+        'Bahan yang terlihat {visible} kcal + minyak & gula perkiraan resep {hidden} kcal. Yang kedua tidak terlihat: '
+        'hanya perkiraan, bukan bukti foto.',
+        'Nguyên liệu nhìn thấy {visible} kcal + dầu, đường ước tính theo công thức {hidden} kcal. Phần sau không nhìn '
+        'thấy, chỉ là ước tính, không phải bằng chứng từ ảnh.'),
+    'nut.col_dish': _('菜色（kcal）', 'Dish (kcal)', '料理（kcal）', '요리(kcal)', 'Hidangan (kcal)', 'Món (kcal)'),
+    'nut.col_photo': _('照片*', 'Photo*', '写真*', '사진*', 'Foto*', 'Ảnh*'),
+    'nut.col_recipe': _('食譜*', 'Recipe*', 'レシピ*', '레시피*', 'Resep*', 'Công thức*'),
+    'nut.total': _('合計', 'Total', '合計', '합계', 'Total', 'Tổng'),
+    'nut.footer': _(
+        '*照片：看得到的食材 × 衛福部食品營養成分資料庫；食譜：依烹調方式估計的油、糖。粗估值，僅供參考，不是醫療或營養建議。',
+        '*Photo: visible ingredients × Taiwan FDA food composition database; Recipe: oil and sugar estimated from the '
+        'cooking method. Rough values for reference only, not medical or dietary advice.',
+        '*写真：見える食材 × 台湾衛生福利部の食品栄養成分データベース、レシピ：調理法から推定した油・砂糖。概算値で参考用です。'
+        '医療・栄養のアドバイスではありません。',
+        '*사진: 보이는 재료 × 대만 위생복리부 식품영양성분 데이터베이스, 레시피: 조리법으로 추정한 기름·설탕. 참고용 대략값이며 '
+        '의료·영양 조언이 아닙니다.',
+        '*Foto: bahan yang terlihat × basis data komposisi gizi Taiwan FDA; Resep: minyak & gula yang diperkirakan '
+        'dari cara memasak. Nilai kasar untuk referensi saja, bukan saran medis atau gizi.',
+        '*Ảnh: nguyên liệu nhìn thấy × cơ sở dữ liệu thành phần dinh dưỡng của Taiwan FDA; Công thức: dầu, đường ước '
+        'tính theo cách nấu. Giá trị sơ bộ chỉ để tham khảo, không phải lời khuyên y tế hay dinh dưỡng.'),
+    'mobile.more': _('每道菜、完整營養素和依食譜估計的部分在下面 ↓', 'Each dish, all nutrients and the recipe-based part are below ↓',
+                     '料理ごとの内訳、すべての栄養素、レシピからの推定分は下にあります ↓',
+                     '요리별 내역, 전체 영양소, 레시피 추정분은 아래에 있습니다 ↓',
+                     'Rincian tiap hidangan, semua zat gizi, dan bagian perkiraan resep ada di bawah ↓',
+                     'Chi tiết từng món, đủ chất dinh dưỡng và phần ước tính theo công thức ở bên dưới ↓'),
+
+    # ---- Side photo ------------------------------------------------------------------------------------------
+    'side.name': _('側面照', 'Side photo', '側面写真', '측면 사진', 'Foto samping', 'Ảnh chụp nghiêng'),
+    'side.upload_label': _('側面照（選填）', 'Side photo (optional)', '側面写真（任意）', '측면 사진(선택)',
+                           'Foto samping (opsional)', 'Ảnh chụp nghiêng (không bắt buộc)'),
+    'side.help': _(
+        '怎麼拍：學生證不要動（背面朝上、長邊朝向你，放在菜的旁邊），蹲低從桌面上方 15–35 度拍，整盤菜和學生證都要入鏡；'
+        '碗裝的菜低一點（15–25 度）更準。',
+        'How to take it: leave the student card where it is (back up, long side facing you, next to the food), crouch '
+        'and shoot from 15–35° above the table with the whole meal and the card in the frame; for bowls, a little lower '
+        '(15–25°) is more accurate.',
+        '撮り方：学生証は動かさず（裏面を上、長い辺を自分に向けて料理の横に置く）、しゃがんでテーブル面から 15〜35 度の角度で、料理全体と学生証が'
+        '入るように撮ります。お椀の料理はもう少し低く（15〜25 度）撮るとより正確です。',
+        '촬영 방법: 학생증은 그대로 두고(뒷면이 위로, 긴 변이 나를 향하게, 음식 옆에), 몸을 낮춰 테이블 위 15–35도 각도에서 음식 전체와 '
+        '학생증이 다 나오게 찍으세요. 그릇에 담긴 음식은 조금 더 낮게(15–25도) 찍으면 더 정확합니다.',
+        'Cara memotret: biarkan kartu mahasiswa di tempatnya (sisi belakang di atas, sisi panjang menghadap Anda, di '
+        'samping makanan), rendahkan badan dan potret dari sudut 15–35° di atas meja dengan seluruh makanan dan kartu '
+        'masuk bingkai; untuk makanan dalam mangkuk, sedikit lebih rendah (15–25°) lebih akurat.',
+        'Cách chụp: để nguyên thẻ sinh viên (mặt sau lên trên, cạnh dài hướng về bạn, đặt cạnh món ăn), hạ thấp người '
+        'và chụp ở góc 15–35° so với mặt bàn sao cho cả khay đồ ăn và thẻ đều lọt khung; món đựng trong bát thì chụp '
+        'thấp hơn một chút (15–25°) sẽ chính xác hơn.'),
+    'side.offer': _(
+        '俯視照只量得到面積；加一張側面照，可以量每道菜的高度和碗裝多滿。',
+        'A top-down photo only measures area; add a side photo to measure the height of each dish and how full the '
+        'bowls are.',
+        '真上からの写真では面積しか測れません。側面写真を足すと、料理ごとの高さやお椀にどれだけ入っているかを測れます。',
+        '위에서 찍은 사진으로는 면적만 잴 수 있습니다. 측면 사진을 더하면 요리별 높이와 그릇이 얼마나 찼는지 잴 수 있습니다.',
+        'Foto dari atas hanya mengukur luas; tambahkan foto samping untuk mengukur tinggi tiap hidangan dan seberapa '
+        'penuh mangkuknya.',
+        'Ảnh chụp từ trên xuống chỉ đo được diện tích; thêm ảnh chụp nghiêng để đo chiều cao từng món và bát đầy đến đâu.'),
+    'side.unusable': _('這張不能用', 'This one cannot be used', 'この写真は使えません', '이 사진은 쓸 수 없습니다',
+                       'Foto ini tidak bisa dipakai', 'Ảnh này không dùng được'),
+    'side.note_with_top': _('會和俯視照一起分析', 'analysed together with the top-down photo', '真上からの写真と一緒に解析します',
+                            '위에서 찍은 사진과 함께 분석합니다', 'dianalisis bersama foto dari atas',
+                            'sẽ phân tích cùng ảnh chụp từ trên xuống'),
+    'side.note_pending': _('還沒分析', 'not analysed yet', 'まだ解析していません', '아직 분석 전', 'belum dianalisis', 'chưa phân tích'),
+    'side.note_need_card': _('要先框出側面照裡的學生證', 'box the student card in the side photo first',
+                             '先に側面写真の学生証を囲んでください', '먼저 측면 사진의 학생증을 표시하세요',
+                             'tandai dulu kartu mahasiswa di foto samping',
+                             'cần khoanh thẻ sinh viên trong ảnh chụp nghiêng trước'),
+    'side.note_unmeasured': _('沒有量到高度', 'no height measured', '高さを測れませんでした', '높이를 재지 못함',
+                              'tinggi tidak terukur', 'không đo được chiều cao'),
+    'btn.side_retake': _('換一張側面照', 'Choose another side photo', '別の側面写真にする', '다른 측면 사진 선택',
+                         'Ganti foto samping', 'Đổi ảnh chụp nghiêng khác'),
+    'btn.side_remove': _('移除側面照', 'Remove the side photo', '側面写真を削除', '측면 사진 삭제', 'Hapus foto samping',
+                         'Gỡ ảnh chụp nghiêng'),
+    'chip.measured': _('已量高度', 'Heights measured', '高さ測定済み', '높이 측정됨', 'Tinggi terukur', 'Đã đo chiều cao'),
+    'chip.optional': _('選填', 'Optional', '任意', '선택', 'Opsional', 'Không bắt buộc'),
+    'side.info_need_card': _(
+        '沒有自動找到側面照裡的學生證：在側面照上拖曳框出學生證，再按「用這個框繼續」。',
+        'The student card in the side photo was not found automatically: drag a box around it on the side photo, then '
+        'press "Continue with this box".',
+        '側面写真の学生証を自動で見つけられませんでした。側面写真の上でドラッグして学生証を囲み、「この枠で続ける」を押してください。',
+        '측면 사진에서 학생증을 자동으로 찾지 못했습니다. 측면 사진 위에서 드래그해 학생증을 표시한 뒤 "이 박스로 계속"을 누르세요.',
+        'Kartu mahasiswa di foto samping tidak ditemukan otomatis: seret kotak di sekelilingnya pada foto samping, '
+        'lalu tekan "Lanjut dengan kotak ini".',
+        'Không tự tìm thấy thẻ sinh viên trong ảnh chụp nghiêng: kéo khung quanh thẻ trên ảnh chụp nghiêng, rồi bấm '
+        '"Tiếp tục với khung này".'),
+    'btn.side_card_go': _('用這個框繼續 →', 'Continue with this box →', 'この枠で続ける →', '이 박스로 계속 →',
+                          'Lanjut dengan kotak ini →', 'Tiếp tục với khung này →'),
+    'btn.side_retry': _('再分析一次 →', 'Analyse again →', 'もう一度解析 →', '다시 분석 →', 'Analisis lagi →', 'Phân tích lại →'),
+    'btn.side_go': _('分析側面照 →', 'Analyse the side photo →', '側面写真を解析 →', '측면 사진 분석 →', 'Analisis foto samping →',
+                     'Phân tích ảnh chụp nghiêng →'),
+    'spin.side': _('Gemini 看側面照中…', 'Gemini is reading the side photo…', 'Gemini が側面写真を確認中…',
+                   'Gemini가 측면 사진을 보는 중…', 'Gemini sedang melihat foto samping…', 'Gemini đang xem ảnh chụp nghiêng…'),
+    'spin.side_card': _('找側面照裡的學生證中…', 'Looking for the student card in the side photo…', '側面写真の学生証を探しています…',
+                        '측면 사진에서 학생증을 찾는 중…', 'Mencari kartu mahasiswa di foto samping…',
+                        'Đang tìm thẻ sinh viên trong ảnh chụp nghiêng…'),
+    'err.side_angle': _(
+        '側面照的角度不對：請蹲低，從桌面上方約 15–35 度拍；學生證要平放、背面朝上、長邊朝向你。',
+        'The side photo has the wrong angle: crouch and shoot from about 15–35° above the table; the student card must '
+        'lie flat, back up, long side facing you.',
+        '側面写真の角度が合っていません。しゃがんでテーブル面から約 15〜35 度で撮ってください。学生証は平らに置き、裏面を上、長い辺を自分に向けます。',
+        '측면 사진의 각도가 맞지 않습니다. 몸을 낮춰 테이블 위 약 15–35도에서 찍으세요. 학생증은 평평하게, 뒷면이 위로, 긴 변이 나를 향하게 두세요.',
+        'Sudut foto samping tidak tepat: rendahkan badan dan potret dari sekitar 15–35° di atas meja; kartu mahasiswa '
+        'harus datar, sisi belakang di atas, sisi panjang menghadap Anda.',
+        'Góc chụp ảnh nghiêng chưa đúng: hạ thấp người và chụp ở khoảng 15–35° so với mặt bàn; thẻ sinh viên phải '
+        'nằm phẳng, mặt sau lên trên, cạnh dài hướng về bạn.'),
+    'err.side_bad_box': _('學生證的框不正確，請重框。', 'The student card box is not right; please box it again.',
+                      '学生証の枠が正しくありません。囲み直してください。', '학생증 박스가 올바르지 않습니다. 다시 표시하세요.',
+                      'Kotak kartu mahasiswa tidak tepat; tandai ulang.', 'Khung thẻ sinh viên chưa đúng; hãy khoanh lại.'),
+    'side.caption': _(
+        '相機仰角約 {deg}°（建議 15–35°）· 學生證{card}，已在送出前塗掉 · 模型 {model} · {seconds} 秒',
+        'Camera angle about {deg}° (15–35° recommended) · student card {card}, painted over before sending · model '
+        '{model} · {seconds} s',
+        'カメラの仰角 約 {deg}°（推奨 15〜35°）· 学生証：{card}、送信前に塗りつぶし済み · モデル {model} · {seconds} 秒',
+        '카메라 각도 약 {deg}°(권장 15–35°) · 학생증 {card}, 전송 전에 가림 · 모델 {model} · {seconds}초',
+        'Sudut kamera sekitar {deg}° (disarankan 15–35°) · kartu mahasiswa {card}, ditutup sebelum dikirim · model '
+        '{model} · {seconds} dtk',
+        'Góc máy khoảng {deg}° (nên 15–35°) · thẻ sinh viên {card}, đã che trước khi gửi · mô hình {model} · {seconds} giây'),
+    'side.card_auto': _('自動找到（綠框）', 'found automatically (green outline)', '自動で検出（緑の枠）', '자동 감지(초록 테두리)',
+                        'ditemukan otomatis (garis hijau)', 'tự tìm thấy (khung xanh lá)'),
+    'side.card_manual': _('你框的（綠框）', 'boxed by you (green outline)', '手動で囲んだもの（緑の枠）', '직접 표시(초록 테두리)',
+                          'ditandai manual (garis hijau)', 'do bạn khoanh (khung xanh lá)'),
+    'side.unseen': _('側面照沒看到：{names}（仍用單張照片估）', 'Not seen in the side photo: {names} (still estimated from one photo)',
+                     '側面写真に写っていない：{names}（1枚の写真で推定）', '측면 사진에 안 보임: {names}(사진 한 장으로 추정)',
+                     'Tidak terlihat di foto samping: {names} (tetap diperkirakan dari satu foto)',
+                     'Không thấy trong ảnh chụp nghiêng: {names} (vẫn ước tính từ một ảnh)'),
+    'side.gemini_notes': _('Gemini：{notes}', 'Gemini: {notes}', 'Gemini：{notes}', 'Gemini: {notes}', 'Gemini: {notes}',
+                           'Gemini: {notes}'),
+    'side.none_measurable': _('側面照裡沒有可以量的菜。', 'No dish in the side photo could be measured.',
+                              '側面写真に測れる料理がありません。', '측면 사진에서 잴 수 있는 요리가 없습니다.',
+                              'Tidak ada hidangan di foto samping yang bisa diukur.',
+                              'Không có món nào trong ảnh chụp nghiêng đo được.'),
+    'table.dish': _('菜色', 'Dish', '料理', '요리', 'Hidangan', 'Món'),
+    'table.top_only': _('只用俯視照', 'Top photo only', '真上の写真のみ', '위 사진만', 'Hanya foto atas', 'Chỉ ảnh từ trên'),
+    'table.with_side': _('加側面照', 'With side photo', '側面写真あり', '측면 사진 포함', 'Dengan foto samping',
+                         'Thêm ảnh nghiêng'),
+    'table.measured': _('量到（cm）', 'Measured (cm)', '測定値（cm）', '측정값(cm)', 'Terukur (cm)', 'Đo được (cm)'),
+    'table.bowl_depth': _('碗深', 'bowl', '深さ', '그릇 깊이', 'mangkuk', 'bát sâu'),
+    'table.height': _('高', 'height', '高さ', '높이', 'tinggi', 'cao'),
+    'side.table_note': _(
+        '有側面照的菜，用量到的高度（碗是深度和裝多滿）取代預設厚度。仍是粗估：只在模擬場景驗證過，還沒有用秤重的真實餐點驗證。',
+        'For dishes in the side photo, the measured height (for bowls, depth and fill) replaces the default thickness. '
+        'Still a rough estimate: checked only on simulated scenes, not yet on weighed real meals.',
+        '側面写真に写った料理は、測った高さ（お椀は深さと入っている量）を既定の厚みの代わりに使います。まだ概算で、検証はシミュレーションだけ、'
+        '重さを量った実際の食事ではまだ検証していません。',
+        '측면 사진에 나온 요리는 잰 높이(그릇은 깊이와 담긴 정도)로 기본 두께를 대신합니다. 여전히 대략 추정이며, 시뮬레이션 장면에서만 '
+        '검증했고 무게를 잰 실제 식사로는 아직 검증하지 않았습니다.',
+        'Untuk hidangan di foto samping, tinggi terukur (untuk mangkuk: kedalaman dan isinya) menggantikan ketebalan '
+        'bawaan. Tetap perkiraan kasar: baru diuji pada adegan simulasi, belum pada makanan nyata yang ditimbang.',
+        'Với món có trong ảnh chụp nghiêng, chiều cao đo được (với bát là độ sâu và mức đầy) thay cho độ dày mặc định. '
+        'Vẫn là ước tính sơ bộ: mới kiểm chứng trên cảnh mô phỏng, chưa kiểm chứng bằng bữa ăn thật có cân.'),
+
+    # ---- Errors ----------------------------------------------------------------------------------------------
+    'err.gemini_key_invalid': _(
+        'Gemini API 金鑰無效或沒有權限：到 Google AI Studio 確認金鑰，再更新 `.streamlit/secrets.toml`。',
+        'The Gemini API key is invalid or lacks permission: check it in Google AI Studio, then update '
+        '`.streamlit/secrets.toml`.',
+        'Gemini API キーが無効か、権限がありません。Google AI Studio でキーを確認し、`.streamlit/secrets.toml` を更新してください。',
+        'Gemini API 키가 유효하지 않거나 권한이 없습니다. Google AI Studio에서 키를 확인한 뒤 `.streamlit/secrets.toml`을 업데이트하세요.',
+        'Kunci API Gemini tidak valid atau tidak punya izin: periksa di Google AI Studio, lalu perbarui '
+        '`.streamlit/secrets.toml`.',
+        'Khóa API Gemini không hợp lệ hoặc không có quyền: hãy kiểm tra trong Google AI Studio rồi cập nhật '
+        '`.streamlit/secrets.toml`.'),
+    'err.gemini_model_unavailable': _(
+        '這組金鑰目前用不了 Gemini Flash 模型，請到 Google AI Studio 確認。',
+        'This key cannot use the Gemini Flash models right now; please check in Google AI Studio.',
+        'このキーでは現在 Gemini Flash モデルを使えません。Google AI Studio で確認してください。',
+        '이 키로는 지금 Gemini Flash 모델을 사용할 수 없습니다. Google AI Studio에서 확인하세요.',
+        'Kunci ini belum bisa memakai model Gemini Flash; periksa di Google AI Studio.',
+        'Khóa này hiện chưa dùng được mô hình Gemini Flash; hãy kiểm tra trong Google AI Studio.'),
+    'err.gemini_quota_exceeded': _(
+        '已超過 Gemini 免費額度（每分鐘或每天的次數上限），請稍後再試。',
+        'The Gemini free quota is used up (requests per minute or per day); please try again later.',
+        'Gemini の無料枠（1分あたり・1日あたりの回数上限）を超えました。しばらくしてから再試行してください。',
+        'Gemini 무료 한도(분당 또는 하루 요청 수)를 넘었습니다. 잠시 후 다시 시도하세요.',
+        'Kuota gratis Gemini (batas permintaan per menit atau per hari) sudah habis; coba lagi nanti.',
+        'Đã vượt hạn mức miễn phí của Gemini (số lượt mỗi phút hoặc mỗi ngày); vui lòng thử lại sau.'),
+    'err.gemini_service_error': _(
+        'Gemini 服務暫時出錯，請稍後再試。', 'The Gemini service had a temporary error; please try again later.',
+        'Gemini サービスで一時的なエラーが発生しました。しばらくしてから再試行してください。',
+        'Gemini 서비스에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도하세요.',
+        'Layanan Gemini sedang bermasalah; coba lagi nanti.', 'Dịch vụ Gemini đang tạm lỗi; vui lòng thử lại sau.'),
+    'err.gemini_too_slow': _(
+        'Gemini 免費版現在太忙，所有模型都沒有在時間內回應，請過幾分鐘再試，或先用手動加菜。',
+        'The Gemini free tier is too busy: no model answered in time. Try again in a few minutes, or add dishes by hand.',
+        'Gemini 無料版が混み合っていて、どのモデルも時間内に応答しませんでした。数分後に再試行するか、手動で料理を追加してください。',
+        'Gemini 무료 버전이 지금 너무 바빠서 어떤 모델도 제시간에 응답하지 않았습니다. 몇 분 뒤 다시 시도하거나 직접 요리를 추가하세요.',
+        'Gemini versi gratis sedang terlalu sibuk: tidak ada model yang menjawab tepat waktu. Coba lagi beberapa menit '
+        'lagi, atau tambahkan hidangan secara manual.',
+        'Gemini bản miễn phí đang quá tải: không mô hình nào trả lời kịp. Hãy thử lại sau vài phút, hoặc tự thêm món.'),
+    'err.gemini_network_error': _('連不上 Gemini，請檢查網路。', 'Cannot reach Gemini; please check the network.',
+                                  'Gemini に接続できません。ネットワークを確認してください。', 'Gemini에 연결할 수 없습니다. 네트워크를 확인하세요.',
+                                  'Tidak bisa terhubung ke Gemini; periksa jaringan.', 'Không kết nối được Gemini; hãy kiểm tra mạng.'),
+    'err.gemini_blocked': _('Gemini 拒絕處理這張照片，請換一張。', 'Gemini refused to process this photo; please try another.',
+                            'Gemini がこの写真の処理を拒否しました。別の写真にしてください。',
+                            'Gemini가 이 사진의 처리를 거부했습니다. 다른 사진을 사용하세요.',
+                            'Gemini menolak memproses foto ini; coba foto lain.', 'Gemini từ chối xử lý ảnh này; hãy thử ảnh khác.'),
+    'err.gemini_answer_truncated': _('Gemini 的回答被截斷，請再試一次。', 'The answer from Gemini was cut off; please try again.',
+                                     'Gemini の回答が途中で切れました。もう一度試してください。', 'Gemini의 답변이 잘렸습니다. 다시 시도하세요.',
+                                     'Jawaban Gemini terpotong; coba lagi.', 'Câu trả lời của Gemini bị cắt ngang; hãy thử lại.'),
+    'err.gemini_answer_unreadable': _('Gemini 的回答格式不對，請再試一次。',
+                                      'The answer from Gemini was in the wrong format; please try again.',
+                                      'Gemini の回答の形式が正しくありません。もう一度試してください。',
+                                      'Gemini의 답변 형식이 올바르지 않습니다. 다시 시도하세요.',
+                                      'Format jawaban Gemini tidak sesuai; coba lagi.',
+                                      'Câu trả lời của Gemini sai định dạng; hãy thử lại.'),
+    'err.gemini_bad_request': _('送給 Gemini 的請求不被接受，請換一張照片再試。',
+                                'Gemini did not accept the request; please try another photo.',
+                                'Gemini へのリクエストが受け付けられませんでした。別の写真で試してください。',
+                                'Gemini가 요청을 받아들이지 않았습니다. 다른 사진으로 다시 시도하세요.',
+                                'Gemini tidak menerima permintaan ini; coba dengan foto lain.',
+                                'Gemini không chấp nhận yêu cầu; hãy thử với ảnh khác.'),
+    'err.invalid_upload_size': _('照片超過 20 MB，請縮小後再上傳。', 'The photo is over 20 MB; please make it smaller and upload again.',
+                                 '写真が 20 MB を超えています。小さくしてからアップロードしてください。',
+                                 '사진이 20MB를 넘습니다. 크기를 줄여서 다시 올려 주세요.',
+                                 'Foto lebih dari 20 MB; perkecil dulu lalu unggah lagi.',
+                                 'Ảnh lớn hơn 20 MB; hãy thu nhỏ rồi tải lên lại.'),
+    'err.unsupported_image_signature': _(
+        '只接受 JPG、PNG、WebP。iPhone 的 HEIC 請先轉成 JPG（用手機瀏覽器上傳時通常會自動轉）。',
+        'Only JPG, PNG and WebP are accepted. Convert iPhone HEIC photos to JPG first (uploading from the phone browser '
+        'usually does this for you).',
+        'JPG・PNG・WebP のみ対応しています。iPhone の HEIC は先に JPG に変換してください（スマホのブラウザからアップロードすると通常は自動で変換されます）。',
+        'JPG, PNG, WebP만 지원합니다. iPhone의 HEIC는 먼저 JPG로 바꿔 주세요(휴대폰 브라우저로 올리면 보통 자동으로 바뀝니다).',
+        'Hanya JPG, PNG, dan WebP yang diterima. Ubah foto HEIC iPhone ke JPG dulu (biasanya otomatis bila diunggah '
+        'dari browser ponsel).',
+        'Chỉ nhận JPG, PNG và WebP. Ảnh HEIC của iPhone hãy đổi sang JPG trước (tải lên từ trình duyệt điện thoại '
+        'thường tự đổi).'),
+    'err.image_too_large': _('照片超過 1 億像素，請縮小後再上傳。',
+                             'The photo has more than 100 million pixels; please make it smaller and upload again.',
+                             '写真が 1 億画素を超えています。小さくしてからアップロードしてください。',
+                             '사진이 1억 화소를 넘습니다. 크기를 줄여서 다시 올려 주세요.',
+                             'Foto lebih dari 100 juta piksel; perkecil dulu lalu unggah lagi.',
+                             'Ảnh có hơn 100 triệu điểm ảnh; hãy thu nhỏ rồi tải lên lại.'),
+    'err.invalid_image_content': _('圖片檔損壞或讀不出來，請換一張。', 'The image file is damaged or unreadable; please choose another.',
+                                   '画像ファイルが壊れているか読み込めません。別の写真にしてください。',
+                                   '이미지 파일이 손상되었거나 읽을 수 없습니다. 다른 사진을 선택하세요.',
+                                   'File gambar rusak atau tidak bisa dibaca; pilih foto lain.',
+                                   'Tệp ảnh bị hỏng hoặc không đọc được; hãy chọn ảnh khác.'),
+    'err.photo_default': _('圖片無法讀取，請換一張 JPG／PNG／WebP 照片。',
+                           'The image cannot be read; please choose a JPG, PNG or WebP photo.',
+                           '画像を読み込めません。JPG・PNG・WebP の写真を選んでください。',
+                           '이미지를 읽을 수 없습니다. JPG/PNG/WebP 사진을 선택하세요.',
+                           'Gambar tidak bisa dibaca; pilih foto JPG, PNG, atau WebP.',
+                           'Không đọc được ảnh; hãy chọn ảnh JPG, PNG hoặc WebP.'),
+    'card.reference_unreadable': _(
+        '學生證 logo 設定檔讀不到，請重新執行 `python -m tools.setup_card_reference`。',
+        'The student card logo settings cannot be read; run `python -m tools.setup_card_reference` again.',
+        '学生証ロゴの設定ファイルを読み込めません。`python -m tools.setup_card_reference` をもう一度実行してください。',
+        '학생증 로고 설정 파일을 읽을 수 없습니다. `python -m tools.setup_card_reference`를 다시 실행하세요.',
+        'Pengaturan logo kartu mahasiswa tidak bisa dibaca; jalankan lagi `python -m tools.setup_card_reference`.',
+        'Không đọc được tệp thiết lập logo thẻ sinh viên; hãy chạy lại `python -m tools.setup_card_reference`.'),
+    'reference.bad_format': _('密度與熱量表格式不對：{error}', 'The density and calorie table has the wrong format: {error}',
+                              '密度・カロリー表の形式が正しくありません：{error}', '밀도·칼로리 표 형식이 올바르지 않습니다: {error}',
+                              'Format tabel densitas dan kalori tidak sesuai: {error}', 'Bảng mật độ và calo sai định dạng: {error}'),
+
+    # ---- Synthetic demo --------------------------------------------------------------------------------------
+    'demo.info': _(
+        '合成展示：畫布、辨識框與食譜都是測試用案例，不是真實照片分析，也不是食譜推薦。',
+        'Synthetic demo: the canvas, boxes and recipes are test cases, not a real photo analysis and not recipe advice.',
+        '合成デモ：キャンバス・認識枠・レシピはすべてテスト用で、実際の写真の解析でもレシピのおすすめでもありません。',
+        '합성 데모: 캔버스, 인식 박스, 레시피는 모두 테스트용 사례이며 실제 사진 분석도, 레시피 추천도 아닙니다.',
+        'Demo sintetis: kanvas, kotak, dan resep adalah kasus uji, bukan analisis foto sungguhan dan bukan rekomendasi resep.',
+        'Bản demo tổng hợp: nền, khung và công thức đều là ca thử nghiệm, không phải phân tích ảnh thật và cũng không '
+        'phải gợi ý công thức.'),
+    'btn.demo_show': _('顯示展示結果', 'Show the demo result', 'デモ結果を表示', '데모 결과 보기', 'Tampilkan hasil demo',
+                       'Hiện kết quả demo'),
+    'btn.demo_clear': _('清除本次圖片與結果', 'Clear this image and result', 'この画像と結果を消去', '이번 이미지와 결과 지우기',
+                        'Hapus gambar dan hasil ini', 'Xóa ảnh và kết quả lần này'),
+    'demo.hint': _('按「顯示展示結果」看合成案例。', 'Press "Show the demo result" to see the synthetic case.',
+                   '「デモ結果を表示」を押すと合成ケースを見られます。', '"데모 결과 보기"를 누르면 합성 사례를 볼 수 있습니다.',
+                   'Tekan "Tampilkan hasil demo" untuk melihat kasus sintetis.', 'Bấm "Hiện kết quả demo" để xem ca tổng hợp.'),
+    'demo.summary': _('結果摘要', 'Summary', '結果の概要', '결과 요약', 'Ringkasan hasil', 'Tóm tắt kết quả'),
+    'demo.energy': _('熱量：{text}', 'Calories: {text}', 'カロリー：{text}', '칼로리: {text}', 'Kalori: {text}', 'Calo: {text}'),
+    'demo.caption_synthetic': _('辨識框（合成展示的畫布與框都是測試用）',
+                                'Detection boxes (the canvas and boxes of the synthetic demo are test data)',
+                                '認識枠（合成デモのキャンバスと枠はテスト用です）', '인식 박스(합성 데모의 캔버스와 박스는 테스트용)',
+                                'Kotak deteksi (kanvas dan kotak demo sintetis adalah data uji)',
+                                'Khung nhận diện (khung và nền của bản demo tổng hợp là dữ liệu thử)'),
+    'demo.caption_boxes': _('辨識框與模型分數', 'Detection boxes and model scores', '認識枠とモデルのスコア', '인식 박스와 모델 점수',
+                            'Kotak deteksi dan skor model', 'Khung nhận diện và điểm mô hình'),
+    'demo.caption_empty': _('上傳的照片（沒有辨識到食物，所以沒有框）', 'The uploaded photo (no food recognised, so no boxes)',
+                            'アップロードした写真（料理を認識できなかったため枠はありません）', '올린 사진(음식을 인식하지 못해 박스 없음)',
+                            'Foto yang diunggah (tidak ada makanan dikenali, jadi tanpa kotak)',
+                            'Ảnh đã tải lên (không nhận diện được món nên không có khung)'),
+    'demo.why': _('**為什麼沒有算出熱量／需要注意的地方**', '**Why no calories / what to watch**', '**カロリーが出ない理由・注意点**',
+                  '**칼로리가 계산되지 않은 이유 / 주의할 점**', '**Mengapa kalori tidak dihitung / yang perlu diperhatikan**',
+                  '**Vì sao chưa tính được calo / điểm cần lưu ý**'),
+    'demo.next': _('**下一步可以怎麼做**', '**What to do next**', '**次にできること**', '**다음에 할 수 있는 일**',
+                   '**Langkah berikutnya**', '**Bước tiếp theo**'),
+    'demo.portions_expander': _('各項目的份量狀態', 'Portion status per item', '項目ごとの分量の状態', '항목별 양 상태',
+                                'Status porsi tiap item', 'Trạng thái khẩu phần từng mục'),
+    'demo.no_assessment': _('尚未產生照片份量評估。', 'No photo portion assessment yet.', '写真の分量評価はまだありません。',
+                            '사진 양 평가가 아직 없습니다.', 'Belum ada penilaian porsi dari foto.',
+                            'Chưa có đánh giá khẩu phần từ ảnh.'),
+    'demo.visible_only': _(
+        '只計照片中看得到的食材；食譜候選不是視覺證據，不會加入熱量。',
+        'Only ingredients visible in the photo count; recipe candidates are not visual evidence and add no calories.',
+        '写真に見える食材だけを数えます。レシピ候補は視覚的な証拠ではないため、カロリーに加えません。',
+        '사진에 보이는 재료만 셉니다. 레시피 후보는 시각적 증거가 아니므로 칼로리에 더하지 않습니다.',
+        'Hanya bahan yang terlihat di foto yang dihitung; kandidat resep bukan bukti visual dan tidak menambah kalori.',
+        'Chỉ tính nguyên liệu nhìn thấy trong ảnh; công thức gợi ý không phải bằng chứng hình ảnh nên không cộng vào calo.'),
+    'demo.col_item': _('項目', 'Item', '項目', '항목', 'Item', 'Mục'),
+    'demo.col_status': _('狀態', 'Status', '状態', '상태', 'Status', 'Trạng thái'),
+    'demo.col_reason': _('原因', 'Reason', '理由', '이유', 'Alasan', 'Lý do'),
+    'demo.estimated': _('已估算', 'Estimated', '推定済み', '추정됨', 'Diperkirakan', 'Đã ước tính'),
+    'demo.not_estimable': _('無法估算', 'Cannot estimate', '推定不可', '추정 불가', 'Tidak bisa diperkirakan',
+                            'Không ước tính được'),
+    'sum.col_id': _('編號', 'No.', '番号', '번호', 'No.', 'STT'),
+    'sum.col_result': _('辨識結果', 'Recognised as', '認識結果', '인식 결과', 'Hasil pengenalan', 'Kết quả nhận diện'),
+    'sum.col_score': _('模型分數', 'Model score', 'モデルのスコア', '모델 점수', 'Skor model', 'Điểm mô hình'),
+    'sum.energy_kcal': _('約 {low}–{high} kcal（只含照片中看得到的食物）', 'about {low}–{high} kcal (only food visible in the photo)',
+                         '約 {low}〜{high} kcal（写真に見える料理のみ）', '약 {low}–{high} kcal(사진에 보이는 음식만)',
+                         'sekitar {low}–{high} kcal (hanya makanan yang terlihat di foto)',
+                         'khoảng {low}–{high} kcal (chỉ món nhìn thấy trong ảnh)'),
+    'sum.energy_other': _('{low}–{high} {unit}（只含看得到的食物）', '{low}–{high} {unit} (only visible food)',
+                          '{low}〜{high} {unit}（見える料理のみ）', '{low}–{high} {unit}(보이는 음식만)',
+                          '{low}–{high} {unit} (hanya makanan yang terlihat)', '{low}–{high} {unit} (chỉ món nhìn thấy)'),
+    'sum.computed': _('已估算出熱量範圍', 'Calorie range estimated', 'カロリーの範囲を推定しました', '칼로리 범위를 추정했습니다',
+                      'Rentang kalori sudah diperkirakan', 'Đã ước tính khoảng calo'),
+    'sum.hidden_note': _(
+        '可能還有看不到的油、醬汁或糖沒有算進去；食譜只能提示，不能當作照片證據。',
+        'Unseen oil, sauce or sugar may not be counted; recipes can only hint, not serve as photo evidence.',
+        '見えない油・ソース・砂糖が含まれていない可能性があります。レシピはヒントにすぎず、写真の証拠にはなりません。',
+        '보이지 않는 기름, 소스, 설탕이 빠졌을 수 있습니다. 레시피는 힌트일 뿐 사진 증거가 아닙니다.',
+        'Minyak, saus, atau gula yang tak terlihat mungkin belum dihitung; resep hanya petunjuk, bukan bukti foto.',
+        'Có thể còn dầu, nước sốt hoặc đường không nhìn thấy chưa được tính; công thức chỉ là gợi ý, không phải bằng '
+        'chứng từ ảnh.'),
+    'sum.narrow_note': _(
+        '營養資料本身的成分差異尚未量化，範圍可能偏窄。',
+        'Variation within the nutrition data itself is not quantified yet, so the range may be too narrow.',
+        '栄養データ自体の成分のばらつきはまだ数値化されていないため、範囲が狭すぎる可能性があります。',
+        '영양 데이터 자체의 성분 편차는 아직 수치화되지 않아 범위가 좁게 나올 수 있습니다.',
+        'Variasi dalam data gizi itu sendiri belum dihitung, jadi rentangnya mungkin terlalu sempit.',
+        'Độ dao động trong chính dữ liệu dinh dưỡng chưa được lượng hóa, nên khoảng có thể quá hẹp.'),
+    'sum.no_energy': _('目前無法估算熱量', 'Calories cannot be estimated yet', '現時点ではカロリーを推定できません',
+                       '현재 칼로리를 추정할 수 없습니다', 'Kalori belum bisa diperkirakan', 'Hiện chưa ước tính được calo'),
+    'sum.failed': _('這次分析沒有完成', 'This analysis did not finish', '今回の解析は完了しませんでした', '이번 분석은 완료되지 않았습니다',
+                    'Analisis kali ini tidak selesai', 'Lần phân tích này chưa hoàn tất'),
+    'sum.partial': _('辨識到 {count} 個項目，但證據還不足以估算熱量',
+                     '{count} items recognised, but the evidence is not yet enough to estimate calories',
+                     '{count} 項目を認識しましたが、カロリーを推定するには証拠がまだ足りません',
+                     '{count}개 항목을 인식했지만 칼로리를 추정하기에는 아직 근거가 부족합니다',
+                     '{count} item dikenali, tetapi buktinya belum cukup untuk memperkirakan kalori',
+                     'Đã nhận diện {count} mục, nhưng bằng chứng chưa đủ để ước tính calo'),
+    'sum.no_food': _('沒有辨識到食物', 'No food recognised', '料理を認識できませんでした', '음식을 인식하지 못했습니다',
+                     'Tidak ada makanan yang dikenali', 'Không nhận diện được món ăn'),
+    'sum.synthetic_note': _('這是合成展示資料，不是真實照片分析。', 'This is synthetic demo data, not a real photo analysis.',
+                            'これは合成デモのデータで、実際の写真の解析ではありません。', '이것은 합성 데모 데이터이며 실제 사진 분석이 아닙니다.',
+                            'Ini data demo sintetis, bukan analisis foto sungguhan.',
+                            'Đây là dữ liệu demo tổng hợp, không phải phân tích ảnh thật.'),
+    'sum.score_note': _('「模型分數」不是正確機率；辨識結果都只是候選。',
+                        '"Model score" is not a probability of being right; every result is only a candidate.',
+                        '「モデルのスコア」は正解の確率ではなく、認識結果はすべて候補にすぎません。',
+                        '"모델 점수"는 정답 확률이 아니며, 인식 결과는 모두 후보일 뿐입니다.',
+                        '"Skor model" bukan peluang benar; semua hasil hanyalah kandidat.',
+                        '"Điểm mô hình" không phải xác suất đúng; mọi kết quả chỉ là ứng viên.'),
+
+    # ---- Developer-only texts (Chinese and English; ?dev=1 and the synthetic demo's details) -----------------
+    'dev.title': _('**開發者資訊**（網址有 `?dev=1` 才顯示；只在記憶體）',
+                   '**Developer details** (shown only with `?dev=1` in the address; kept in memory only)'),
+    'dev.methods': _('烹調方式代碼：', 'Cooking method codes: '),
+    'dev.ingredients': _('食材代碼：', 'Ingredient codes: '),
+    'dev.demo_expander': _('開發者細節（流程狀態、食譜候選、完整 JSON；只在記憶體，不會下載或保存）',
+                           'Developer details (pipeline status, recipe candidates, full JSON; in memory only, never '
+                           'downloaded or saved)'),
+    'dev.status': _('流程狀態：', 'Pipeline status:'),
+    'dev.recipes': _('**食譜候選與來源**（合成食譜先驗，不代表照片實際食材）',
+                     '**Recipe candidates and sources** (synthetic recipe priors, not the ingredients in the photo)'),
+    'dev.object': _('物件 #{id} · {status} · {reason}', 'Object #{id} · {status} · {reason}'),
+
+    # ---- Names whose Chinese stays in an existing table ------------------------------------------------------
+    # explain.FOOD_NAMES (detection classes and the shape-template foods)
+    'food.Over-easy egg': _o('Over-easy egg', '目玉焼き', '반숙 달걀 프라이', 'Telur ceplok setengah matang', 'Trứng ốp la lòng đào'),
+    'food.bawan': _o('Ba-wan meat dumpling', 'バーワン', '바완', 'Ba-wan, pangsit daging', 'Bánh bawan nhân thịt'),
+    'food.beef_noodles': _o('Beef noodle soup', '牛肉麺', '우육면', 'Mi sapi', 'Mì bò'),
+    'food.braised_napa_cabbage': _o('Braised napa cabbage', '白菜の煮込み', '배추조림', 'Sawi putih rebus', 'Cải thảo om'),
+    'food.braised_pork_over_rice': _o('Braised pork rice', 'ルーローファン', '루러우판', 'Nasi babi kecap', 'Cơm thịt kho'),
+    'food.chicken_mushroom_soup': _o('Chicken and shiitake soup', '椎茸と鶏のスープ', '표고버섯 닭고기 수프',
+                                     'Sup ayam jamur shiitake', 'Canh gà nấm hương'),
+    'food.chinese_pickled_cucumber': _o('Smashed cucumber salad', 'きゅうりの和え物', '오이무침', 'Salad mentimun',
+                                        'Dưa chuột trộn'),
+    'food.cold_noodle': _o('Cold noodles', '涼麺', '중국식 냉면', 'Mi dingin', 'Mì lạnh'),
+    'food.deep-fried_chicken_cutlets': _o('Fried chicken cutlet', 'フライドチキンカツ', '대만식 닭튀김', 'Potongan ayam goreng',
+                                          'Gà rán miếng lớn'),
+    'food.egg_pancake_roll': _o('Egg pancake roll', 'ダンビン（卵クレープ）', '단빙(달걀 전병)', 'Crepe telur gulung',
+                                'Bánh trứng cuộn'),
+    'food.fried-spanish_mackerel_thick_soup': _o('Fried mackerel thick soup', 'サワラ揚げのとろみスープ', '삼치튀김 걸쭉한 수프',
+                                                 'Sup kental ikan tenggiri goreng', 'Súp sệt cá thu chiên'),
+    'food.fried_instant_noodles': _o('Stir-fried instant noodles', 'インスタント麺の炒め', '볶은 라면', 'Mi instan goreng',
+                                     'Mì gói xào'),
+    'food.fried_rice_noodles': _o('Stir-fried rice vermicelli', '焼きビーフン', '볶음 쌀국수', 'Bihun goreng', 'Bún gạo xào'),
+    'food.loofah': _o('Loofah (sponge gourd)', 'ヘチマ', '수세미오이', 'Oyong', 'Mướp'),
+    'food.turkey_rice': _o('Turkey rice', '七面鳥ごはん', '칠면조 덮밥', 'Nasi kalkun', 'Cơm gà tây'),
+    'food.visible_fried_egg': _o('Fried egg', 'フライドエッグ', '달걀 프라이', 'Telur goreng', 'Trứng chiên'),
+    'food.cooked_rice_region': _o('Cooked rice', 'ごはん', '밥', 'Nasi', 'Cơm'),
+    'food.cooked_noodle_region': _o('Cooked noodles', 'ゆで麺', '삶은 면', 'Mi rebus', 'Mì luộc'),
+    # How a fixed food is named: the page language first, the other name after it (Chinese pages keep the key).
+    'food.pattern': _('{name}（{original}）', '{name} ({original})', '{name}（{original}）', '{name} ({original})',
+                      '{name} ({original})', '{name} ({original})'),
+    'food.unknown': _('（未知）', '(unknown)', '（不明）', '(알 수 없음)', '(tidak diketahui)', '(không rõ)'),
+
+    # nutrition_model.INGREDIENTS
+    'ingredient.cooked_rice': _o('White rice', 'ごはん', '흰밥', 'Nasi putih', 'Cơm trắng'),
+    'ingredient.noodles': _o('Noodles (cooked/fresh)', '麺（ゆで・生麺）', '면(삶은 면/생면)', 'Mi (matang/basah)',
+                             'Mì (chín/tươi)'),
+    'ingredient.instant_noodles': _o('Instant noodles (soaked)', 'インスタント麺（戻した状態）', '라면(불린 것)',
+                                     'Mi instan (sudah diseduh)', 'Mì gói (đã ngâm)'),
+    'ingredient.rice_noodles': _o('Rice vermicelli (cooked)', 'ビーフン（ゆで）', '쌀국수 면(삶은 것)', 'Bihun (matang)',
+                                  'Bún gạo (chín)'),
+    'ingredient.leafy_vegetable': _o('Leafy greens', '葉物野菜', '잎채소', 'Sayuran hijau', 'Rau lá'),
+    'ingredient.gourd_vegetable': _o('Gourd vegetables', 'ウリ科の野菜', '박과 채소', 'Sayuran labu', 'Rau họ bầu bí'),
+    'ingredient.pickles': _o('Pickles', '漬物', '장아찌', 'Acar', 'Dưa muối'),
+    'ingredient.egg': _o('Egg (fried/boiled, without oil)', '卵（焼き・ゆで、油を除く）', '달걀(부침/삶음, 기름 제외)',
+                         'Telur (goreng/rebus, tanpa minyak)', 'Trứng (chiên/luộc, không tính dầu)'),
+    'ingredient.braised_egg': _o('Soy-braised egg', '煮卵', '간장 조림 달걀', 'Telur pindang kecap', 'Trứng kho'),
+    'ingredient.tofu': _o('Tofu', '豆腐', '두부', 'Tahu', 'Đậu phụ'),
+    'ingredient.dried_tofu': _o('Pressed tofu', '押し豆腐', '건두부', 'Tahu kering', 'Đậu phụ khô'),
+    'ingredient.chicken': _o('Chicken (cooked)', '鶏肉（加熱済み）', '닭고기(익힌 것)', 'Ayam (matang)', 'Thịt gà (chín)'),
+    'ingredient.chicken_cutlet': _o('Chicken cutlet meat (cooked, without coating)', '鶏カツの肉（加熱済み、衣を除く）',
+                                    '치킨 커틀릿 고기(익힌 것, 튀김옷 제외)', 'Daging ayam fillet (matang, tanpa tepung)',
+                                    'Thịt gà miếng (chín, không tính bột chiên)'),
+    'ingredient.pork': _o('Pork (cooked)', '豚肉（加熱済み）', '돼지고기(익힌 것)', 'Daging babi (matang)', 'Thịt heo (chín)'),
+    'ingredient.braised_pork_mince': _o('Braised minced pork', '豚ひき肉の醤油煮', '간장 돼지고기 다짐육 조림',
+                                        'Daging babi cincang kecap', 'Thịt heo bằm kho'),
+    'ingredient.beef': _o('Beef (cooked)', '牛肉（加熱済み）', '소고기(익힌 것)', 'Daging sapi (matang)', 'Thịt bò (chín)'),
+    'ingredient.fish': _o('Fish (cooked)', '魚（加熱済み）', '생선(익힌 것)', 'Ikan (matang)', 'Cá (chín)'),
+    'ingredient.thick_soup': _o('Thick soup (incl. meat potage)', 'とろみスープ（肉入りを含む）', '걸쭉한 수프(고기 수프 포함)',
+                                'Sup kental (termasuk sup daging)', 'Súp sệt (gồm súp thịt)'),
+    'ingredient.clear_broth': _o('Clear broth', '澄ましスープ', '맑은 국물', 'Kaldu bening', 'Canh trong'),
+    'ingredient.meatball_bawan': _o('Ba-wan dumpling (not fried)', 'バーワン（揚げる前）', '바완(튀기지 않은 것)',
+                                    'Ba-wan (tidak digoreng)', 'Bánh bawan (chưa chiên)'),
+    'ingredient.pancake_skin': _o('Egg pancake wrapper', 'ダンビンの皮', '단빙 피', 'Kulit crepe telur', 'Vỏ bánh trứng cuộn'),
+    'ingredient.batter_coating': _o('Batter coating', '揚げ衣', '튀김옷', 'Tepung pelapis', 'Bột chiên'),
+
+    # nutrition_model.COOKING_METHODS
+    'method.none': _o('Raw / no extra cooking', '生・追加の調理なし', '날것/별도 조리 없음', 'Mentah / tanpa olahan tambahan',
+                      'Sống / không chế biến thêm'),
+    'method.boiled_or_steamed': _o('Boiled / steamed', 'ゆで・蒸し', '삶기/찌기', 'Rebus / kukus', 'Luộc / hấp'),
+    'method.blanched_with_oil': _o('Blanched greens with oil', '湯通し＋油かけ', '데친 채소에 기름', 'Sayur rebus disiram minyak',
+                                   'Rau luộc rưới dầu'),
+    'method.stir_fried': _o('Stir-fried', '炒め', '볶음', 'Tumis', 'Xào'),
+    'method.pan_fried': _o('Pan-fried', '焼き', '부침', 'Goreng sedikit minyak', 'Chiên áp chảo'),
+    'method.deep_fried': _o('Deep-fried', '揚げ', '튀김', 'Goreng rendam minyak', 'Chiên ngập dầu'),
+    'method.braised': _o('Braised in soy', '醤油煮込み', '간장 조림', 'Semur kecap', 'Kho / om'),
+    'method.soup': _o('Soup', 'スープ煮', '국/탕', 'Sup', 'Nấu canh'),
+    'method.sweet_sauce': _o('Sweet and sour / sweet sauce', '甘酢・甘いソース', '탕수/달콤한 소스', 'Asam manis / saus manis',
+                             'Chua ngọt / sốt ngọt'),
+
+    # nutrition_model.NUTRIENTS
+    'nutrient.fiber_g': _o('Dietary fibre', '食物繊維', '식이섬유', 'Serat pangan', 'Chất xơ'),
+    'nutrient.sugar_g': _o('Sugar', '糖類', '당류', 'Gula', 'Đường'),
+    'nutrient.sat_fat_g': _o('Saturated fat', '飽和脂肪酸', '포화지방', 'Lemak jenuh', 'Chất béo bão hòa'),
+    'nutrient.cholesterol_mg': _o('Cholesterol', 'コレステロール', '콜레스테롤', 'Kolesterol', 'Cholesterol'),
+    'nutrient.sodium_mg': _o('Sodium', 'ナトリウム', '나트륨', 'Natrium', 'Natri'),
+    'nutrient.potassium_mg': _o('Potassium', 'カリウム', '칼륨', 'Kalium', 'Kali'),
+    'nutrient.calcium_mg': _o('Calcium', 'カルシウム', '칼슘', 'Kalsium', 'Canxi'),
+    'nutrient.iron_mg': _o('Iron', '鉄', '철', 'Zat besi', 'Sắt'),
+
+    # portions.NOTES
+    'note.card_missing': _o('Box the student card on the photo first to estimate the volume',
+                            '体積を推定するには、まず写真の上で学生証を囲んでください', '부피를 추정하려면 먼저 사진에서 학생증을 표시하세요',
+                            'Tandai dulu kartu mahasiswa di foto untuk memperkirakan volume',
+                            'Hãy khoanh thẻ sinh viên trên ảnh trước để ước tính thể tích'),
+    'note.card_box_shape_not_a_card': _o(
+        'The box does not have the shape of a student card (about 1.6 : 1); please box it again',
+        '枠の縦横比が学生証（約 1.6 : 1）と違います。囲み直してください', '박스의 가로세로 비율이 학생증(약 1.6 : 1)과 다릅니다. 다시 표시하세요',
+        'Rasio kotak tidak seperti kartu mahasiswa (sekitar 1,6 : 1); tandai ulang',
+        'Tỉ lệ khung không giống thẻ sinh viên (khoảng 1,6 : 1); hãy khoanh lại'),
+    'note.invalid_card_box': _o('The student card box is not right; please box it again', '学生証の枠が正しくありません。囲み直してください',
+                                '학생증 박스가 올바르지 않습니다. 다시 표시하세요', 'Kotak kartu mahasiswa tidak tepat; tandai ulang',
+                                'Khung thẻ sinh viên chưa đúng; hãy khoanh lại'),
+    'note.no_shape_template': _o('No shape template for this dish yet; please type its weight',
+                                 'この料理にはまだ形状テンプレートがありません。重さを入力してください',
+                                 '이 요리는 아직 모양 템플릿이 없습니다. 무게를 직접 입력하세요',
+                                 'Hidangan ini belum punya templat bentuk; isi beratnya sendiri',
+                                 'Món này chưa có mẫu hình dạng; hãy tự nhập khối lượng'),
+    'note.density_missing': _o('Not in the density table yet, so only the volume is estimated; you can type the weight',
+                               '密度表にまだないため体積しか推定できません。重さを入力することもできます',
+                               '밀도 표에 아직 없어 부피만 추정합니다. 무게를 직접 입력할 수 있습니다',
+                               'Belum ada di tabel densitas, jadi hanya volume yang diperkirakan; Anda bisa mengisi beratnya',
+                               'Chưa có trong bảng mật độ nên chỉ ước tính thể tích; bạn có thể tự nhập khối lượng'),
+    'note.kcal_missing': _o('Not in the calorie table yet, so only the weight is shown', 'カロリー表にまだないため重さだけを表示します',
+                            '칼로리 표에 아직 없어 무게만 표시합니다', 'Belum ada di tabel kalori, jadi hanya berat yang ditampilkan',
+                            'Chưa có trong bảng calo nên chỉ hiện khối lượng'),
+    'note.composition_partly_unknown': _o(
+        'Some components are not in the ingredient table; calories count only the known part',
+        '食材表にない成分があり、カロリーは分かる部分だけで計算しています', '재료 표에 없는 성분이 있어 칼로리는 아는 부분만 계산합니다',
+        'Sebagian komponen tidak ada di tabel bahan; kalori hanya menghitung bagian yang dikenal',
+        'Một số thành phần không có trong bảng nguyên liệu; calo chỉ tính phần đã biết'),
+    'note.side_photo_angle_out_of_range': _o(
+        'The side photo angle is off (shoot from about 15–35° above the table); this dish is still estimated from one photo',
+        '側面写真の角度が合っていません（テーブル面から約 15〜35 度で撮影）。この料理は1枚の写真で推定します',
+        '측면 사진 각도가 맞지 않습니다(테이블 위 약 15–35도에서 촬영). 이 요리는 사진 한 장으로 추정합니다',
+        'Sudut foto samping tidak tepat (potret dari sekitar 15–35° di atas meja); hidangan ini tetap diperkirakan dari satu foto',
+        'Góc ảnh chụp nghiêng chưa đúng (chụp ở khoảng 15–35° so với mặt bàn); món này vẫn ước tính từ một ảnh'),
+    'note.side_container_box_missing': _o(
+        'The side photo did not box the whole bowl; this dish is still estimated from one photo',
+        '側面写真でお椀全体を囲めていません。この料理は1枚の写真で推定します', '측면 사진에서 그릇 전체를 잡지 못했습니다. 이 요리는 사진 한 장으로 추정합니다',
+        'Foto samping tidak menandai seluruh mangkuk; hidangan ini tetap diperkirakan dari satu foto',
+        'Ảnh chụp nghiêng không khoanh được cả cái bát; món này vẫn ước tính từ một ảnh'),
+    'note.side_height_not_measurable': _o(
+        'The side photo cannot measure the height of this dish; still estimated from one photo',
+        '側面写真ではこの料理の高さを測れません。1枚の写真で推定します', '측면 사진으로 이 요리의 높이를 잴 수 없습니다. 사진 한 장으로 추정합니다',
+        'Foto samping tidak bisa mengukur tinggi hidangan ini; tetap diperkirakan dari satu foto',
+        'Ảnh chụp nghiêng không đo được chiều cao món này; vẫn ước tính từ một ảnh'),
+    'note.side_bowl_not_measurable': _o(
+        'The side photo cannot measure the bowl depth; still estimated from one photo',
+        '側面写真ではお椀の深さを測れません。1枚の写真で推定します', '측면 사진으로 그릇 깊이를 잴 수 없습니다. 사진 한 장으로 추정합니다',
+        'Foto samping tidak bisa mengukur kedalaman mangkuk; tetap diperkirakan dari satu foto',
+        'Ảnh chụp nghiêng không đo được độ sâu của bát; vẫn ước tính từ một ảnh'),
+    'note.invalid_side_box': _o(
+        'The side photo box is not right; this dish is still estimated from one photo',
+        '側面写真の枠が正しくありません。この料理は1枚の写真で推定します', '측면 사진의 박스가 올바르지 않습니다. 이 요리는 사진 한 장으로 추정합니다',
+        'Kotak di foto samping tidak tepat; hidangan ini tetap diperkirakan dari satu foto',
+        'Khung trong ảnh chụp nghiêng chưa đúng; món này vẫn ước tính từ một ảnh'),
+
+    # explain.REASONS: English for every code; the reasons the page can show also in the other languages.
+    'reason.ingredient_level_semantics_unverified': _o(
+        'The current model only recognises whole dishes; it cannot yet confirm which ingredients are on the plate, so '
+        'no weight is estimated.',
+        '現在のモデルは「料理全体」しか認識できず、皿にどの食材があるかまだ確認できないため、重さを推定できません。',
+        '현재 모델은 "요리 전체"만 인식해 접시에 어떤 재료가 있는지 아직 확인할 수 없으므로 무게를 추정할 수 없습니다.',
+        'Model saat ini hanya mengenali "hidangan utuh" dan belum bisa memastikan bahan apa saja di piring, jadi berat '
+        'tidak bisa diperkirakan.',
+        'Mô hình hiện chỉ nhận diện "cả món", chưa xác định được trên đĩa có những nguyên liệu nào, nên không ước tính '
+        'được khối lượng.'),
+    'reason.classification_is_not_ingredient_detection': _o(
+        'There is only a dish name for the whole photo and no ingredient locations, so no weight can be estimated.'),
+    'reason.recipe_prior_not_visual_evidence': _o(
+        'This ingredient comes from a recipe and cannot be seen in the photo, so it is not counted in the calories.',
+        'この食材はレシピからの推測で、写真には写っていないため、カロリーに入れられません。',
+        '이 재료는 레시피로 추측한 것이고 사진에는 보이지 않으므로 칼로리에 넣을 수 없습니다.',
+        'Bahan ini ditebak dari resep dan tidak terlihat di foto, jadi tidak boleh dihitung ke kalori.',
+        'Nguyên liệu này được suy ra từ công thức, không thấy trong ảnh, nên không được tính vào calo.'),
+    'reason.evidence_type_not_admissible': _o(
+        'This record is not ingredient evidence from the photo and cannot be used to estimate weight.'),
+    'reason.visual_evidence_uncertain': _o('This ingredient is not clear in the photo, so its weight is not estimated yet.'),
+    'reason.visual_evidence_unavailable': _o('There is no usable ingredient evidence for this area.'),
+    'reason.ingredient_candidate_missing': _o('This area does not say which ingredient it is yet.'),
+    'reason.evidence_id_missing': _o('This annotation has no ID, so its source cannot be traced.'),
+    'reason.image_region_missing': _o('This annotation has no box on the photo.'),
+    'reason.duplicate_evidence_identity': _o('The same annotation ID appears twice, so it is unclear which one to use.'),
+    'reason.no_detections_does_not_establish_ingredient_absence': _o(
+        'The model found no food; this does not mean there is no food in the photo.',
+        'モデルは料理を見つけられませんでしたが、写真に料理がないという意味ではありません。',
+        '모델이 음식을 찾지 못했지만, 사진에 음식이 없다는 뜻은 아닙니다.',
+        'Model tidak menemukan makanan; ini tidak berarti tidak ada makanan di foto.',
+        'Mô hình không tìm thấy món ăn; điều này không có nghĩa là trong ảnh không có đồ ăn.'),
+    'reason.photo_mass_unknown': _o(
+        'There is no portion (weight) estimate for this ingredient yet.', 'この食材の分量（重さ）の推定はまだありません。',
+        '이 재료의 양(무게) 추정이 아직 없습니다.', 'Belum ada perkiraan porsi (berat) untuk bahan ini.',
+        'Chưa có ước tính khẩu phần (khối lượng) cho nguyên liệu này.'),
+    'reason.duplicate_estimates': _o(
+        'This ingredient has two or more portion estimates; the system will not pick one by itself.'),
+    'reason.invalid_estimate': _o('The portion estimate has an invalid format.'),
+    'reason.evidence_hash_mismatch': _o(
+        'The annotation behind this portion estimate was changed; it needs a new estimate.'),
+    'reason.ingredient_candidate_mismatch': _o('The portion estimate and the annotation name different ingredients.'),
+    'reason.estimate_rejected_by_review': _o('The portion estimate was rejected by a reviewer.'),
+    'reason.calibration_unavailable': _o('The calibration record used by the portion estimate cannot be found.'),
+    'reason.duplicate_calibration_id': _o('The calibration record ID is duplicated.'),
+    'reason.calibration_invalid': _o('The calibration record has an invalid format.'),
+    'reason.calibration_hash_mismatch': _o('The calibration record differs from the version the estimate cited.'),
+    'reason.calibration_method_mismatch': _o('The portion estimate and the calibration record use different methods.'),
+    'reason.coverage_differs_from_calibration': _o(
+        'The coverage of the portion interval does not match the calibration record.'),
+    'reason.calibration_revoked': _o('This calibration record has been revoked.'),
+    'reason.independent_review_not_requested': _o('The portion estimate has not been sent for a second review yet.'),
+    'reason.independent_review_pending': _o('The portion estimate is waiting for review.'),
+    'reason.calibration_not_approved': _o('The portion calibration has not been approved yet.'),
+    'reason.calibration_sample_too_small': _o('The portion calibration has fewer than 30 weighed samples.'),
+    'reason.calibration_source_groups_insufficient': _o(
+        'The portion calibration has fewer than 2 data sources (restaurant/date).'),
+    'reason.calibration_coverage_below_nominal': _o(
+        'The measured coverage of the portion calibration is below the stated level.'),
+    'reason.outside_calibration_ingredient_scope': _o('This ingredient is outside the calibrated ingredients.'),
+    'reason.outside_calibration_mass_range': _o('This weight is outside the calibrated weight range.'),
+    'reason.portion_not_ready': _o('The portion estimate has not passed review or calibration yet.'),
+    'reason.nutrition_basis_unavailable': _o(
+        'There is no review record of nutrition data (TFDA entry) for this ingredient yet.'),
+    'reason.duplicate_nutrition_basis': _o('This ingredient has two or more nutrition records.'),
+    'reason.nutrition_basis_invalid': _o('The nutrition record has an invalid format.'),
+    'reason.basis_ingredient_mismatch': _o('The nutrition data and the photo ingredient have different names.'),
+    'reason.nutrition_basis_unresolved': _o('The source or identity check of the nutrition data has not passed yet.'),
+    'reason.no_visual_items': _o('No ingredient in the photo can be calculated.', '写真に計算できる食材がありません。',
+                                 '사진에 계산할 수 있는 재료가 없습니다.', 'Tidak ada bahan di foto yang bisa dihitung.',
+                                 'Trong ảnh không có nguyên liệu nào tính được.'),
+    'reason.visual_items_unavailable': _o(
+        'At least one visible food cannot be calculated yet, so no meal total is given.',
+        '見える料理のうち少なくとも1つがまだ計算できないため、食事全体の合計カロリーは出しません。',
+        '보이는 음식 중 적어도 하나를 아직 계산할 수 없어 식사 전체 칼로리는 제시하지 않습니다.',
+        'Setidaknya satu makanan yang terlihat belum bisa dihitung, jadi total kalori makanan tidak diberikan.',
+        'Có ít nhất một món nhìn thấy chưa tính được, nên không đưa ra tổng calo cả bữa.'),
+    'reason.consumption_basis_missing': _o(
+        'It has not been confirmed that the whole portion was eaten, so no meal calories are given.',
+        '「全部食べた」ことがまだ確認されていないため、食事のカロリーは出しません。',
+        '"전부 먹었다"는 것이 아직 확인되지 않아 식사 칼로리는 제시하지 않습니다.',
+        'Belum dipastikan bahwa seluruh porsi dimakan, jadi kalori makanan tidak diberikan.',
+        'Chưa xác nhận là "đã ăn hết cả phần", nên không đưa ra calo của bữa ăn.'),
+    'reason.mixed_energy_units': _o('The nutrition data use different energy units (kcal/kJ).'),
+    'reason.overlapping_same_ingredient_regions': _o('Boxes of the same ingredient overlap and may be counted twice.'),
+    'reason.explicit_start_required': _o(
+        'Choose a photo first, then press "Start recognition".', '先に写真を選び、「認識を開始」を押してください。',
+        '먼저 사진을 고른 뒤 "인식 시작"을 누르세요.', 'Pilih foto dulu, lalu tekan "Mulai kenali".',
+        'Hãy chọn ảnh trước, rồi bấm "Bắt đầu nhận diện".'),
+    'reason.local_model_or_taxonomy_missing': _o(
+        'This computer has no model weights or class file, so real recognition cannot run.',
+        'このパソコンにはモデルの重みかクラスファイルがないため、実際の認識は実行できません。',
+        '이 컴퓨터에 모델 가중치나 클래스 파일이 없어 실제 인식을 실행할 수 없습니다.',
+        'Komputer ini tidak punya bobot model atau file kelas, jadi pengenalan sungguhan tidak bisa dijalankan.',
+        'Máy này không có trọng số mô hình hoặc tệp lớp, nên không chạy được nhận diện thật.'),
+    'reason.model_taxonomy_mismatch': _o('The model weights and the class file do not match.'),
+    'reason.invalid_upload_or_configuration': _o(
+        'The image cannot be read, or the settings are wrong.', '画像を読み込めないか、設定が正しくありません。',
+        '이미지를 읽을 수 없거나 설정이 올바르지 않습니다.', 'Gambar tidak bisa dibaca, atau pengaturannya salah.',
+        'Không đọc được ảnh, hoặc thiết lập chưa đúng.'),
+    'reason.detection_or_retrieval_failed': _o(
+        'Recognition failed; no substitute result was produced.', '認識に失敗しました。代わりの結果は作っていません。',
+        '인식에 실패했습니다. 대체 결과는 만들지 않았습니다.', 'Pengenalan gagal; tidak ada hasil pengganti yang dibuat.',
+        'Nhận diện thất bại; không tạo kết quả thay thế nào.'),
+    'reason.invalid_or_unavailable_demo_fixture': _o(
+        'The demo data cannot be loaded.', 'デモ用データを読み込めません。', '데모용 데이터를 불러올 수 없습니다.',
+        'Data demo tidak bisa dimuat.', 'Không tải được dữ liệu demo.'),
+    'reason.gate': _('營養資料查核項目未通過（{code}）。', 'A nutrition data check did not pass ({code}).',
+                     '栄養データの確認項目が通っていません（{code}）。', '영양 데이터 확인 항목을 통과하지 못했습니다({code}).',
+                     'Ada pemeriksaan data gizi yang belum lolos ({code}).', 'Một mục kiểm tra dữ liệu dinh dưỡng chưa đạt ({code}).'),
+    'reason.unknown': _('其他原因（代碼：{code}）', 'Other reason (code: {code})', 'その他の理由（コード：{code}）',
+                        '기타 사유(코드: {code})', 'Alasan lain (kode: {code})', 'Lý do khác (mã: {code})'),
+    'reason.none': _('（沒有原因代碼）', '(no reason code)', '（理由コードなし）', '(사유 코드 없음)', '(tanpa kode alasan)',
+                     '(không có mã lý do)'),
+
+    # explain.NEXT_STEPS
+    'next.ingredient_level_semantics_unverified': _o(
+        'To compute calories, ingredient areas (such as rice, noodles, fried egg) must be marked on the photo and '
+        'portions calibrated with weighed data.',
+        'カロリーを出すには、写真上で食材の範囲（ごはん、麺、目玉焼きなど）を示し、重さを量ったデータで分量を校正する必要があります。',
+        '칼로리를 계산하려면 사진에 재료 영역(밥, 면, 달걀 프라이 등)을 표시하고, 무게를 잰 데이터로 양을 보정해야 합니다.',
+        'Untuk menghitung kalori, area bahan (misalnya nasi, mi, telur goreng) perlu ditandai di foto dan porsinya '
+        'dikalibrasi dengan data timbangan.',
+        'Muốn tính calo, cần đánh dấu vùng nguyên liệu trên ảnh (như cơm, mì, trứng chiên) và hiệu chỉnh khẩu phần '
+        'bằng dữ liệu cân thật.'),
+    'next.local_model_or_taxonomy_missing': _o(
+        'Use the "Synthetic demo" first, or get the model weights and class file from a teammate.',
+        'まず「合成デモ」を使うか、チームメンバーからモデルの重みとクラスファイルを受け取ってください。',
+        '먼저 "합성 데모"를 사용하거나 팀원에게 모델 가중치와 클래스 파일을 받으세요.',
+        'Gunakan "Demo sintetis" dulu, atau minta bobot model dan file kelas dari anggota tim.',
+        'Hãy dùng "Bản demo tổng hợp" trước, hoặc xin trọng số mô hình và tệp lớp từ thành viên nhóm.'),
+    'next.invalid_upload_or_configuration': _o(
+        'Please choose another PNG, JPEG or WEBP image (up to 10 MB).', '別の PNG・JPEG・WEBP 画像（10 MB 以内）にしてください。',
+        '다른 PNG/JPEG/WEBP 이미지(10MB 이하)를 선택하세요.', 'Pilih gambar PNG, JPEG, atau WEBP lain (maks. 10 MB).',
+        'Hãy chọn ảnh PNG, JPEG hoặc WEBP khác (tối đa 10 MB).'),
+    'next.explicit_start_required': _o(
+        'After choosing a photo, press "Start recognition".', '写真を選んだら「認識を開始」を押してください。',
+        '사진을 고른 뒤 "인식 시작"을 누르세요.', 'Setelah memilih foto, tekan "Mulai kenali".',
+        'Chọn ảnh xong thì bấm "Bắt đầu nhận diện".'),
+    'next.no_detections_does_not_establish_ingredient_absence': _o(
+        'Get the whole plate in the frame with good light and try again; the model currently knows only 15 Taiwanese '
+        'snacks.',
+        '皿全体を画面に入れ、明るい場所でもう一度試してください。モデルが今わかるのは台湾の軽食 15 種類だけです。',
+        '식판 전체가 화면에 들어오게, 밝은 곳에서 다시 시도하세요. 모델은 현재 대만 간식 15종만 압니다.',
+        'Masukkan seluruh piring ke bingkai dengan cahaya cukup lalu coba lagi; model saat ini hanya mengenal 15 '
+        'jajanan Taiwan.',
+        'Hãy chụp trọn cả khay với đủ ánh sáng rồi thử lại; mô hình hiện chỉ biết 15 món ăn vặt Taiwan.'),
+    'next.photo_mass_unknown': _o(
+        'Portions need an estimation method calibrated by weighing, or actual weighing records.',
+        '分量には「重さで校正した推定方法」か、実際に量った記録が必要です。',
+        '양을 알려면 "무게로 보정한 추정 방법"이나 실제 계량 기록이 필요합니다.',
+        'Porsi butuh metode perkiraan yang dikalibrasi dengan penimbangan, atau catatan timbangan sungguhan.',
+        'Khẩu phần cần "phương pháp ước tính đã hiệu chỉnh bằng cân" hoặc số liệu cân thực tế.'),
+}

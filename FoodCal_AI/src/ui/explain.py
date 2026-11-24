@@ -1,9 +1,12 @@
-"""Plain-language (Traditional Chinese) summary of a diagnostic result for the demo UI.
+"""Plain-language summary of a diagnostic result for the demo UI, in the page language (Chinese by default).
 
 Presentation only: it reads an existing result, never changes it, and never creates numbers the
 pipeline did not compute. A calorie range is shown only when photo_energy_estimate is computed.
+The Chinese texts below are the source; messages.py holds the other languages.
 """
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
+
+from .i18n import DEFAULT, language, t
 
 # Detection taxonomy (15 Roboflow Taiwanese-food classes) and annotation spec v2 ingredient classes.
 FOOD_NAMES = {
@@ -98,17 +101,45 @@ def supported_foods_markdown():
 
 
 def food_name(name):
+    """A fixed food in the page language: 荷包蛋（Over-easy egg） in Chinese, 目玉焼き（荷包蛋） in Japanese.
+
+    Other languages keep the Chinese name after their own, so it can be matched with a Chinese menu board.
+    """
     if not isinstance(name, str):
-        return '（未知）'
-    return f'{FOOD_NAMES[name]}（{name}）' if name in FOOD_NAMES else name
+        return t('food.unknown')
+    if name not in FOOD_NAMES:
+        return name
+    if language() == DEFAULT:
+        return t('food.pattern', name=FOOD_NAMES[name], original=name)
+    return t('food.pattern', name=t('food.' + name), original=FOOD_NAMES[name])
+
+
+def dish_name(item):
+    """Name of a recognised or hand-added dish in the page language.
+
+    Gemini names each dish in every page language ('names'); results without that name fall back to the fixed food
+    table, then to the English name, then to the name Gemini gave in Chinese (display_name).
+    """
+    code = language()
+    names = item.get('names') or {}
+    if names.get(code):
+        return names[code]
+    if code != DEFAULT:
+        if item.get('class_name') in FOOD_NAMES:
+            return food_name(item['class_name'])
+        if names.get('en'):
+            return names['en']
+    return item.get('display_name') or food_name(item.get('class_name'))
 
 
 def reason_text(code):
     if not isinstance(code, str):
-        return '（沒有原因代碼）'
+        return t('reason.none')
     if code.startswith('gate_'):
-        return f'營養資料查核項目未通過（{code}）。'
-    return REASONS.get(code, f'其他原因（代碼：{code}）')
+        return t('reason.gate', code=code)
+    if code in REASONS:
+        return t('reason.' + code, REASONS[code])
+    return t('reason.unknown', code=code)
 
 
 def _kcal_range(energy):
@@ -126,8 +157,8 @@ def summarize(result):
     synthetic = result.get('mode') == 'fixture_offline'
     issues = [i.get('code') for i in result.get('issues', []) if isinstance(i, dict)]
     snapshot = result.get('detection_snapshot') or {}
-    foods = [{'編號': d.get('detection_id'), '辨識結果': food_name(d.get('class_name')),
-              '模型分數': f"{d['confidence']:.2f}" if isinstance(d.get('confidence'), (int, float)) else '—'}
+    foods = [{t('sum.col_id'): d.get('detection_id'), t('sum.col_result'): food_name(d.get('class_name')),
+              t('sum.col_score'): f"{d['confidence']:.2f}" if isinstance(d.get('confidence'), (int, float)) else '—'}
              for d in snapshot.get('detections', [])]
     energy = result.get('photo_energy_estimate') or {}
     codes, notes = [], []
@@ -145,27 +176,28 @@ def summarize(result):
 
     if energy.get('status') == 'computed' and energy.get('unit') == 'kcal' and energy.get('energy'):
         low, high = _kcal_range(energy['energy'])
-        energy_text = f'約 {low}–{high} kcal（只含照片中看得到的食物）'
-        level, headline = 'success', '已估算出熱量範圍'
+        energy_text = t('sum.energy_kcal', low=low, high=high)
+        level, headline = 'success', t('sum.computed')
         if energy.get('completeness') == 'incomplete_hidden_ingredients_unquantified':
-            notes.append('可能還有看不到的油、醬汁或糖沒有算進去；食譜只能提示，不能當作照片證據。')
+            notes.append(t('sum.hidden_note'))
         if energy.get('coverage_lower_bound') is None:
-            notes.append('營養資料本身的成分差異尚未量化，範圍可能偏窄。')
+            notes.append(t('sum.narrow_note'))
     elif energy.get('status') == 'computed':
-        energy_text = f"{energy['energy']['low']}–{energy['energy']['high']} {energy.get('unit')}（只含看得到的食物）"
-        level, headline = 'success', '已估算出熱量範圍'
+        energy_text = t('sum.energy_other', low=energy['energy']['low'], high=energy['energy']['high'],
+                        unit=energy.get('unit'))
+        level, headline = 'success', t('sum.computed')
     else:
-        energy_text = '目前無法估算熱量'
+        energy_text = t('sum.no_energy')
         if issues:
-            level, headline = 'error', '這次分析沒有完成'
+            level, headline = 'error', t('sum.failed')
         elif foods:
-            level, headline = 'warning', f'辨識到 {len(foods)} 個項目，但證據還不足以估算熱量'
+            level, headline = 'warning', t('sum.partial', count=len(foods))
         else:
-            level, headline = 'warning', '沒有辨識到食物'
+            level, headline = 'warning', t('sum.no_food')
     if synthetic:
-        notes.insert(0, '這是合成展示資料，不是真實照片分析。')
+        notes.insert(0, t('sum.synthetic_note'))
     if foods:
-        notes.append('「模型分數」不是正確機率；辨識結果都只是候選。')
+        notes.append(t('sum.score_note'))
     return {'headline': headline, 'level': level, 'synthetic': synthetic, 'foods': foods,
             'energy_text': energy_text, 'reasons': [reason_text(c) for c in codes],
-            'next_steps': _unique(NEXT_STEPS.get(c) for c in codes), 'notes': notes}
+            'next_steps': _unique(t('next.' + c, NEXT_STEPS[c]) for c in codes if c in NEXT_STEPS), 'notes': notes}

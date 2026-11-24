@@ -131,10 +131,19 @@ class UIAdapterTests(unittest.TestCase):
         self.assertEqual(decode_upload(image_bytes()).size, (640, 480))  # small photos keep their size
 
     def test_every_decode_error_has_a_message(self):
-        from src.ui.app import PHOTO_ERRORS
+        from src.ui.app import PHOTO_ERRORS, error_text, photo_error
+        from src.ui.i18n import LANGUAGES, set_language
         self.assertEqual(set(PHOTO_ERRORS), {'invalid_upload_size', 'unsupported_image_signature', 'image_too_large',
                                              'invalid_image_content'})
-        self.assertIn('HEIC', PHOTO_ERRORS['unsupported_image_signature'])
+        self.assertEqual(photo_error(ValueError('something_else')), 'photo_default')
+        try:
+            for code in LANGUAGES:
+                set_language(code)
+                for error in PHOTO_ERRORS + ('photo_default',):
+                    self.assertNotEqual(error_text(error), error, (code, error))  # worded, not the bare code
+                self.assertIn('HEIC', error_text('unsupported_image_signature'))
+        finally:
+            set_language('zh-TW')
 
     def test_overlay_only_predictions_not_gt(self):
         result, image = fixture_demo()
@@ -198,13 +207,13 @@ class StreamlitOfflineTests(unittest.TestCase):
         with patch('src.detection.model._load_yolo') as load:
             app = self.app()
         self.assertFalse(app.exception)
-        self.assertEqual(app.radio[0].value, '上傳照片辨識')  # the real-photo flow is the default
+        self.assertEqual(app.radio[0].value, 'upload')  # the real-photo flow is the default
         load.assert_not_called()
         self.assertNotIn('result', app.session_state)
 
     def test_fixture_click_renders_diagnostics(self):
         app = self.app()
-        app.radio[0].set_value('合成展示（不需模型）').run()
+        app.radio[0].set_value('demo').run()
         next(b for b in app.button if b.label == '顯示展示結果').click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.session_state['result']['mode'], 'fixture_offline')
@@ -217,10 +226,10 @@ class StreamlitOfflineTests(unittest.TestCase):
 
     def test_switch_to_yolo_does_not_infer_and_clears_fixture(self):
         app = self.app()
-        app.radio[0].set_value('合成展示（不需模型）').run()
+        app.radio[0].set_value('demo').run()
         next(b for b in app.button if b.label == '顯示展示結果').click().run()
         with patch('src.detection.model._load_yolo') as load:
-            app.radio[0].set_value('上傳照片辨識').run()
+            app.radio[0].set_value('upload').run()
         self.assertFalse(app.exception)
         load.assert_not_called()
         self.assertNotIn('result', app.session_state)
@@ -230,7 +239,7 @@ class StreamlitOfflineTests(unittest.TestCase):
 
     def test_clear_discards_session_results(self):
         app = self.app()
-        app.radio[0].set_value('合成展示（不需模型）').run()
+        app.radio[0].set_value('demo').run()
         next(b for b in app.button if b.label == '顯示展示結果').click().run()
         next(b for b in app.button if b.label == '清除本次圖片與結果').click().run()
         self.assertFalse(app.exception)
@@ -239,7 +248,7 @@ class StreamlitOfflineTests(unittest.TestCase):
     def photo_app(self):
         """The page with a chosen photo, before recognition (the upload box is gone by then)."""
         app = AppTest.from_file(str(Path(__file__).resolve().parents[1]/'src/ui/app.py'), default_timeout=10)
-        app.session_state['mode'] = '上傳照片辨識'
+        app.session_state['mode'] = 'upload'
         app.session_state['photo'] = {'raw': image_bytes(), 'name': 'lunch.png', 'source': 'upload'}
         return app.run()
 

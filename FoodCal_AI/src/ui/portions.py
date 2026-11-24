@@ -11,7 +11,8 @@ from pathlib import Path
 from src.portion.multi_view import multi_view_volume
 from src.portion.nutrition_model import DEFAULT_COMPONENTS, energy_for_grams, food_nutrition
 from src.portion.rough_volume import REFERENCE_COLUMNS, kcal_for_grams, load_food_reference, rough_portion
-from .explain import food_name
+from .explain import dish_name
+from .i18n import t
 
 NOTES = {
     'card_missing': '先在照片上框出學生證，才能估體積',
@@ -98,10 +99,9 @@ def portion_rows(items, card_box, reference, user_grams, side=None):
     for detection in items:
         class_name, detection_id = detection['class_name'], detection['detection_id']
         box = [detection['bounding_box'][k] for k in ('x_min', 'y_min', 'x_max', 'y_max')]
-        name = detection.get('display_name')
         nutrition = nutrition_of(detection)
         row = {'id': detection_id, 'class_name': class_name,
-               'name': name or food_name(class_name),
+               'name': dish_name(detection),
                'volume_ml': None, 'grams': None, 'grams_source': None, 'kcal': None, 'hidden_kcal': None,
                'nutrition': nutrition, 'notes': [], 'volume_method': 'top', 'single_volume_ml': None,
                'height_cm': None, 'shape': None}
@@ -157,4 +157,5 @@ def range_text(interval, unit):
 
 
 def note_text(code):
-    return NOTES.get(code, code)
+    """A portion note in the page language (the Chinese above is the source); an unknown code shows itself."""
+    return t('note.' + code, NOTES[code]) if code in NOTES else code

@@ -8,6 +8,10 @@ card, add a missed dish; the photo itself turns into the box picker), the side p
 editable grams; the right column holds the nutrition panel (big kcal, macro bar, visible-vs-recipe split). Nothing a
 user needs sits in a collapsed section; Gemini's raw answer shows only with ?dev=1 in the address. User images and
 results stay in session memory; photos go to Gemini only after the user agrees, with the student card painted over.
+
+Every text is in the visitor's language (i18n.py, messages.py), picked at the top right; ?lang=ja in the address or
+the browser's language sets the first one. Session state keeps codes, not worded messages, so a switch rewords
+everything already on screen and keeps the photo, grams and consent.
 """
 import sys
 from pathlib import Path
@@ -17,7 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import streamlit as st
 from src.ui import theme
 from src.ui.adapter import decode_upload, draw_items, draw_predictions, fixture_demo
-from src.ui.explain import food_name, reason_text, summarize
+from src.ui.explain import dish_name, food_name, reason_text, summarize
+from src.ui.i18n import DEFAULT, FALLBACK, LANGUAGES, NOTES_LANGUAGE, from_locale, join, known, language, set_language, t
 from src.ui.portions import note_text, nutrition_of, portion_rows, read_food_reference_csv
 from src.portion.card_locator import SIDE_SQUASHES, load_card_reference, locate_card
 from src.portion.multi_view import side_view_geometry
@@ -28,42 +33,13 @@ from src.detection.claude_vision import RecognitionError
 from src.detection.gemini_vision import gemini_clients, mask_card, recognize_foods_gemini, recognize_side_view
 
 ROOT = Path(__file__).resolve().parents[2]
-MODE_UPLOAD = '上傳照片辨識'
-MODE_DEMO = '合成展示（不需模型）'
-CONFIDENCE_TEXT = {'high': '把握高', 'medium': '把握中', 'low': '把握低'}
-GEMINI_ERRORS = {
-    'gemini_key_invalid': 'Gemini API 金鑰無效或沒有權限：到 Google AI Studio 確認金鑰，再更新 `.streamlit/secrets.toml`。',
-    'gemini_model_unavailable': '這組金鑰目前用不了 Gemini Flash 模型，請到 Google AI Studio 確認。',
-    'gemini_quota_exceeded': '已超過 Gemini 免費額度（每分鐘或每天的次數上限），請稍後再試。',
-    'gemini_service_error': 'Gemini 服務暫時出錯，請稍後再試。',
-    'gemini_too_slow': 'Gemini 免費版現在太忙，所有模型都沒有在時間內回應，請過幾分鐘再試，或先用手動加菜。',
-    'gemini_network_error': '連不上 Gemini，請檢查網路。',
-    'gemini_blocked': 'Gemini 拒絕處理這張照片，請換一張。',
-    'gemini_answer_truncated': 'Gemini 的回答被截斷，請再試一次。',
-    'gemini_answer_unreadable': 'Gemini 的回答格式不對，請再試一次。',
-    'gemini_bad_request': '送給 Gemini 的請求不被接受，請換一張照片再試。',
-}
-PHOTO_ERRORS = {
-    'invalid_upload_size': '照片超過 20 MB，請縮小後再上傳。',
-    'unsupported_image_signature': '只接受 JPG、PNG、WebP。iPhone 的 HEIC 請先轉成 JPG（用手機瀏覽器上傳時通常會自動轉）。',
-    'image_too_large': '照片超過 1 億像素，請縮小後再上傳。',
-    'invalid_image_content': '圖片檔損壞或讀不出來，請換一張。',
-}
-PHOTO_ERROR_DEFAULT = '圖片無法讀取，請換一張 JPG／PNG／WebP 照片。'
+MODE_UPLOAD, MODE_DEMO = 'upload', 'demo'  # worded by mode.upload / mode.demo
+PHOTO_ERRORS = ('invalid_upload_size', 'unsupported_image_signature', 'image_too_large', 'invalid_image_content')
 SESSION_KEYS = ('result', 'image', 'input_key', 'card_box', 'card_source', 'card_auto', 'manual_items', 'photo',
                 'preview', 'side', 'side_photo', 'plate_mode')
 PER_PHOTO_KEYS = ('result', 'image', 'preview', 'card_box', 'card_source', 'card_auto', 'manual_items', 'side',
                   'side_photo', 'plate_mode')
-SAMPLE_LABELS = {'campus_buffet': '校園自助餐', 'white_rice': '白飯'}
-KEY_MISSING = ('還沒有設定 Gemini API 金鑰：在 `FoodCal_AI/.streamlit/secrets.toml` 加一行 '
-               '`GEMINI_API_KEY = "你的金鑰"`，再重新整理這個頁面。')
-CONSENT_LABEL = '我了解並同意把照片傳給 Google Gemini 辨識'
-PRIVACY_NOTE = ('只送縮小過、沒有拍攝資訊（含 GPS）的照片，學生證會先自動塗掉。依 Google 免費版條款，'
-                '照片可能被用來改進產品並由人員審閱，請不要拍到人臉。')
-SIDE_HELP = ('怎麼拍：學生證不要動（背面朝上、長邊朝向你，放在菜的旁邊），蹲低從桌面上方 15–35 度拍，'
-             '整盤菜和學生證都要入鏡；碗裝的菜低一點（15–25 度）更準。')
-PLATE_MODES = {'card': '框學生證', 'add': '加一道菜'}  # the photo turned into a box picker, and its chip
-SIDE_ANGLE_ERROR = ('側面照的角度不對：請蹲低，從桌面上方約 15–35 度拍；學生證要平放、背面朝上、長邊朝向你。')
+SAMPLE_NAMES = ('campus_buffet', 'white_rice')  # sample photo stems with a name in messages.py (sample.<stem>)
 FOOD_REFERENCE_PATH = ROOT / 'data/food_reference/food_reference.csv'
 CARD_REFERENCE_DIR = ROOT / 'data/card_reference'
 SAMPLES_DIR = ROOT / 'data/samples'  # optional local sample photos (Git-ignored)
@@ -76,6 +52,46 @@ def clear_session():
 
 def input_tag():
     return str(st.session_state.get('input_key', ('none',))[0])[:12]
+
+
+def photo_error(error):
+    """Code for a photo that cannot be used, from decode_upload's error; error_text words it."""
+    code = str(error)
+    return code if code in PHOTO_ERRORS else 'photo_default'
+
+
+def error_text(code):
+    """An error kept in session state as a code, worded in the page language when it is shown.
+
+    Codes: photo errors, Gemini's RecognitionError codes, side_angle and side_bad_box; an unknown code (an error
+    message from elsewhere) shows as it is.
+    """
+    return t('err.' + code) if known('err.' + code) else code
+
+
+def page_language():
+    """This run's language: the picker's value, else ?lang= in the address, else the browser's language.
+
+    A browser language the page does not have gets English; no browser language at all (tests) gets Chinese.
+    """
+    if st.session_state.get('lang') not in LANGUAGES:
+        wanted = st.query_params.get('lang')
+        locale = st.context.locale
+        st.session_state['lang'] = (wanted if wanted in LANGUAGES else
+                                    from_locale(locale) or (FALLBACK if locale else DEFAULT))
+    return st.session_state['lang']
+
+
+def remember_language():
+    """Put the chosen language in the address, so a reload or a shared link keeps it."""
+    st.query_params['lang'] = st.session_state['lang']
+
+
+def language_picker():
+    """The language menu; CSS pins it to the top right corner of the window."""
+    with st.container(key='fc_lang'):
+        st.selectbox(t('lang.label'), list(LANGUAGES), format_func=LANGUAGES.get, key='lang',
+                     on_change=remember_language, label_visibility='collapsed')
 
 
 def box_picker(image, key, name):
@@ -117,7 +133,7 @@ def card_reference():
     try:
         return load_card_reference(CARD_REFERENCE_DIR)
     except (ValueError, OSError):
-        st.warning('學生證 logo 設定檔讀不到，請重新執行 `python -m tools.setup_card_reference`。')
+        st.warning(t('card.reference_unreadable'))
         return None
 
 
@@ -138,9 +154,9 @@ def sample_photos():
 
 
 def sample_label(path):
-    """Name shown under a sample photo: campus_buffet_01.jpg -> 校園自助餐."""
+    """Name shown under a sample photo, in the page language: campus_buffet_01.jpg -> 校園自助餐."""
     stem = path.stem.rstrip('0123456789').rstrip('_-')
-    return SAMPLE_LABELS.get(stem) or stem.replace('_', ' ') or path.stem
+    return t('sample.' + stem) if stem in SAMPLE_NAMES else stem.replace('_', ' ') or path.stem
 
 
 def change_photo():
@@ -169,7 +185,7 @@ def stage_side_photo():
     try:
         staged['image'] = decode_upload(uploaded.getvalue())
     except (ValueError, OSError) as error:
-        staged['error'] = PHOTO_ERRORS.get(str(error), PHOTO_ERROR_DEFAULT)
+        staged['error'] = photo_error(error)
     else:
         staged['thumb'] = staged['image'].copy()
         staged['thumb'].thumbnail((480, 480))
@@ -186,13 +202,13 @@ def remove_side():
 
 
 def preview_image(raw):
-    """{'image': decoded photo} or {'error': message}; decoded once per photo, then reused."""
+    """{'image': decoded photo} or {'error': code}; decoded once per photo, then reused."""
     preview = st.session_state.get('preview')
     if preview is None:
         try:
             preview = {'image': decode_upload(raw)}
         except (ValueError, OSError) as error:  # show why instead of crashing the page
-            preview = {'error': PHOTO_ERRORS.get(str(error), PHOTO_ERROR_DEFAULT)}
+            preview = {'error': photo_error(error)}
         st.session_state['preview'] = preview
     return preview
 
@@ -215,7 +231,7 @@ def compute(result):
     try:
         reference = read_food_reference_csv(FOOD_REFERENCE_PATH)
     except ValueError as error:
-        st.error('密度與熱量表格式不對：' + str(error))
+        st.error(t('reference.bad_format', error=str(error)))
         reference = {}
     _, _, items = current_items(result)
     tag = input_tag()
@@ -242,14 +258,15 @@ def start_recognition(raw, key):
     image = preview['image']
     reference, card = card_reference(), None
     if reference is not None:
-        with st.spinner('找學生證中…'):
+        with st.spinner(t('spin.card')):
             card = locate_card(image, reference)
     outgoing = mask_card(image, card['quad']) if card else image
     try:
-        with st.spinner('Gemini 辨識中…（通常 5–30 秒，免費版忙的時候會更久）'):
-            found = recognize_foods_gemini(outgoing, clients=gemini_clients(key))
+        with st.spinner(t('spin.gemini')):
+            found = recognize_foods_gemini(outgoing, clients=gemini_clients(key),
+                                           notes_language=NOTES_LANGUAGE[language()])
     except RecognitionError as error:
-        st.session_state['gemini_error'] = GEMINI_ERRORS.get(str(error), str(error))
+        st.session_state['gemini_error'] = str(error)
         return
     for name in PER_PHOTO_KEYS:
         if name != 'side_photo':  # a side photo chosen before the start is analysed right below
@@ -268,11 +285,11 @@ def upload_stage(key):
     """No photo yet: one large upload box with the photo tips; the sample photos sit apart below it."""
     with st.container(key='fc_upload'):
         st.markdown(theme.upload_intro(), unsafe_allow_html=True)
-        st.file_uploader('上傳餐點照片（手機可以直接拍照）', type=['png', 'jpg', 'jpeg', 'webp'],
+        st.file_uploader(t('upload.label'), type=['png', 'jpg', 'jpeg', 'webp'],
                          key=f"upload_{st.session_state.get('upload_generation', 0)}", label_visibility='collapsed')
         st.markdown(theme.photo_tips(), unsafe_allow_html=True)
         if not key:
-            st.warning(KEY_MISSING)
+            st.warning(t('key.missing'))
     samples = sample_photos()
     if not samples:
         return
@@ -285,27 +302,34 @@ def upload_stage(key):
                 st.image(str(path), width='stretch')
                 st.markdown(f'<div class="fc-sample-name">{theme.escape(sample_label(path))}</div>',
                             unsafe_allow_html=True)
-                if st.button('用這張照片', key=f'sample_{index}', width='stretch'):
-                    st.session_state['photo'] = {'raw': path.read_bytes(), 'name': sample_label(path),
-                                                 'source': 'sample'}
+                if st.button(t('sample.use'), key=f'sample_{index}', width='stretch'):
+                    # The file name, not its label, so the label follows a later language switch.
+                    st.session_state['photo'] = {'raw': path.read_bytes(), 'name': path.name, 'source': 'sample'}
                     st.rerun()
 
 
 def recognition_caption(result):
     """Where the card came from and which model answered, under the recognised photo."""
     auto, source = st.session_state.get('card_auto'), st.session_state.get('card_source')
-    card_text = ('自動找到學生證（綠框）' if source == 'auto' else '學生證：你手動框的（綠框）' if source == 'manual' else
-                 '沒有找到學生證')
-    score = f"（配對 {auto['score']:.2f}）" if auto and source == 'auto' else ''
-    masked = '，已在送出前塗掉' if result.get('card_masked') else ''
+    card_text = t('caption.card_auto' if source == 'auto' else 'caption.card_manual' if source == 'manual' else
+                  'caption.card_none')
+    score = t('caption.score', score=f"{auto['score']:.2f}") if auto and source == 'auto' else ''
+    masked = t('caption.masked') if result.get('card_masked') else ''
     usage = result.get('usage') or {}
-    return (f"{card_text}{score}{masked}。模型 {result.get('model')} · {result.get('latency_s')} 秒 · "
-            f"{usage.get('input_tokens')}/{usage.get('output_tokens')} tokens（免費額度）")
+    return card_text + score + masked + t('caption.model', model=result.get('model'), seconds=result.get('latency_s'),
+                                          tokens_in=usage.get('input_tokens'), tokens_out=usage.get('output_tokens'))
 
 
 def set_plate_mode(mode):
     st.session_state['plate_mode'] = mode
     st.rerun()
+
+
+def photo_name(photo):
+    """Name under the chosen photo: a sample's label in the page language, else the uploaded file's name."""
+    if photo.get('source') == 'sample' and photo.get('name'):
+        return sample_label(Path(photo['name']))
+    return photo.get('name') or t('photo.fallback_name')
 
 
 def plate_card(result, raw, items, rows, key):
@@ -314,9 +338,9 @@ def plate_card(result, raw, items, rows, key):
     image = st.session_state.get('image')
     photo = st.session_state.get('photo') or {}
     mode = st.session_state.get('plate_mode') if result and image is not None else None
-    chip = ((PLATE_MODES.get(mode) or '辨識完成') if result else
-            '範例照片' if photo.get('source') == 'sample' else '已選照片')
-    st.markdown(theme.card_head('Your plate · 你的餐盤', chip), unsafe_allow_html=True)
+    chip = ((t('plate_mode.' + mode) if mode in ('card', 'add') else t('chip.recognised')) if result else
+            t('chip.sample') if photo.get('source') == 'sample' else t('chip.chosen'))
+    st.markdown(theme.card_head(t('head.plate'), chip), unsafe_allow_html=True)
     if result and image is not None:
         if mode == 'card':
             card_picker(image)
@@ -328,36 +352,36 @@ def plate_card(result, raw, items, rows, key):
         return
     preview = preview_image(raw)
     if 'error' in preview:
-        st.error(preview['error'])
+        st.error(error_text(preview['error']))
     else:
         st.image(preview['image'], width='stretch')
-    st.caption(f"{photo.get('name') or '照片'} · 俯視照 · 還沒開始辨識")
+    st.caption(t('photo.waiting', name=photo_name(photo)))
 
 
 def result_photo(result, image, items):
     """The recognised photo with numbered tags; the tools are buttons right under it, not a section further down."""
-    st.image(draw_items(image, items, st.session_state.get('card_box'), st.session_state.get('show_boxes', True)),
+    tagged = [{**item, 'display_name': dish_name(item)} for item in items]  # tags in the page language
+    st.image(draw_items(image, tagged, st.session_state.get('card_box'), st.session_state.get('show_boxes', True)),
              width='stretch')
     st.caption(recognition_caption(result))
     no_card = st.session_state.get('card_box') is None
     if no_card:
-        st.warning('沒有學生證就換算不了份量：按「框出學生證」在照片上框出來，或在下面直接填每道菜的克數。')
+        st.warning(t('warn.no_card'))
     with st.container(key='fc_plate_actions'):
         boxes, card, add, change = st.columns([1.2, 1, 1, 1], vertical_alignment='center')
-        boxes.toggle('顯示辨識框', key='show_boxes')
-        if card.button('框出學生證' if no_card else '重框學生證', type='primary' if no_card else 'secondary',
-                       key='card_mode', width='stretch', help='在照片上拖曳框住學生證，用來換算份量'):
+        boxes.toggle(t('toggle.boxes'), key='show_boxes')
+        if card.button(t('btn.card_box') if no_card else t('btn.card_rebox'), type='primary' if no_card else 'secondary',
+                       key='card_mode', width='stretch', help=t('btn.card_help')):
             set_plate_mode('card')
-        if add.button('＋ 加一道菜', key='add_mode', width='stretch', help='Gemini 漏掉的菜，自己在照片上框出來'):
+        if add.button(t('btn.add_dish'), key='add_mode', width='stretch', help=t('btn.add_help')):
             set_plate_mode('add')
-        if change.button('換一張照片', key='change_photo_done', width='stretch'):
+        if change.button(t('btn.change_photo'), key='change_photo_done', width='stretch'):
             change_photo()
 
 
 def card_picker(image):
     """The photo as a box picker for the student card; a usable box is used at once and the photo comes back."""
-    st.markdown(theme.pick_intro('框出學生證', '在照片上按住滑鼠拖曳，框住整張學生證（平放、邊緣大致和照片邊緣平行），'
-                                 '放開就會套用。'), unsafe_allow_html=True)
+    st.markdown(theme.pick_intro(t('btn.card_box'), t('pick.card_lead')), unsafe_allow_html=True)
     picked = box_picker(image, key='card_picker_' + input_tag(), name='card')
     if picked is not None and picked != st.session_state.get('card_box'):
         try:
@@ -367,34 +391,35 @@ def card_picker(image):
         else:
             st.session_state['card_box'], st.session_state['card_source'] = picked, 'manual'
             set_plate_mode(None)
-    if st.button('取消', key='card_cancel'):
+    if st.button(t('btn.cancel'), key='card_cancel'):
         set_plate_mode(None)
 
 
 def add_dish_picker(image):
     """The photo as a box picker for a dish Gemini missed."""
     tag = input_tag()
-    st.markdown(theme.pick_intro('加一道菜', '選菜名，再在照片上拖曳框住這道菜（碗裝的菜框整個碗口）。'),
-                unsafe_allow_html=True)
-    food = st.selectbox('哪一道菜', list(FOOD_TEMPLATES), format_func=food_name, key='manual_food_' + tag)
+    st.markdown(theme.pick_intro(t('plate_mode.add'), t('pick.add_lead')), unsafe_allow_html=True)
+    names = {food: food_name(food) for food in FOOD_TEMPLATES}  # worded now; one menu per language (see main)
+    food = st.selectbox(t('pick.which_dish'), list(names), format_func=names.get,
+                        key=f'manual_food_{tag}_{language()}')
     box = box_picker(image, key='food_picker_' + tag, name='food')
     add, cancel = st.columns(2)
-    if add.button('加入這道菜', type='primary', disabled=box is None, key='manual_add_' + tag, width='stretch'):
+    if add.button(t('btn.add_this'), type='primary', disabled=box is None, key='manual_add_' + tag, width='stretch'):
         manual = st.session_state.setdefault('manual_items', [])
         number = 1 + max((int(item['detection_id'][1:]) for item in manual), default=0)
         manual.append({'detection_id': f'M{number}', 'class_name': food,
                        'bounding_box': dict(zip(('x_min', 'y_min', 'x_max', 'y_max'), box))})
         set_plate_mode(None)
-    if cancel.button('取消', key='add_cancel', width='stretch'):
+    if cancel.button(t('btn.cancel'), key='add_cancel', width='stretch'):
         set_plate_mode(None)
 
 
 def side_drop():
     """Compact upload box for the optional side photo, with how to take it."""
     with st.container(key='fc_side_drop'):
-        st.file_uploader('側面照（選填）', type=['png', 'jpg', 'jpeg', 'webp'], key=side_upload_key(),
+        st.file_uploader(t('side.upload_label'), type=['png', 'jpg', 'jpeg', 'webp'], key=side_upload_key(),
                          label_visibility='collapsed')
-    st.caption(SIDE_HELP)
+    st.caption(t('side.help'))
 
 
 def side_staged(staged, note, remove_key, retake=False):
@@ -403,11 +428,11 @@ def side_staged(staged, note, remove_key, retake=False):
         thumb, info = st.columns([1, 2.4], vertical_alignment='center')
         if staged.get('thumb') is not None:
             thumb.image(staged['thumb'], width='stretch')
-        info.markdown(theme.side_staged(staged['name'], '這張不能用' if staged.get('error') else note),
+        info.markdown(theme.side_staged(staged['name'], t('side.unusable') if staged.get('error') else note),
                       unsafe_allow_html=True)
         if staged.get('error'):
-            info.error(staged['error'])
-        if info.button('換一張側面照' if retake or staged.get('error') else '移除側面照', key=remove_key):
+            info.error(error_text(staged['error']))
+        if info.button(t('btn.side_retake') if retake or staged.get('error') else t('btn.side_remove'), key=remove_key):
             remove_side()
 
 
@@ -416,39 +441,46 @@ def start_card(raw, key):
     st.markdown(theme.start_intro(), unsafe_allow_html=True)
     staged = st.session_state.get('side_photo')
     if staged:
-        side_staged(staged, '會和俯視照一起分析', 'side_remove_start')
+        side_staged(staged, t('side.note_with_top'), 'side_remove_start')
     else:
         side_drop()
-    consent = st.checkbox(CONSENT_LABEL, key='gemini_consent')
-    st.caption(PRIVACY_NOTE)
+    consent = st.checkbox(t('consent.label'), key='gemini_consent')
+    st.caption(t('consent.privacy'))
     readable = 'image' in preview_image(raw)
-    if st.button('開始辨識 →', type='primary', disabled=not (readable and consent and key), width='stretch'):
+    if st.button(t('btn.start'), type='primary', disabled=not (readable and consent and key), width='stretch'):
         st.session_state.pop('gemini_error', None)
         start_recognition(raw, key)
         st.rerun()
     if staged and not staged.get('error'):
-        st.caption('會先辨識俯視照，再看側面照量高度（多一次 Gemini，約多 5–30 秒）。')
+        st.caption(t('start.side_caption'))
     if st.session_state.get('gemini_error'):
-        st.error(st.session_state['gemini_error'])
+        st.error(error_text(st.session_state['gemini_error']))
     if not key:
-        st.warning(KEY_MISSING)
-    if st.button('換一張照片', key='change_photo_start', width='stretch'):
+        st.warning(t('key.missing'))
+    if st.button(t('btn.change_photo'), key='change_photo_start', width='stretch'):
         change_photo()
 
 
 def row_meta(row, item):
     bits = []
-    if row['nutrition']:
-        parts = '、'.join(f'{name} {share}%' for name, share in row['nutrition']['parts'])
-        bits.append(f"{row['nutrition']['method']} · {parts}")
+    nutrition = row['nutrition']
+    if nutrition:
+        keys = nutrition.get('part_keys') or [None] * len(nutrition['parts'])
+        parts = join(f"{t('ingredient.' + key, name) if key else name} {share}%"
+                     for (name, share), key in zip(nutrition['parts'], keys))
+        method = (t('method.' + nutrition['method_key'], nutrition['method']) if nutrition.get('method_key') else
+                  nutrition['method'])
+        bits.append(f'{method} · {parts}')
     if item.get('confidence'):
-        bits.append(CONFIDENCE_TEXT.get(item['confidence'], item['confidence']))
+        code = 'conf.' + item['confidence']
+        bits.append(t(code) if known(code) else item['confidence'])
     if row['grams'] is not None:
-        source = '你填的' if row['grams_source'] == 'user' else f"約 {row['grams']['low']}–{row['grams']['high']} g"
-        bits.append(f"{source} · 看得到的約 {row['kcal']['mid'] if row['kcal'] else '—'} kcal")
+        source = (t('meta.typed') if row['grams_source'] == 'user' else
+                  t('meta.grams_range', low=row['grams']['low'], high=row['grams']['high']))
+        bits.append(f"{source} · {t('meta.visible_kcal', kcal=row['kcal']['mid'] if row['kcal'] else '—')}")
     if row.get('volume_method') == 'side' and row.get('height_cm'):
         h = row['height_cm']
-        bits.append(f"側面照：{'碗深' if row.get('shape') == 'bowl' else '高度'}約 {h['low']}–{h['high']} cm")
+        bits.append(t('meta.side_bowl' if row.get('shape') == 'bowl' else 'meta.side_height', low=h['low'], high=h['high']))
     bits += [note_text(code) for code in row['notes']]
     return ' · '.join(bits)
 
@@ -456,51 +488,49 @@ def row_meta(row, item):
 def recognition_card(result, rows, items):
     tag = input_tag()
     model = (result or {}).get('model')
-    st.markdown(theme.card_head('Food recognition · 食物辨識', model.replace('gemini-', '') if model else None),
+    st.markdown(theme.card_head(t('head.recognition'), model.replace('gemini-', '') if model else None),
                 unsafe_allow_html=True)
-    names = '、'.join(i.get('display_name') or food_name(i['class_name']) for i in items) or '沒有找到食物'
+    names = join(dish_name(i) for i in items) or t('recog.none')
     st.markdown(f'<div class="fc-dish">{theme.escape(names)}</div>'
-                f'<div class="fc-sub">{theme.escape(result.get("notes") or "Gemini 看照片辨識；框的位置是大概的。")}</div>',
+                f'<div class="fc-sub">{theme.escape(result.get("notes") or t("recog.sub_default"))}</div>',
                 unsafe_allow_html=True)
-    st.markdown(theme.card_head('食材與份量', 'Grams'), unsafe_allow_html=True)
+    st.markdown(theme.card_head(t('head.grams'), 'Grams'), unsafe_allow_html=True)
     manual_ids = {i['detection_id'] for i in st.session_state.get('manual_items', [])}
     for index, (row, item) in enumerate(zip(rows, items), 1):
         left, right = st.columns([3.2, 1.3], vertical_alignment='center')
         hidden = None
         if row['hidden_kcal'] is not None and row['hidden_kcal']['high'] > 0:
-            hidden = f"＋ 看不到的油、糖約 {row['hidden_kcal']['mid']} kcal（依食譜估計）"
-        name = row['name'] + ('（手動加入）' if row['id'] in manual_ids else '')
+            hidden = t('recog.hidden', kcal=row['hidden_kcal']['mid'])
+        name = row['name'] + (t('recog.manual_tag') if row['id'] in manual_ids else '')
         left.markdown(theme.item_header(index, name, row_meta(row, item), hidden), unsafe_allow_html=True)
-        placeholder = f"約 {row['grams']['mid']}" if row['grams'] and row['grams_source'] == 'rough' else '克數'
-        right.number_input('克', min_value=0.0, max_value=5000.0, value=None, step=10.0, placeholder=placeholder,
-                           key=f"grams_{tag}_{row['id']}", label_visibility='collapsed')
+        placeholder = (t('recog.placeholder_about', grams=row['grams']['mid'])
+                       if row['grams'] and row['grams_source'] == 'rough' else t('recog.placeholder_grams'))
+        right.number_input(t('recog.grams_label'), min_value=0.0, max_value=5000.0, value=None, step=10.0,
+                           placeholder=placeholder, key=f"grams_{tag}_{row['id']}", label_visibility='collapsed')
         if row['id'] in manual_ids:
-            if right.button('移除', key=f"manual_remove_{tag}_{row['id']}", width='stretch'):
+            if right.button(t('btn.remove'), key=f"manual_remove_{tag}_{row['id']}", width='stretch'):
                 st.session_state['manual_items'] = [i for i in st.session_state.get('manual_items', [])
                                                     if i['detection_id'] != row['id']]
                 st.rerun()
         else:
-            right.checkbox('認錯了', key=f"skip_{tag}_{row['id']}")
+            right.checkbox(t('recog.wrong'), key=f"skip_{tag}_{row['id']}")
     _, skipped, _ = current_items(result)
     for item in skipped:
-        label = item.get('display_name') or item['class_name']
-        st.checkbox(f'已排除「{label}」（取消勾選就恢復）', key=f"skip_{tag}_{item['detection_id']}")
-    st.caption('克數框不填就用粗估；知道實際重量就直接填。')
+        st.checkbox(t('recog.excluded', label=dish_name(item)), key=f"skip_{tag}_{item['detection_id']}")
+    st.caption(t('recog.grams_caption'))
 
 
 def nutrition_card(result, rows, total, missing, macros):
     if total is None:
-        reason = ('還沒有學生證可以換算大小：按照片下面的「框出學生證」，或直接填每道菜的克數。'
-                  if st.session_state.get('card_box') is None else
-                  '還不能算合計：' + '、'.join(missing) + ' 沒有熱量數字，請填克數或排除。' if missing else
-                  '辨識後，熱量和營養素會顯示在這裡。')
+        reason = (t('nut.reason_no_card') if st.session_state.get('card_box') is None else
+                  t('nut.reason_missing', names=join(missing)) if missing else t('nut.reason_wait'))
         st.markdown(theme.nutrition_panel(None, None, '', [], reason), unsafe_allow_html=True)
         return
     weight = sum(r['grams']['mid'] for r in rows if r['grams'] is not None)
     per_dish = [(r['name'], r['kcal']['mid'], r['hidden_kcal']['mid'] if r['hidden_kcal'] else 0) for r in rows]
     nutrients = macros.get('nutrients')
     macros = {k: round(macros[k], 1) for k in ('protein', 'carb', 'fat')}
-    st.markdown(theme.nutrition_panel(total, macros, f'約 {weight} g', per_dish, nutrients=nutrients),
+    st.markdown(theme.nutrition_panel(total, macros, t('nut.weight', grams=weight), per_dish, nutrients=nutrients),
                 unsafe_allow_html=True)
 
 
@@ -526,17 +556,17 @@ def run_side_view(image, card, source, items, key):
         geometry = side_view_geometry(card)
     except ValueError as error:
         angle = str(error).split(':')[0] == 'side_photo_angle_out_of_range'
-        side['error'] = SIDE_ANGLE_ERROR if angle else '學生證的框不正確，請重框。'
+        side['error'] = 'side_angle' if angle else 'side_bad_box'
         side['need_card'] = source == 'manual' or not angle  # a bad box can be redrawn; a bad angle needs a new photo
         st.session_state['side'] = side
         return
-    dishes = [(i['detection_id'], i.get('display_name') or food_name(i['class_name']), i.get('container') or 'plate')
-              for i in items]
+    dishes = [(i['detection_id'], dish_name(i), i.get('container') or 'plate') for i in items]
     try:
-        with st.spinner('Gemini 看側面照中…'):
-            found = recognize_side_view(mask_card(image, _quad(card)), dishes, clients=gemini_clients(key))
+        with st.spinner(t('spin.side')):
+            found = recognize_side_view(mask_card(image, _quad(card)), dishes, clients=gemini_clients(key),
+                                        notes_language=NOTES_LANGUAGE[language()])
     except RecognitionError as error:
-        side['error'] = GEMINI_ERRORS.get(str(error), str(error))
+        side['error'] = str(error)
         st.session_state['side'] = side
         return
     st.session_state['side'] = {**side, 'geometry': geometry, **found}
@@ -546,7 +576,7 @@ def analyse_side_photo(image, items, key):
     """Find the card in the side photo, then measure; without a card the side photo waits for a hand-drawn box."""
     reference, card = card_reference(), None
     if reference is not None:
-        with st.spinner('找側面照裡的學生證中…'):
+        with st.spinner(t('spin.side_card')):
             card = locate_card(image, reference, SIDE_SQUASHES)
     if card:
         run_side_view(image, card['quad'], 'auto', items, key)
@@ -566,35 +596,37 @@ def side_section(items, rows, key):
     side = st.session_state.get('side') or {}
     staged = st.session_state.get('side_photo')
     measured = side.get('geometry') is not None and side.get('boxes') is not None
-    st.markdown('<div class="fc-divider"></div>' + theme.card_head('Side view · 側面照', '已量高度' if measured else '選填'),
+    st.markdown('<div class="fc-divider"></div>' +
+                theme.card_head(t('head.side'), t('chip.measured') if measured else t('chip.optional')),
                 unsafe_allow_html=True)
     if measured:
         side_result(items, rows, side)
-        if st.button('移除側面照', key='side_clear_' + tag):
+        if st.button(t('btn.side_remove'), key='side_clear_' + tag):
             remove_side()
         return
     if not staged:
         st.markdown(theme.side_offer(), unsafe_allow_html=True)
         side_drop()
         return
-    note = ('還沒分析' if not side else '要先框出側面照裡的學生證' if side.get('need_card') else '沒有量到高度')
-    side_staged(staged, note, 'side_remove_' + tag, retake=side.get('error') == SIDE_ANGLE_ERROR)
+    note = t('side.note_pending' if not side else 'side.note_need_card' if side.get('need_card') else
+             'side.note_unmeasured')
+    side_staged(staged, note, 'side_remove_' + tag, retake=side.get('error') == 'side_angle')
     if staged.get('error'):
         return
     consent = st.session_state.get('gemini_consent')
     if not consent:  # normally given before recognition; asked here again only if it was lost
-        consent = st.checkbox(CONSENT_LABEL, key='gemini_consent')
+        consent = st.checkbox(t('consent.label'), key='gemini_consent')
     if side.get('error'):
-        st.error(side['error'])
+        st.error(error_text(side['error']))
     if side.get('need_card') and side.get('image') is not None:
-        st.info('沒有自動找到側面照裡的學生證：在側面照上拖曳框出學生證，再按「用這個框繼續」。')
+        st.info(t('side.info_need_card'))
         box = box_picker(side['image'], key='side_card_' + tag, name='card')
-        if st.button('用這個框繼續 →', type='primary', disabled=box is None or not (consent and key),
+        if st.button(t('btn.side_card_go'), type='primary', disabled=box is None or not (consent and key),
                      key='side_card_go_' + tag):
             run_side_view(side['image'], box, 'manual', items, key)
             st.rerun()
-    elif side.get('error') != SIDE_ANGLE_ERROR:  # a wrong angle needs a new photo, not another try
-        if st.button('再分析一次 →' if side.get('error') else '分析側面照 →', type='primary',
+    elif side.get('error') != 'side_angle':  # a wrong angle needs a new photo, not another try
+        if st.button(t('btn.side_retry') if side.get('error') else t('btn.side_go'), type='primary',
                      disabled=not (consent and key), key='side_go_' + tag):
             analyse_side_photo(staged['image'], items, key)
             st.rerun()
@@ -604,7 +636,7 @@ def side_result(items, rows, side):
     """The side photo with the dishes Gemini found in it, and the grams with and without it."""
     numbered, unseen = [], []
     for index, item in enumerate(items, 1):
-        name = item.get('display_name') or food_name(item['class_name'])
+        name = dish_name(item)
         seen = side['boxes'].get(item['detection_id'])
         if seen:
             numbered.append({'detection_id': item['detection_id'], 'display_name': name, 'number': index,
@@ -614,14 +646,14 @@ def side_result(items, rows, side):
     left, right = st.columns([1, 1.15], gap='medium')
     left.image(draw_items(side['image'], numbered, _quad(side['card'])), width='stretch')
     g = side['geometry']
-    left.caption(f"相機仰角約 {g['elevation_deg']:.0f}°（建議 15–35°）· 學生證"
-                 f"{'自動找到（綠框）' if side.get('card_source') == 'auto' else '你框的（綠框）'}，已在送出前塗掉 · "
-                 f"模型 {side.get('model')} · {side.get('latency_s')} 秒")
+    card = t('side.card_auto') if side.get('card_source') == 'auto' else t('side.card_manual')
+    left.caption(t('side.caption', deg=f"{g['elevation_deg']:.0f}", card=card, model=side.get('model'),
+                   seconds=side.get('latency_s')))
     right.markdown(theme.side_table(rows), unsafe_allow_html=True)
     if unseen:
-        right.caption('側面照沒看到：' + '、'.join(unseen) + '（仍用單張照片估）')
+        right.caption(t('side.unseen', names=join(unseen)))
     if side.get('notes'):
-        right.caption('Gemini：' + side['notes'])
+        right.caption(t('side.gemini_notes', notes=side['notes']))
 
 
 def dev_mode():
@@ -632,24 +664,24 @@ def dev_mode():
 def developer_details(result):
     """Gemini's raw answer and the code tables, drawn only in dev mode (they mean nothing to a diner)."""
     with st.container(border=True):
-        st.markdown('**開發者資訊**（網址有 `?dev=1` 才顯示；只在記憶體）')
+        st.markdown(t('dev.title'))
         st.json({k: v for k, v in result.items() if k != 'items'}, expanded=False)
         st.json(result.get('items', []), expanded=False)
-        st.caption('烹調方式代碼：' + '、'.join(f'{k}={v[0]}' for k, v in COOKING_METHODS.items()))
-        st.caption('食材代碼：' + '、'.join(f'{k}={v[0]}' for k, v in INGREDIENTS.items()))
+        st.caption(t('dev.methods') + '、'.join(f'{k}={v[0]}' for k, v in COOKING_METHODS.items()))
+        st.caption(t('dev.ingredients') + '、'.join(f'{k}={v[0]}' for k, v in INGREDIENTS.items()))
 
 
 def show_developer_details(result):
     energy = result.get('photo_energy_estimate')
-    with st.expander('開發者細節（流程狀態、食譜候選、完整 JSON；只在記憶體，不會下載或保存）'):
-        st.write('流程狀態：', result['status'])
+    with st.expander(t('dev.demo_expander')):
+        st.write(t('dev.status'), result['status'])
         for issue in result.get('issues', []):
             st.error(issue['code'] + '：' + issue['message'])
         if result.get('detection_snapshot'):
             st.dataframe(result['detection_snapshot']['detections'], hide_index=True)
-        st.markdown('**食譜候選與來源**（合成食譜先驗，不代表照片實際食材）')
+        st.markdown(t('dev.recipes'))
         for obj in result.get('objects', []):
-            st.write(f"物件 #{obj['detection_id']} · {obj['retrieval_status']} · {obj.get('reason') or ''}")
+            st.write(t('dev.object', id=obj['detection_id'], status=obj['retrieval_status'], reason=obj.get('reason') or ''))
             for candidate in obj['recipe_candidates']:
                 recipe = candidate['recipe']
                 st.write(recipe['name'] + ' · SYNTHETIC / TEST_ONLY')
@@ -669,35 +701,36 @@ def show_developer_details(result):
 def show_result(result):
     """Synthetic demo of the strict pipeline (no model, no network)."""
     summary = summarize(result)
-    st.subheader('結果摘要')
+    st.subheader(t('demo.summary'))
     {'success': st.success, 'warning': st.warning, 'error': st.error}[summary['level']](summary['headline'])
-    st.markdown(f"### 熱量：{summary['energy_text']}")
+    st.markdown('### ' + t('demo.energy', text=summary['energy_text']))
     image = st.session_state.get('image')
     has_image = image is not None and bool(result.get('detection_snapshot'))
     left, right = st.columns([3, 2], gap='large') if has_image else (None, st.container())
     if has_image:
-        caption = ('辨識框（合成展示的畫布與框都是測試用）' if summary['synthetic'] else
-                   '辨識框與模型分數' if summary['foods'] else '上傳的照片（沒有辨識到食物，所以沒有框）')
+        caption = t('demo.caption_synthetic' if summary['synthetic'] else
+                    'demo.caption_boxes' if summary['foods'] else 'demo.caption_empty')
         left.image(draw_predictions(image, result), caption=caption, width='stretch')
     with right:
         if summary['foods']:
             st.dataframe(summary['foods'], hide_index=True, width='stretch')
         if summary['reasons']:
-            st.markdown('**為什麼沒有算出熱量／需要注意的地方**')
+            st.markdown(t('demo.why'))
             st.markdown('\n'.join('- ' + text for text in summary['reasons']))
         if summary['next_steps']:
-            st.markdown('**下一步可以怎麼做**')
+            st.markdown(t('demo.next'))
             st.markdown('\n'.join('- ' + text for text in summary['next_steps']))
     for note in summary['notes']:
         st.caption(note)
     energy = result.get('photo_energy_estimate')
-    with st.expander('各項目的份量狀態'):
+    with st.expander(t('demo.portions_expander')):
         if energy is None:
-            st.caption('尚未產生照片份量評估。')
+            st.caption(t('demo.no_assessment'))
         else:
-            st.caption('只計照片中看得到的食材；食譜候選不是視覺證據，不會加入熱量。')
-            rows = [{'項目': index, '狀態': '已估算' if item['status'] == 'estimated' else '無法估算',
-                     '原因': reason_text(item['reason']) if item['reason'] else '—'}
+            st.caption(t('demo.visible_only'))
+            rows = [{t('demo.col_item'): index,
+                     t('demo.col_status'): t('demo.estimated' if item['status'] == 'estimated' else 'demo.not_estimable'),
+                     t('demo.col_reason'): reason_text(item['reason']) if item['reason'] else '—'}
                     for index, item in enumerate(energy['portion_assessment']['items'], 1)]
             if rows:
                 st.dataframe(rows, hide_index=True, width='stretch')
@@ -730,10 +763,17 @@ def photo_bytes():
 
 
 def main():
-    st.set_page_config(page_title='FoodCal AI 餐點熱量估算', page_icon='🍽️', layout='wide')
-    st.markdown(theme.CSS, unsafe_allow_html=True)
+    set_language(page_language())
+    st.set_page_config(page_title=t('page.title'), page_icon='🍽️', layout='wide')
+    st.markdown(theme.CSS + theme.lang_css(), unsafe_allow_html=True)
+    language_picker()
     st.markdown(theme.header(), unsafe_allow_html=True)
-    mode = st.radio('模式', [MODE_UPLOAD, MODE_DEMO], horizontal=True, label_visibility='collapsed')
+    # The browser keeps a radio's choice by its wording, so each language has its own radio, opened on the mode in use.
+    modes = {code: t('mode.' + code) for code in (MODE_UPLOAD, MODE_DEMO)}
+    current = st.session_state.get('mode', MODE_UPLOAD)
+    mode = st.radio(t('mode.label'), list(modes), index=list(modes).index(current) if current in modes else 0,
+                    format_func=modes.get, key='mode_choice_' + language(), horizontal=True,
+                    label_visibility='collapsed')
     if st.session_state.get('mode') != mode:
         clear_session()
         st.session_state['mode'] = mode
@@ -745,17 +785,17 @@ def main():
     st.markdown(theme.key_rule(), unsafe_allow_html=True)
     if mode == MODE_DEMO:
         steps_slot.markdown(theme.steps(5 if st.session_state.get('result') else 0), unsafe_allow_html=True)
-        st.info('合成展示：畫布、辨識框與食譜都是測試用案例，不是真實照片分析，也不是食譜推薦。')
-        if st.button('顯示展示結果', type='primary'):
+        st.info(t('demo.info'))
+        if st.button(t('btn.demo_show'), type='primary'):
             st.session_state['result'], st.session_state['image'] = fixture_demo()
-        if st.button('清除本次圖片與結果'):
+        if st.button(t('btn.demo_clear')):
             clear_session()
             st.rerun()
         result = st.session_state.get('result')
         if result:
             show_result(result)
         else:
-            st.caption('按「顯示展示結果」看合成案例。')
+            st.caption(t('demo.hint'))
         return
     key = gemini_key()
     raw = photo_bytes()
@@ -788,10 +828,9 @@ def main():
             with st.container(key='fc_start'):
                 start_card(raw, key)
     if result:
-        unknown = [i.get('display_name') or i['class_name'] for i in items if nutrition_of(i) is None]
+        unknown = [dish_name(i) for i in items if nutrition_of(i) is None]
         if unknown:
-            st.caption('、'.join(unknown) + ' 不在食材表裡，只能估體積；可以填克數，或把它加進 '
-                       '`src/portion/nutrition_model.py`。')
+            st.caption(t('unknown.caption', names=join(unknown)))
         if dev_mode():
             developer_details(result)
 

@@ -206,6 +206,8 @@ def food_nutrition(components, method):
     """{'density', 'visible_kcal_per_100g', 'hidden_kcal_per_100g': (low, high), 'known_share', 'parts'} or None.
 
     components: [(ingredient key, share percent)]; unknown keys are left out and reported through known_share.
+    parts and method carry the Chinese names; part_keys and method_key the keys, so the page can name them in its
+    own language.
     """
     known = [(key, D(str(share))) for key, share in components or [] if key in INGREDIENTS and D(str(share)) > 0]
     total = sum((share for _, share in known), D(0))
@@ -238,6 +240,7 @@ def food_nutrition(components, method):
             'hidden_kcal_per_100g': (hidden_low.quantize(D('0.1')), hidden_high.quantize(D('0.1'))),
             'known_share': (total / stated).quantize(D('0.01')) if stated else D(0),
             'parts': [(INGREDIENTS[key][0], int(share)) for key, share in known],
+            'part_keys': [key for key, _ in known],
             'macros_per_100g': {'protein': protein, 'fat': fat, 'carb': carb},
             'hidden_fat_g_per_100g': (cooked_share * oil[0], cooked_share * oil[1]),
             'hidden_sugar_g_per_100g': (cooked_share * sugar[0], cooked_share * sugar[1]),
@@ -245,7 +248,8 @@ def food_nutrition(components, method):
             'hidden_sat_fat_g_per_100g': (cooked_share * oil[0] * OIL_SAT_FAT_PER_G,
                                           cooked_share * oil[1] * OIL_SAT_FAT_PER_G),
             'hidden_sodium_mg_per_100g': (cooked_share * sodium[0], cooked_share * sodium[1]),
-            'method': COOKING_METHODS.get(method, COOKING_METHODS['none'])[0]}
+            'method': COOKING_METHODS.get(method, COOKING_METHODS['none'])[0],
+            'method_key': method if method in COOKING_METHODS else 'none'}
 
 
 def energy_for_grams(grams, nutrition):

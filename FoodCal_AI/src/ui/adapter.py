@@ -176,31 +176,69 @@ def draw_predictions(image, result, card_box=None, manual_items=None):
     return canvas
 
 
-CJK_FONTS = ('/System/Library/Fonts/STHeiti Medium.ttc', '/System/Library/Fonts/Hiragino Sans GB.ttc',
-             'C:/Windows/Fonts/msjh.ttc', 'C:/Windows/Fonts/msyh.ttc',
-             '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc')
+# Tried in order; the first one that has every letter of the dish names draws the tags. Chinese fonts first (the
+# default page language), then Korean (Hangul) and wide-coverage fonts for Vietnamese letters such as ư, ơ, ạ.
+LABEL_FONTS = ('/System/Library/Fonts/STHeiti Medium.ttc', '/System/Library/Fonts/Hiragino Sans GB.ttc',
+               '/System/Library/Fonts/AppleSDGothicNeo.ttc', '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
+               'C:/Windows/Fonts/msjh.ttc', 'C:/Windows/Fonts/msyh.ttc', 'C:/Windows/Fonts/malgun.ttf',
+               'C:/Windows/Fonts/arial.ttf',
+               '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc',
+               '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf')
+_GLYPHS = {}  # (font path, character) -> whether that font has a glyph for it
 PILLS = (('#dcebd3', '#5f8f52'), ('#fbe7c2', '#c58b2b'), ('#d6e6f5', '#4f7fb0'),
          ('#f6d9d6', '#b5615a'), ('#e6def3', '#7a64a8'), ('#d9eeeb', '#3f8f86'))
 
 
-def label_font(size):
-    """A font with Chinese glyphs when the computer has one (macOS, Windows, Noto on Linux), else Pillow's default."""
+def _glyph(font, char):
+    image = Image.new('L', (40, 40))
+    ImageDraw.Draw(image).text((4, 4), char, font=font, fill=255)
+    return image.tobytes()
+
+
+def _draws(path, text):
+    """True when the font at path has a glyph for every visible character of text, not its "missing" box."""
+    chars = {char for char in text if not char.isspace()}
+    todo = [char for char in chars if (path, char) not in _GLYPHS]
+    if todo:
+        font = ImageFont.truetype(path, 24)
+        missing = _glyph(font, '\U0010FFFD')  # a private-use code point no font draws
+        for char in todo:
+            _GLYPHS[(path, char)] = _glyph(font, char) != missing
+    return all(_GLYPHS[(path, char)] for char in chars)
+
+
+def label_font(size, text='中文'):
+    """(font, True) for the first font on this computer that draws every character of text, else (font, False).
+
+    Without text it looks for a Chinese font, as the tags always did. With no such font the tags show only the
+    dish numbers, never boxes in place of letters.
+    """
     from pathlib import Path
-    for path in CJK_FONTS:
-        if Path(path).is_file():
-            try:
-                return ImageFont.truetype(path, size), True
-            except OSError:
-                continue
-    return ImageFont.load_default(size=size), False
+    fallback = None
+    for path in LABEL_FONTS:
+        if not Path(path).is_file():
+            continue
+        try:
+            font = ImageFont.truetype(path, size)
+            if _draws(path, text):
+                return font, True
+        except OSError:
+            continue
+        fallback = fallback or font
+    return fallback or ImageFont.load_default(size=size), False
 
 
 def draw_items(image, items, card=None, show_boxes=True):
-    """Recognised foods as pastel boxes with numbered name tags ("01 紫米飯"), plus the card outline in green."""
+    """Recognised foods as pastel boxes with numbered name tags ("01 紫米飯"), plus the card outline in green.
+
+    Names are drawn in whatever language display_name is in, with a font that has their letters.
+    """
     canvas = image.convert('RGB').copy()
     draw = ImageDraw.Draw(canvas)
     # The page shows the photo about 300-600 px wide, so tags are sized relative to the photo, not in pixels.
-    font, has_cjk = label_font(max(18, image.width // 24))
+    size = max(18, image.width // 24)
+    names = ''.join(str(item.get('display_name') or '') for item in items)
+    font, has_names = label_font(size, names) if names else label_font(size)
     line = max(3, image.width // 200)
     if card is not None:
         if isinstance(card[0], (list, tuple)):
@@ -216,7 +254,7 @@ def draw_items(image, items, card=None, show_boxes=True):
         box = item['bounding_box']
         draw.rounded_rectangle(tuple(box[k] for k in ('x_min', 'y_min', 'x_max', 'y_max')), radius=max(6, line * 3),
                                outline=edge, width=line)
-    tags = tag_layout(draw, font, items, canvas.size, line, has_cjk)
+    tags = tag_layout(draw, font, items, canvas.size, line, has_names)
     for index, (item, (text, (left, top, right, bottom), offset)) in enumerate(zip(items, tags), 1):
         fill, edge = PILLS[(item.get('number', index) - 1) % len(PILLS)]
         draw.rounded_rectangle((left, top, right, bottom), radius=8, fill=fill, outline=edge, width=max(1, line // 2))
@@ -224,7 +262,7 @@ def draw_items(image, items, card=None, show_boxes=True):
     return canvas
 
 
-def tag_layout(draw, font, items, size, line, has_cjk=True):
+def tag_layout(draw, font, items, size, line, has_names=True):
     """[(text, tag rectangle, text offset)] for the numbered food tags.
 
     A tag sits just above its box's top-left corner, stays inside the photo, and moves down when it would cover an
@@ -234,7 +272,7 @@ def tag_layout(draw, font, items, size, line, has_cjk=True):
     placed = []
     for index, item in enumerate(items, 1):
         box = item['bounding_box']
-        name = item.get('display_name') if has_cjk else None
+        name = item.get('display_name') if has_names else None
         index = item.get('number', index)  # the side photo keeps each dish's number from the top photo
         text = f'{index:02d} {name}' if name else f'{index:02d} {item["detection_id"]}'
         b = draw.textbbox((0, 0), text, font=font, anchor='lt')

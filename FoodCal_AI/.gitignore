@@ -200,6 +200,9 @@
 !/docs/nutrition_model_v0.md
 !/src/ui/theme.py
 !/tests/test_ui_theme.py
+!/src/ui/i18n.py
+!/src/ui/messages.py
+!/tests/test_i18n.py
 
 # Private data stays blocked even under future broad allow rules.
 **/data/

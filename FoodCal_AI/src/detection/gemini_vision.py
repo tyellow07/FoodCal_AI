@@ -1,10 +1,11 @@
 """Food recognition with Google's Gemini API (free tier), the web page's recognition engine since 2026-11-20.
 
 One request per photo: a downscaled, metadata-free JPEG with the student card painted over (the page finds the
-card first), plus instructions; the answer is constrained to a JSON schema listing each visible food with a
-Traditional Chinese name, a known food key when it matches, the container, a box in Gemini's native
-[ymin, xmin, ymax, xmax] 0-1000 format, visible ingredients and a confidence. Only what is visible is asked for:
-no weights, calories or recipe guesses.
+card first), plus instructions; the answer is constrained to a JSON schema listing each visible food with its name
+in every page language (Traditional Chinese, English, Japanese, Korean, Indonesian, Vietnamese), a known food key
+when it matches, the container, a box in Gemini's native [ymin, xmin, ymax, xmax] 0-1000 format, visible
+ingredients and a confidence. Free-text notes come in the page language. Only what is visible is asked for: no
+weights, calories or recipe guesses.
 
 Free-tier terms let Google use submitted content to improve its products, with human review; the page says so
 before the user agrees. Keys come from the caller (Streamlit secrets), never from this module or the repo.
@@ -42,6 +43,10 @@ SCHEMA = {
             'properties': {
                 'name_zh': {'type': 'string'},
                 'name_en': {'type': 'string'},
+                'name_ja': {'type': 'string'},
+                'name_ko': {'type': 'string'},
+                'name_id': {'type': 'string'},
+                'name_vi': {'type': 'string'},
                 'food_key': {'type': 'string', 'enum': sorted(FOOD_TEMPLATES) + ['other']},
                 'container': {'type': 'string', 'enum': list(CONTAINERS)},
                 'box_2d': {'type': 'array', 'items': {'type': 'integer'}, 'minItems': 4, 'maxItems': 4},
@@ -55,19 +60,23 @@ SCHEMA = {
                 'cooking_method': {'type': 'string', 'enum': sorted(COOKING_METHODS)},
                 'shape': {'type': 'string', 'enum': ['mound', 'flat']},
             },
-            'required': ['name_zh', 'name_en', 'food_key', 'container', 'box_2d', 'visible_ingredients', 'confidence',
-                         'components', 'cooking_method', 'shape']}},
+            'required': ['name_zh', 'name_en', 'name_ja', 'name_ko', 'name_id', 'name_vi', 'food_key', 'container',
+                         'box_2d', 'visible_ingredients', 'confidence', 'components', 'cooking_method', 'shape']}},
         'notes': {'type': 'string'},
     },
     'required': ['foods', 'notes'],
 }
 
-INSTRUCTIONS = f"""You identify the foods visible in one photo of a meal from a Taiwanese university cafeteria.
+def instructions(notes_language='Traditional Chinese'):
+    """The recognition instructions; Gemini writes its notes in notes_language (the page language)."""
+    return f"""You identify the foods visible in one photo of a meal from a Taiwanese university cafeteria.
 
 For every distinct food item you can see, report:
 - name_zh: the specific dish name a Taiwanese cafeteria would use when you can tell (for example 紫米飯, 炒高麗菜,
   醬燒雞丁, 白斬雞, 滷肉飯, 荷包蛋), not just the main ingredient.
 - name_en: a short English name.
+- name_ja, name_ko, name_id, name_vi: the same dish named in Japanese, Korean, Indonesian and Vietnamese, short, as a
+  menu in that language would write it, for students who read those languages.
 - food_key: one of these keys only when the item is exactly that dish, otherwise "other":
 {chr(10).join(f'  {key}' for key in sorted(FOOD_TEMPLATES))}
   (cooked_rice_region is plain cooked rice, cooked_noodle_region plain noodles, visible_fried_egg a fried egg.)
@@ -91,8 +100,11 @@ a recipe would usually contain but the photo does not show. Ignore plates, trays
 painted-over area and other non-food objects. A self-service (自助餐) plate holds separate dishes that touch each other: list every dish on its own, with
 its own box, components and cooking method; only a dish that is cooked or served as one (for example 滷肉飯, 炒飯,
 牛肉麵) is a single item. Boxes may overlap where dishes touch, but keep each one tight around its dish. If there is
-no food, return an empty list. Use notes, in Traditional Chinese, for
+no food, return an empty list. Use notes, in {notes_language}, for
 anything uncertain."""
+
+
+INSTRUCTIONS = instructions()
 
 BLOCKED = {'SAFETY', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII', 'IMAGE_SAFETY', 'RECITATION', 'LANGUAGE', 'OTHER'}
 
@@ -256,13 +268,13 @@ def _meta(response, model, endpoint, latency):
             'latency_s': round(latency, 2)}
 
 
-def recognize_foods_gemini(image, *, clients, models=None):
+def recognize_foods_gemini(image, *, clients, models=None, notes_language='Traditional Chinese'):
     """{'items', 'notes', 'model', 'endpoint', 'usage', 'latency_s'} for one PIL image (already card-masked)."""
     from google.genai import types
     width, height = image.size
     contents = [types.Part.from_bytes(data=jpeg_bytes(image), mime_type='image/jpeg'),
                 'List the foods visible in this photo.']
-    response, model, endpoint, latency = _generate(contents, INSTRUCTIONS, SCHEMA, clients, models)
+    response, model, endpoint, latency = _generate(contents, instructions(notes_language), SCHEMA, clients, models)
     answer = _answer_from(response)
     return {'items': items_from_answer(answer, width, height, prefix='G'), 'notes': answer['notes'],
             **_meta(response, model, endpoint, latency)}
@@ -284,7 +296,9 @@ SIDE_SCHEMA = {
     'required': ['dishes', 'notes'],
 }
 
-SIDE_INSTRUCTIONS = f"""You see a second photo of a meal, taken from the side at a low angle. The dishes were already
+def side_instructions(notes_language='Traditional Chinese'):
+    """The side photo instructions; Gemini writes its notes in notes_language (the page language)."""
+    return f"""You see a second photo of a meal, taken from the side at a low angle. The dishes were already
 identified in a photo taken from above; the user lists them with their numbers.
 
 For every listed dish you can see in this side photo, report:
@@ -296,7 +310,10 @@ For every listed dish you can see in this side photo, report:
   where it stands on the table; an empty list for dishes on a plate.
 
 Skip listed dishes you cannot see. Report positions only: no sizes, weights or calories. Ignore the grey painted-over
-area, cutlery and hands. Use notes, in Traditional Chinese, for anything uncertain."""
+area, cutlery and hands. Use notes, in {notes_language}, for anything uncertain."""
+
+
+SIDE_INSTRUCTIONS = side_instructions()
 
 
 def _side_box(box, width, height):
@@ -311,7 +328,7 @@ def _side_box(box, width, height):
             round(y1 * height / GRID, 1)]
 
 
-def recognize_side_view(image, dishes, *, clients, models=None):
+def recognize_side_view(image, dishes, *, clients, models=None, notes_language='Traditional Chinese'):
     """{'boxes': {detection_id: {'food': [x0, y0, x1, y1], 'container': [...] or None}}, 'notes', model meta}.
 
     image: the side photo, already card-masked. dishes: [(detection_id, name, container)] from the top photo, in
@@ -322,7 +339,8 @@ def recognize_side_view(image, dishes, *, clients, models=None):
     listing = '\n'.join(f'{index:02d} {name} ({container})' for index, (_, name, container) in enumerate(dishes, 1))
     contents = [types.Part.from_bytes(data=jpeg_bytes(image), mime_type='image/jpeg'),
                 'Dishes from the photo taken from above:\n' + listing]
-    response, model, endpoint, latency = _generate(contents, SIDE_INSTRUCTIONS, SIDE_SCHEMA, clients, models)
+    response, model, endpoint, latency = _generate(contents, side_instructions(notes_language), SIDE_SCHEMA, clients,
+                                                   models)
     answer = _parse_json(response)
     if not isinstance(answer, dict) or not isinstance(answer.get('dishes'), list):
         raise RecognitionError('gemini_answer_unreadable')

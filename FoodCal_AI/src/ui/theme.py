@@ -1,9 +1,13 @@
 """Look of the web page, following the proposal deck: off-white page, white cards, dark green actions, pale green
 nutrition panel, numbered steps and the KEY RULE banner. Pure HTML/CSS strings; no Streamlit import here.
+
+Texts come from messages.py in the page language (i18n.t). Wording that CSS draws into Streamlit's upload boxes
+reads custom properties (--fc-t-...) that lang_css() sets for the page language.
 """
 from html import escape
 
 from src.portion.nutrition_model import NUTRIENTS
+from .i18n import t
 
 CSS = """
 <style>
@@ -33,17 +37,17 @@ CSS = """
   justify-content:center; text-align:center; }
 .st-key-fc_upload [data-testid="stFileUploaderDropzoneInstructions"] > div { align-items:center; }
 .st-key-fc_upload [data-testid="stFileUploaderDropzoneInstructions"] span { display:none; }
-.st-key-fc_upload [data-testid="stFileUploaderDropzoneInstructions"] > div::before { content:'把餐點照片拖曳到這裡';
+.st-key-fc_upload [data-testid="stFileUploaderDropzoneInstructions"] > div::before { content:var(--fc-t-drop-title);
   color:var(--fc-ink); font-weight:650; font-size:1.05rem; }
 .st-key-fc_upload [data-testid="stFileUploaderDropzone"] > span { order:2; }
-.st-key-fc_upload [data-testid="stFileUploaderDropzone"]::after { content:'JPG、PNG、WebP，最多 20 MB · 手機可以直接拍照';
+.st-key-fc_upload [data-testid="stFileUploaderDropzone"]::after { content:var(--fc-t-drop-note);
   order:3; color:var(--fc-muted); font-size:.78rem; }
 .st-key-fc_upload [data-testid="stFileUploaderDropzone"] button { background:var(--fc-green); border-color:var(--fc-green);
   color:#fff; border-radius:10px; padding:.45rem 1.3rem; }
 .st-key-fc_upload [data-testid="stFileUploaderDropzone"] button:hover { background:#335b43; border-color:#335b43; color:#fff; }
 .st-key-fc_upload [data-testid="stFileUploaderDropzone"] button p { display:none; }
 .st-key-fc_upload [data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"]::after {
-  content:'選擇照片'; font-weight:600; }
+  content:var(--fc-t-choose); font-weight:600; }
 .fc-tips { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:.9rem; margin:.9rem 0 .45rem; }
 .fc-tip { display:flex; gap:.6rem; align-items:flex-start; color:var(--fc-muted); font-size:.8rem; line-height:1.45; }
 .fc-tip svg { flex:0 0 34px; }
@@ -69,15 +73,15 @@ CSS = """
   text-align:left; }
 .st-key-fc_side_drop [data-testid="stFileUploaderDropzoneInstructions"] > div { align-items:flex-start; }
 .st-key-fc_side_drop [data-testid="stFileUploaderDropzoneInstructions"] span { display:none; }
-.st-key-fc_side_drop [data-testid="stFileUploaderDropzoneInstructions"] > div::before { content:'＋ 加一張側面照（選填）';
+.st-key-fc_side_drop [data-testid="stFileUploaderDropzoneInstructions"] > div::before { content:var(--fc-t-side-title);
   color:var(--fc-ink); font-weight:650; font-size:.93rem; }
 .st-key-fc_side_drop [data-testid="stFileUploaderDropzoneInstructions"] > div::after {
-  content:'蹲低斜拍，份量會更準'; color:var(--fc-muted); font-size:.76rem; }
+  content:var(--fc-t-side-note); color:var(--fc-muted); font-size:.76rem; }
 .st-key-fc_side_drop [data-testid="stFileUploaderDropzone"] > span { order:2; }
 .st-key-fc_side_drop [data-testid="stFileUploaderDropzone"] button { border-radius:10px; }
 .st-key-fc_side_drop [data-testid="stFileUploaderDropzone"] button p { display:none; }
 .st-key-fc_side_drop [data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"]::after {
-  content:'選擇照片'; font-weight:600; }
+  content:var(--fc-t-choose); font-weight:600; }
 /* A chosen side photo: small thumbnail beside its name (after the plate image rule, so the thumbnail wins). */
 .st-key-fc_side_staged { background:#fafbf8; border:1px solid var(--fc-line); border-radius:12px;
   padding:.55rem .65rem !important; }
@@ -87,6 +91,12 @@ CSS = """
 .st-key-fc_side_staged [data-testid="stColumn"]:last-child { flex:1 1 auto !important; width:auto !important;
   min-width:0 !important; }
 .st-key-fc_side_staged [data-testid="stImage"] img { height:84px; object-fit:cover; border-radius:8px; }
+/* Language menu: pinned to the top right of the window, in Streamlit's header bar, so it stays in view on every
+   step and while scrolling. A globe drawn in front of the chosen language marks what it is. */
+.st-key-fc_lang { position:fixed; top:.6rem; right:3.4rem; width:11.5rem !important; z-index:999991; }
+.st-key-fc_lang [data-testid="stSelectbox"] [role="group"] { padding-left:1.8rem; background-repeat:no-repeat;
+  background-position:.65rem center;
+  background-size:16px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233d6b4f' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18'/%3E%3Cpath d='M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18'/%3E%3C/svg%3E"); }
 .fc-brand { display:flex; justify-content:space-between; align-items:center; color:var(--fc-muted);
             font-size:.78rem; letter-spacing:.14em; text-transform:uppercase; font-weight:600; }
 .fc-badge { background:#1f2a24; color:#fff; border-radius:6px; padding:2px 8px; font-size:.7rem; letter-spacing:.08em; }
@@ -145,6 +155,7 @@ CSS = """
 /* Phones: the answer first, compact chrome, thumbnails side by side, no iOS zoom on number boxes. */
 @media (max-width: 640px) {
   .block-container { padding: 2.8rem .85rem 2rem !important; }
+  .st-key-fc_lang { top:.5rem; right:3rem; width:9.8rem !important; }
   .fc-brand { font-size:.6rem; letter-spacing:.08em; }
   .fc-badge { display:none; }
   .fc-title { font-size:1.55rem; }
@@ -164,10 +175,10 @@ CSS = """
   .st-key-fc_plate [data-testid="stImage"] img { max-height:48vh; }
   .fc-title2 { font-size:1.2rem; }
   .st-key-fc_upload [data-testid="stFileUploaderDropzone"] { min-height:168px; padding:1.1rem .8rem; }
-  .st-key-fc_upload [data-testid="stFileUploaderDropzoneInstructions"] > div::before { content:'拍一張或選一張餐點照片'; }
-  .st-key-fc_upload [data-testid="stFileUploaderDropzone"]::after { content:'JPG、PNG、WebP，最多 20 MB'; }
+  .st-key-fc_upload [data-testid="stFileUploaderDropzoneInstructions"] > div::before { content:var(--fc-t-drop-title-phone); }
+  .st-key-fc_upload [data-testid="stFileUploaderDropzone"]::after { content:var(--fc-t-drop-note-phone); }
   .st-key-fc_upload [data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"]::after {
-    content:'拍照或選照片'; }
+    content:var(--fc-t-choose-phone); }
   .fc-tips { grid-template-columns:1fr; gap:.55rem; margin:.75rem 0 .5rem; }
   .st-key-fc_plate_actions [data-testid="stHorizontalBlock"] { flex-wrap:wrap !important; gap:.5rem !important; }
   .st-key-fc_plate_actions [data-testid="stColumn"] { flex:1 1 calc(50% - .5rem) !important;
@@ -185,84 +196,93 @@ CSS = """
 </style>
 """
 
-STEPS = (('01', 'INPUT', '餐點照片', '照片由使用者提供'),
-         ('02', 'DISH', 'Gemini 辨識菜色', '菜色 ≠ 食材'),
-         ('03', 'VISION', '食材範圍與學生證', '只用看得到的'),
-         ('04', 'ESTIMATION', '份量與食譜', '體積 × 密度；食譜補看不到的油糖'),
-         ('05', 'OUTPUT', '熱量與營養素', '熱量、三大營養素、鈉、纖維等'))
+STEPS = (('01', 'INPUT'), ('02', 'DISH'), ('03', 'VISION'), ('04', 'ESTIMATION'), ('05', 'OUTPUT'))  # step.N.d/.s
 
 MACRO_COLORS = {'protein': '#3d6b4f', 'carb': '#d9a35b', 'fat': '#8fa7c4'}
 PILL_COLORS = (('#dcebd3', '#5f8f52'), ('#fbe7c2', '#c58b2b'), ('#d6e6f5', '#4f7fb0'),
                ('#f6d9d6', '#b5615a'), ('#e6def3', '#7a64a8'), ('#d9eeeb', '#3f8f86'))
+CSS_TEXTS = {'--fc-t-drop-title': 'css.drop_title', '--fc-t-drop-note': 'css.drop_note', '--fc-t-choose': 'css.choose',
+             '--fc-t-side-title': 'css.side_title', '--fc-t-side-note': 'css.side_note',
+             '--fc-t-drop-title-phone': 'css.drop_title_phone', '--fc-t-drop-note-phone': 'css.drop_note_phone',
+             '--fc-t-choose-phone': 'css.choose_phone'}
+
+
+def _css_string(text):
+    return "'" + text.replace('\\', '\\\\').replace("'", "\\'").replace('\n', ' ') + "'"
+
+
+def lang_css():
+    """The wording CSS draws into the upload boxes, in the page language, as the custom properties CSS reads."""
+    rules = ' '.join(f'{name}:{_css_string(t(key))};' for name, key in CSS_TEXTS.items())
+    return f'<style>:root {{ {rules} }}</style>'
 
 
 def header():
     return ('<div class="fc-brand"><span>National Tsing Hua University · I2P(I) · Team 1</span>'
             '<span class="fc-badge">FoodCal AI</span></div>'
-            '<div class="fc-title">FoodCal AI · 餐點熱量估算</div>'
-            '<div class="fc-tagline">Understand the meal, not just the label — 拍一張照片，看懂這餐的熱量。</div>')
+            f'<div class="fc-title">{escape(t("header.title"))}</div>'
+            f'<div class="fc-tagline">{escape(t("header.tagline"))}</div>')
 
 
 def steps(done):
     """The five workflow cards; the first `done` are marked finished."""
-    cards = ''.join(f'<div class="fc-step{" done" if i < done else ""}"><div class="n">{n}</div><div class="t">{t}</div>'
-                    f'<div class="d">{escape(d)}</div><div class="s">{escape(s)}</div></div>'
-                    for i, (n, t, d, s) in enumerate(STEPS))
+    cards = ''.join(f'<div class="fc-step{" done" if i < done else ""}"><div class="n">{number}</div>'
+                    f'<div class="t">{title}</div><div class="d">{escape(t(f"step.{i + 1}.d"))}</div>'
+                    f'<div class="s">{escape(t(f"step.{i + 1}.s"))}</div></div>'
+                    for i, (number, title) in enumerate(STEPS))
     return f'<div class="fc-steps">{cards}</div>'
 
 
 def key_rule():
-    return ('<div class="fc-rule"><b>KEY RULE</b><span>Recipe candidates may explain hidden calories, but are not visual '
-            'proof. 食譜只能解釋看不到的熱量，不能當作照片證據。</span></div>')
+    return f'<div class="fc-rule"><b>KEY RULE</b><span>{escape(t("rule.text"))}</span></div>'
 
 
 ICON_ATTRS = ('width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="#3d6b4f" stroke-width="1.6" '
               'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"')
-PHOTO_TIPS = (  # (icon, title, detail): how to take a photo the page can measure
+PHOTO_TIPS = (  # (icon, message key of its title and detail): how to take a photo the page can measure
     (f'<svg {ICON_ATTRS}><circle cx="13" cy="17" r="10"/><circle cx="13" cy="17" r="6" stroke-opacity=".4"/>'
      f'<rect x="25.5" y="11" width="6.5" height="12" rx="1.4"/></svg>',
-     '學生證放旁邊', '背面朝上、平放在餐盤旁，用來換算大小'),
+     'tip.card'),
     (f'<svg {ICON_ATTRS}><rect x="10" y="2.5" width="14" height="9" rx="2"/><circle cx="17" cy="7" r="2"/>'
      f'<path d="M17 14.5v6" stroke-dasharray="2 2"/><path d="M14.5 18.5l2.5 2.5 2.5-2.5"/>'
      f'<ellipse cx="17" cy="27.5" rx="11" ry="3.8"/></svg>',
-     '從正上方拍', '整盤菜和學生證都要拍進去'),
+     'tip.top'),
     (f'<svg {ICON_ATTRS}><rect x="9" y="15" width="16" height="13" rx="2.5"/>'
      f'<path d="M12.5 15v-3.5a4.5 4.5 0 0 1 9 0V15"/><circle cx="17" cy="21.5" r="1.5"/></svg>',
-     '照片不會保存', '只留在這次的記憶體；請不要拍到人臉'),
+     'tip.private'),
 )
 
 
 def upload_intro():
     """Heading of the upload card shown before a photo is chosen."""
-    return (card_head('Your plate · 你的餐盤') +
-            '<div class="fc-title2">拍下這一餐，看看有多少熱量</div>'
-            '<div class="fc-lead">上傳一張從正上方拍的餐點照片：Gemini 會辨識每道菜，再用旁邊的學生證換算份量。</div>')
+    return (card_head(t('head.plate')) +
+            f'<div class="fc-title2">{escape(t("upload.title"))}</div>'
+            f'<div class="fc-lead">{escape(t("upload.lead"))}</div>')
 
 
 def photo_tips():
     """Three short tips under the upload box: card beside the plate, shot from above, photo not kept."""
-    tips = ''.join(f'<div class="fc-tip">{icon}<div><b>{escape(title)}</b>{escape(detail)}</div></div>'
-                   for icon, title, detail in PHOTO_TIPS)
+    tips = ''.join(f'<div class="fc-tip">{icon}<div><b>{escape(t(key + ".title"))}</b>{escape(t(key + ".detail"))}'
+                   f'</div></div>' for icon, key in PHOTO_TIPS)
     return f'<div class="fc-tips">{tips}</div>'
 
 
 def or_divider():
-    return '<div class="fc-or">或</div>'
+    return f'<div class="fc-or">{escape(t("or"))}</div>'
 
 
 def samples_intro():
     """Heading of the sample photos, a card of their own below the upload box."""
-    return (card_head('Samples · 範例照片') +
-            '<div class="fc-title3">沒有照片？先用範例看看</div>'
-            '<div class="fc-lead">選一張範例照片，下一步一樣要按「開始辨識」才會送出。</div>')
+    return (card_head(t('head.samples')) +
+            f'<div class="fc-title3">{escape(t("samples.title"))}</div>'
+            f'<div class="fc-lead">{escape(t("samples.lead"))}</div>')
 
 
 def start_intro():
     """Heading of the start card next to the chosen photo."""
-    return (card_head('Next · 下一步') +
-            '<div class="fc-title2">開始辨識這張照片</div>'
-            '<div class="fc-lead">Gemini 會列出每道菜、看得到的食材和烹調方式，通常 5–30 秒。'
-            '辨識完，這裡會換成熱量和營養素。</div>')
+    return (card_head(t('head.next')) +
+            f'<div class="fc-title2">{escape(t("start.title"))}</div>'
+            f'<div class="fc-lead">{escape(t("start.lead"))}</div>')
 
 
 def pick_intro(title, lead):
@@ -272,12 +292,13 @@ def pick_intro(title, lead):
 
 def side_offer():
     """One line on why a side photo helps, above its upload box under the recognised photo."""
-    return '<div class="fc-lead">俯視照只量得到面積；加一張側面照，可以量每道菜的高度和碗裝多滿。</div>'
+    return f'<div class="fc-lead">{escape(t("side.offer"))}</div>'
 
 
 def side_staged(name, note):
     """Name and state of a chosen side photo, beside its thumbnail."""
-    return f'<div class="fc-name">側面照</div><div class="fc-meta">{escape(name)} · {escape(note)}</div>'
+    return (f'<div class="fc-name">{escape(t("side.name"))}</div>'
+            f'<div class="fc-meta">{escape(name)} · {escape(note)}</div>')
 
 
 def card_head(label, chip=None):
@@ -293,9 +314,12 @@ def item_header(index, name, meta, hidden=None):
 
 NUTRIENT_ORDER = ('sat_fat_g', 'sugar_g', 'fiber_g', 'sodium_mg', 'cholesterol_mg', 'potassium_mg', 'calcium_mg',
                   'iron_mg')
-RECIPE_PART = {'sat_fat_g': '其中用油約 {hidden} g（食譜估計）',
-               'sugar_g': '其中加糖約 {hidden} g（食譜估計）',
-               'sodium_mg': '其中調味約 {hidden} mg（{low}–{high}，食譜估計）'}
+RECIPE_PART = ('sat_fat_g', 'sugar_g', 'sodium_mg')  # nutrients whose recipe-estimated part has its own line
+
+
+def nutrient_name(key):
+    """A nutrient in the page language (the Chinese name stays in nutrition_model.NUTRIENTS)."""
+    return t('nutrient.' + key, {k: name for k, name, _, _ in NUTRIENTS}.get(key))
 
 
 def nutrient_list(nutrients):
@@ -310,15 +334,14 @@ def nutrient_list(nutrients):
         amount = value['visible'] + value['hidden']
         recipe = ''
         if key in RECIPE_PART and value['hidden_high'] > 0:
-            recipe = RECIPE_PART[key].format(hidden=value['hidden'], low=value['hidden_low'], high=value['hidden_high'])
+            recipe = t('recipe.' + key, hidden=value['hidden'], low=value['hidden_low'], high=value['hidden_high'])
             recipe = f'<div class="fc-hidden">{escape(recipe)}</div>'
-        rows.append(f'<div class="fc-nut"><div>{escape(name)}{recipe}</div>'
+        rows.append(f'<div class="fc-nut"><div>{escape(nutrient_name(key))}{recipe}</div>'
                     f'<b>{"≥ " if value["partial"] else ""}{amount} {unit}</b></div>')
-    partial_note = ('「≥」：有食材沒有這項資料，實際可能更多。' if any(nutrients[k]['partial'] for k in NUTRIENT_ORDER)
-                    else '')
-    return ('<div class="fc-nut-head">其他營養素 · OTHER NUTRIENTS</div>' + ''.join(rows) +
-            f'<div class="fc-meta" style="margin-top:.4rem">{partial_note}食材的數值來自衛福部食品營養成分資料庫；'
-            f'鈉大多來自調味，橘字依烹調方式估計，不是照片證據。</div>')
+    partial = any(nutrients[k]['partial'] for k in NUTRIENT_ORDER)
+    note = (t('nut.partial_note') + t('sep.sentence') if partial else '') + t('nut.source_note')
+    return (f'<div class="fc-nut-head">{escape(t("nut.other_head"))}</div>' + ''.join(rows) +
+            f'<div class="fc-meta" style="margin-top:.4rem">{escape(note)}</div>')
 
 
 def side_table(rows):
@@ -332,16 +355,18 @@ def side_table(rows):
         one = (f"{(single['low'] * density).quantize(Decimal('1'))}–{(single['high'] * density).quantize(Decimal('1'))} g"
                if single is not None and density is not None else '—')
         grams = row.get('grams')
-        two = ('你填的' if row.get('grams_source') == 'user' else
+        two = (t('meta.typed') if row.get('grams_source') == 'user' else
                f"{grams['low']}–{grams['high']} g" if grams else '—')
         h = row['height_cm']
-        body.append(f'<tr><td>{escape(row["name"])}</td><td>{one}</td><td>{two}</td>'
-                    f'<td>{"碗深" if row.get("shape") == "bowl" else "高"} {h["low"]}–{h["high"]}</td></tr>')
+        measured = t('table.bowl_depth') if row.get('shape') == 'bowl' else t('table.height')
+        body.append(f'<tr><td>{escape(row["name"])}</td><td>{one}</td><td>{escape(two)}</td>'
+                    f'<td>{escape(measured)} {h["low"]}–{h["high"]}</td></tr>')
     if not body:
-        return '<div class="fc-meta">側面照裡沒有可以量的菜。</div>'
-    return ('<table class="fc-table"><tr><th>菜色</th><th>只用俯視照</th><th>加側面照</th><th>量到（cm）</th></tr>'
-            + ''.join(body) + '</table><div class="fc-meta" style="margin-top:.5rem">有側面照的菜，用量到的高度（碗是深度和'
-            '裝多滿）取代預設厚度。仍是粗估：只在模擬場景驗證過，還沒有用秤重的真實餐點驗證。</div>')
+        return f'<div class="fc-meta">{escape(t("side.none_measurable"))}</div>'
+    head = ''.join(f'<th>{escape(t(key))}</th>' for key in ('table.dish', 'table.top_only', 'table.with_side',
+                                                            'table.measured'))
+    return (f'<table class="fc-table"><tr>{head}</tr>' + ''.join(body) +
+            f'</table><div class="fc-meta" style="margin-top:.5rem">{escape(t("side.table_note"))}</div>')
 
 
 def mobile_summary(total, macros, nutrients=None):
@@ -351,41 +376,43 @@ def mobile_summary(total, macros, nutrients=None):
     """
     if total is None:
         return ''
-    cells = [('蛋白質', f"{macros['protein']} g"), ('醣類', f"{macros['carb']} g"), ('脂肪', f"{macros['fat']} g")]
+    cells = [(t('macro.protein'), f"{macros['protein']} g"), (t('macro.carb'), f"{macros['carb']} g"),
+             (t('macro.fat'), f"{macros['fat']} g")]
     if nutrients:
         sodium = nutrients['sodium_mg']
-        cells.append(('鈉', f"{'≥ ' if sodium['partial'] else ''}{sodium['visible'] + sodium['hidden']} mg"))
+        cells.append((nutrient_name('sodium_mg'),
+                      f"{'≥ ' if sodium['partial'] else ''}{sodium['visible'] + sodium['hidden']} mg"))
     row = ''.join(f'<div>{escape(name)}<b>{escape(value)}</b></div>' for name, value in cells)
-    return (f'<div class="fc-mobile-summary"><div class="fc-label">這餐估計 · Estimate</div>'
-            f'<div class="fc-ms-kcal">{total["mid"]}<small>kcal · 粗估 {total["low"]}–{total["high"]}</small></div>'
+    rough = t('kcal.rough', low=total['low'], high=total['high'])
+    return (f'<div class="fc-mobile-summary"><div class="fc-label">{escape(t("head.estimate"))}</div>'
+            f'<div class="fc-ms-kcal">{total["mid"]}<small>{escape(rough)}</small></div>'
             f'<div class="fc-ms-row">{row}</div>'
-            f'<div class="fc-meta">每道菜、完整營養素和依食譜估計的部分在下面 ↓</div></div>')
+            f'<div class="fc-meta">{escape(t("mobile.more"))}</div></div>')
 
 
 def nutrition_panel(total, macros, weight_text, rows, empty_reason=None, nutrients=None):
     """Big kcal number, macro bar and list, other nutrients, visible-vs-recipe note and per-dish table."""
     if total is None:
-        return (f'<div class="fc-panel"><div class="fc-label">Nutrition · 營養估計</div>'
-                f'<div class="fc-empty">{escape(empty_reason or "辨識後，熱量和營養素會顯示在這裡。")}</div></div>')
+        return (f'<div class="fc-panel"><div class="fc-label">{escape(t("head.nutrition"))}</div>'
+                f'<div class="fc-empty">{escape(empty_reason or t("nut.reason_wait"))}</div></div>')
     energy = {'protein': macros['protein'] * 4, 'carb': macros['carb'] * 4, 'fat': macros['fat'] * 9}
     whole = sum(energy.values()) or 1
     bar = ''.join(f'<div style="width:{float(energy[k] / whole * 100):.1f}%;background:{MACRO_COLORS[k]}"></div>'
                   for k in ('protein', 'carb', 'fat'))
-    names = {'protein': '蛋白質', 'carb': '醣類', 'fat': '脂肪'}
     macro_rows = ''.join(f'<div class="fc-macro"><span><span class="fc-dot" style="background:{MACRO_COLORS[k]}"></span>'
-                         f'{names[k]}</span><b>{macros[k]} g</b></div>' for k in ('protein', 'carb', 'fat'))
+                         f'{escape(t("macro." + k))}</span><b>{macros[k]} g</b></div>' for k in ('protein', 'carb', 'fat'))
     table_rows = ''.join(f'<tr><td>{escape(name)}</td><td>{visible}</td><td>{hidden}</td><td>{visible + hidden}</td></tr>'
                          for name, visible, hidden in rows)
     v, h = total['visible']['mid'], total['hidden']['mid']
-    table_rows += f'<tr class="total"><td>合計</td><td>{v}</td><td>{h}</td><td>{v + h}</td></tr>'
-    return (f'<div class="fc-panel"><div class="fc-label">Nutrition · 營養估計</div>'
-            f'<div class="fc-kcal">{total["mid"]}<small>kcal · 粗估 {total["low"]}–{total["high"]}</small></div>'
+    table_rows += (f'<tr class="total"><td>{escape(t("nut.total"))}</td><td>{v}</td><td>{h}</td>'
+                   f'<td>{v + h}</td></tr>')
+    head = ''.join(f'<th>{escape(t(key))}</th>' for key in ('nut.col_dish', 'nut.col_photo', 'nut.col_recipe', 'nut.total'))
+    rough = t('kcal.rough', low=total['low'], high=total['high'])
+    return (f'<div class="fc-panel"><div class="fc-label">{escape(t("head.nutrition"))}</div>'
+            f'<div class="fc-kcal">{total["mid"]}<small>{escape(rough)}</small></div>'
             f'<div class="fc-bar">{bar}</div>{macro_rows}'
-            f'<div class="fc-macro"><span>這餐總重量（估）</span><b>{escape(weight_text)}</b></div>'
+            f'<div class="fc-macro"><span>{escape(t("nut.weight_label"))}</span><b>{escape(weight_text)}</b></div>'
             f'{nutrient_list(nutrients)}'
-            f'<div class="fc-note">看得到的食材 {v} kcal ＋ 依食譜估計的油、糖 {h} kcal。'
-            f'後者是看不到的部分，只是推估，不是照片證據。</div>'
-            f'<table class="fc-table"><tr><th>菜色（kcal）</th><th>照片*</th><th>食譜*</th><th>合計</th></tr>'
-            f'{table_rows}</table>'
-            f'<div class="fc-meta" style="margin-top:.6rem">*照片：看得到的食材 × 衛福部食品營養成分資料庫；'
-            f'食譜：依烹調方式估計的油、糖。粗估值，僅供參考，不是醫療或營養建議。</div></div>')
+            f'<div class="fc-note">{escape(t("nut.split_note", visible=v, hidden=h))}</div>'
+            f'<table class="fc-table"><tr>{head}</tr>{table_rows}</table>'
+            f'<div class="fc-meta" style="margin-top:.6rem">{escape(t("nut.footer"))}</div></div>')

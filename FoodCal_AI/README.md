@@ -22,6 +22,7 @@
   - 2026-11-23：多角度份量估計（`docs/multi_view_volume_v0.md`）：選填的側面照（桌面上方 15–35 度）量每道菜的高度、碗深和裝多滿，取代單張照片假設的厚度；學生證算出相機角度與比例尺，含透視。模擬場景（`python -B -m tools.benchmark_multi_view`）中位誤差：白飯堆 11%、片狀 19%、碗裝 8%（單張約 32–41% MAPE）；還沒用秤重的真實餐點驗證。
   - 2026-11-24：網頁版面重整（`docs/demo_ui_v0.md` 最後一節）：還沒選照片時只有置中的大上傳區和拍照提醒，範例照片另外一張卡、用「或」隔開；選好照片後改成兩欄（左邊照片和菜色清單，右邊「開始辨識」，辨識後換成營養估計），取代原本的三欄。
   - 2026-11-24：拿掉要點開的區塊（`docs/demo_ui_v0.md` 最後一節）：側面照在「開始辨識」卡和照片下方直接上傳，和俯視照一起分析；重框學生證、加一道菜改成照片下方的按鈕，照片本身變成框選圖；手動加的菜可以單獨移除；Gemini 原始回答只在網址加 `?dev=1` 時顯示。
+  - 2026-11-24：網頁多語言（`src/ui/i18n.py`、`src/ui/messages.py`）：右上角選繁中、English、日本語、한국어、Bahasa Indonesia、Tiếng Việt；網址 `?lang=ja` 或瀏覽器語言決定第一次的語言，切換時照片、克數和同意都保留。Gemini 回報每種語言的菜名，備註用頁面語言；開發者資訊與少見的診斷原因只有中英文。
   - 2026-11-20：網頁辨識改用 Google Gemini 免費 API（`docs/gemini_vision_v0.md`）；YOLO 與 Claude（`docs/claude_vision_v0.md`）先放棄，程式保留。
   - 2026-11-20：網頁改用粗估份量（`docs/rough_volume_estimation_v0.md`）：自動找學生證背面的悠遊卡 logo（設定：`python -m tools.setup_card_reference`），找不到再手動框，用學生證當比例尺，依形狀模板估體積，再乘上密度表的密度；可以手動加菜、自己填重量；密度與熱量表放在 `data/food_reference/food_reference.csv`（格式見 `docs/examples/food_reference_template.csv`）。
   - 2026-11-20：「體積 × 密度」方法 `reference_card_volume_density` v0（同一份文件第 5 節）：密度表填網路公開資料並留來源，有效高度由秤重照片學出；沒秤重的同形狀食物只給未驗證的體積與重量，不進熱量。
