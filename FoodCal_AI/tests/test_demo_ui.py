@@ -327,7 +327,11 @@ class StreamlitOfflineTests(unittest.TestCase):
         self.assertEqual(app.session_state['result']['items'][0]['display_name'], '白飯')
         self.assertTrue(app.session_state['side']['need_card'])  # no card found in it: waits for a drawn box
         self.assertTrue(any('側面照裡的學生證' in i.value for i in app.info))
-        self.assertTrue(next(b for b in app.button if b.label == '用這個框繼續 →').disabled)
+        self.assertTrue(next(b for b in app.button if b.label == '用這四個角繼續 →').disabled)
+        tag = str(app.session_state['input_key'][0])[:12]
+        app.session_state['side_card_' + tag] = {'corners': [[60, 300], [420, 290], [470, 360], [20, 370]]}
+        app.run()
+        self.assertFalse(next(b for b in app.button if b.label == '用這四個角繼續 →').disabled)
 
     def test_tools_are_buttons_under_the_photo(self):
         app = self.photo_app()
@@ -343,11 +347,29 @@ class StreamlitOfflineTests(unittest.TestCase):
         next(b for b in app.button if b.label == '取消').click().run()
         self.assertIsNone(app.session_state['plate_mode'])
         self.assertFalse(app.toggle(key='show_boxes').value)  # kept while the switch was hidden
-        next(b for b in app.button if b.label == '重框學生證').click().run()
-        self.assertTrue(any('框出學生證' in m.value for m in app.markdown))
+        next(b for b in app.button if b.label == '重新標學生證').click().run()
+        self.assertTrue(any('標出學生證' in m.value for m in app.markdown))
         next(b for b in app.button if b.label == '取消').click().run()
         self.assertFalse(app.exception)
-        self.assertTrue(any(b.label == '重框學生證' for b in app.button))
+        self.assertTrue(any(b.label == '重新標學生證' for b in app.button))
+
+    def test_card_marked_by_its_four_corners(self):
+        """The card picker takes four clicked corners (any order, any angle); a shape unlike a card is refused."""
+        app = self.photo_app()
+        app.checkbox(key='gemini_consent').check().run()
+        self.recognised(app).run()
+        next(b for b in app.button if b.label == '重新標學生證').click().run()
+        key = 'card_corners_' + str(app.session_state['input_key'][0])[:12]
+        app.session_state[key] = {'corners': [[100, 100], [100, 140], [140, 140], [140, 100]]}  # a square
+        app.run()
+        self.assertEqual(app.session_state['plate_mode'], 'card')  # still picking
+        self.assertTrue(any('不像學生證' in w.value for w in app.warning))
+        app.session_state[key] = {'corners': [[300, 60], [40, 20], [30, 180], [290, 220]]}  # a tilted card, clicked out of order
+        app.run()
+        self.assertFalse(app.exception)
+        self.assertIsNone(app.session_state['plate_mode'])
+        self.assertEqual(app.session_state['card_source'], 'manual')
+        self.assertEqual(app.session_state['card_box'], [[40.0, 20.0], [300.0, 60.0], [290.0, 220.0], [30.0, 180.0]])
 
     def test_missing_card_points_to_the_button_under_the_photo(self):
         app = self.photo_app()
@@ -356,8 +378,8 @@ class StreamlitOfflineTests(unittest.TestCase):
         app.session_state['card_box'], app.session_state['card_source'] = None, None
         app.run()
         self.assertFalse(app.exception)
-        self.assertEqual(next(b for b in app.button if b.key == 'card_mode').label, '框出學生證')
-        self.assertTrue(any('框出學生證' in w.value for w in app.warning))
+        self.assertEqual(next(b for b in app.button if b.key == 'card_mode').label, '標出學生證')
+        self.assertTrue(any('標出學生證' in w.value for w in app.warning))
         self.assertFalse(any('修正工具' in m.value for m in app.markdown))
 
     def test_hand_added_dish_has_its_own_remove_button(self):

@@ -12,6 +12,7 @@ from src.portion.card_locator import (CARD_H_CM, CARD_W_CM, DESIGN_WIDTH_PX, FEA
                                       find_card_shape, load_card_designs, order_card_corners)
 from src.portion.multi_view import side_view_geometry
 from src.portion.rough_volume import cm_per_px
+from src.ui.corner_picker import corners_in_card_order
 from tests.test_card_locator import card_image, synthetic_logo
 from tools.setup_card_reference import measure_reference, write_design, write_reference
 from src.portion.card_locator import load_card_reference
@@ -194,6 +195,15 @@ class CardFinderTests(unittest.TestCase):
             self.assertGreater(area, 0)  # clockwise on screen, as the card finder returns it
             self.assertAlmostEqual(float(cm_per_px(ordered.tolist())), CARD_W_CM / 300, delta=0.001)
 
+
+    def test_side_photo_corners_put_the_level_edge_first(self):
+        """Seen from the side a card turned 90 degrees can look taller than wide; the level top edge still comes first."""
+        clicked = [[540, 700], [100, 100], [640, 100], [0, 700]]  # top edge 540 px, slanted sides about 600 px
+        level = corners_in_card_order(clicked, side=True)
+        self.assertEqual(level[:2], [[100.0, 100.0], [640.0, 100.0]])
+        self.assertNotEqual(corners_in_card_order(clicked)[:2], level[:2])  # top photos: the long edge first
+        self.assertIsNone(corners_in_card_order([[0, 0], [10, 0], [10, 10]]))
+        self.assertIsNone(corners_in_card_order(None))
 
 if __name__ == '__main__':
     unittest.main()
