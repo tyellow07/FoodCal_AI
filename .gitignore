@@ -1,3 +1,7 @@
 # Private photos and personal images stay out of Git (campus meal photos, student card).
 /校園食物/
 /學生證/
+# Course files stay local now that the repository is public (menus, proposal, slide decks).
+/菜單/
+/文件/
+/簡報/
