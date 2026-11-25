@@ -320,7 +320,8 @@ class StreamlitOfflineTests(unittest.TestCase):
                             'bounding_box': {'x_min': 240, 'y_min': 120, 'x_max': 480, 'y_max': 360}}]}
         with patch('src.detection.gemini_vision.recognize_foods_gemini', return_value=found), \
                 patch('src.detection.gemini_vision.gemini_clients', return_value=[]), \
-                patch('src.portion.card_locator.load_card_reference', return_value=None):
+                patch('src.portion.card_locator.load_card_reference', return_value=None), \
+                patch('src.portion.card_locator.load_card_designs', return_value=[]):
             next(b for b in app.button if b.label == '開始辨識 →').click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.session_state['result']['items'][0]['display_name'], '白飯')

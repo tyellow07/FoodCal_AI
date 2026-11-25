@@ -24,7 +24,7 @@ from src.ui.adapter import decode_upload, draw_items, draw_predictions, fixture_
 from src.ui.explain import dish_name, food_name, reason_text, summarize
 from src.ui.i18n import DEFAULT, FALLBACK, LANGUAGES, NOTES_LANGUAGE, from_locale, join, known, language, set_language, t
 from src.ui.portions import note_text, nutrition_of, portion_rows, read_food_reference_csv
-from src.portion.card_locator import SIDE_SQUASHES, load_card_reference, locate_card
+from src.portion.card_locator import find_card, load_card_designs, load_card_reference
 from src.portion.multi_view import side_view_geometry
 from src.portion.nutrition_model import (COOKING_METHODS, INGREDIENTS, add_nutrients, empty_nutrients, macros_for_grams,
                                          nutrients_for_grams)
@@ -128,13 +128,22 @@ def box_picker(image, key, name):
     return None
 
 
-def card_reference():
-    """Logo template for automatic card finding, or None when it has not been set up on this computer."""
+def card_references():
+    """(logo template or None, card-back designs) for automatic card finding; empty when not set up on this computer.
+
+    Without either, find_card still tries the card's shape.
+    """
     try:
-        return load_card_reference(CARD_REFERENCE_DIR)
+        reference = load_card_reference(CARD_REFERENCE_DIR)
     except (ValueError, OSError):
         st.warning(t('card.reference_unreadable'))
-        return None
+        reference = None
+    try:
+        designs = load_card_designs(CARD_REFERENCE_DIR)
+    except (ValueError, OSError):
+        st.warning(t('card.reference_unreadable'))
+        designs = []
+    return reference, designs
 
 
 def gemini_key():
@@ -256,10 +265,9 @@ def start_recognition(raw, key):
         st.session_state['gemini_error'] = preview['error']
         return
     image = preview['image']
-    reference, card = card_reference(), None
-    if reference is not None:
-        with st.spinner(t('spin.card')):
-            card = locate_card(image, reference)
+    reference, designs = card_references()
+    with st.spinner(t('spin.card')):
+        card = find_card(image, reference, designs)
     outgoing = mask_card(image, card['quad']) if card else image
     try:
         with st.spinner(t('spin.gemini')):
@@ -313,11 +321,19 @@ def recognition_caption(result):
     auto, source = st.session_state.get('card_auto'), st.session_state.get('card_source')
     card_text = t('caption.card_auto' if source == 'auto' else 'caption.card_manual' if source == 'manual' else
                   'caption.card_none')
-    score = t('caption.score', score=f"{auto['score']:.2f}") if auto and source == 'auto' else ''
+    score = card_method_text(auto) if auto and source == 'auto' else ''
     masked = t('caption.masked') if result.get('card_masked') else ''
     usage = result.get('usage') or {}
     return card_text + score + masked + t('caption.model', model=result.get('model'), seconds=result.get('latency_s'),
                                           tokens_in=usage.get('input_tokens'), tokens_out=usage.get('output_tokens'))
+
+
+def card_method_text(card):
+    """How the card was found, for the caption: '(matched the whole card back, 296 matching points)'."""
+    method = card.get('method', 'logo')
+    detail = (t('caption.points', n=card['inliers']) if 'inliers' in card else
+              t('caption.score', score=f"{card['score']:.2f}") if method == 'logo' and 'score' in card else '')
+    return t('caption.how', how=t('card.method.' + method) + detail)
 
 
 def set_plate_mode(mode):
@@ -367,6 +383,8 @@ def result_photo(result, image, items):
     no_card = st.session_state.get('card_box') is None
     if no_card:
         st.warning(t('warn.no_card'))
+    elif st.session_state.get('card_source') == 'auto' and (st.session_state.get('card_auto') or {}).get('method') == 'shape':
+        st.warning(t('warn.card_shape'))
     with st.container(key='fc_plate_actions'):
         boxes, card, add, change = st.columns([1.2, 1, 1, 1], vertical_alignment='center')
         boxes.toggle(t('toggle.boxes'), key='show_boxes')
@@ -574,10 +592,9 @@ def run_side_view(image, card, source, items, key):
 
 def analyse_side_photo(image, items, key):
     """Find the card in the side photo, then measure; without a card the side photo waits for a hand-drawn box."""
-    reference, card = card_reference(), None
-    if reference is not None:
-        with st.spinner(t('spin.side_card')):
-            card = locate_card(image, reference, SIDE_SQUASHES)
+    reference, designs = card_references()
+    with st.spinner(t('spin.side_card')):
+        card = find_card(image, reference, designs, side=True)
     if card:
         run_side_view(image, card['quad'], 'auto', items, key)
     else:
