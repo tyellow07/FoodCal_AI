@@ -94,7 +94,8 @@ For every distinct food item you can see, report:
 {chr(10).join(f'  {key} = {INGREDIENTS[key][0]}' for key in sorted(INGREDIENTS))}
 - cooking_method: how it looks cooked, one of the keys below. For a drink, the sweetness: read it from the cup
   sticker or label (全糖, 少糖, 半糖, 微糖, 無糖) when you can, use drink_sugar_unknown for a shop drink whose
-  sweetness you cannot read, and none for plain milk, black coffee or water. Raw fruit is none.
+  sweetness you cannot read, and none for plain milk, black coffee or water. Raw fruit is none. A dessert in
+  syrup (豆花, 仙草, 紅豆湯, 刨冰) is sweet_soup; count shaved ice as ice, plus its toppings and condensed milk.
 {chr(10).join(f'  {key} = {COOKING_METHODS[key][0]}' for key in sorted(COOKING_METHODS))}
 - shape: "mound" when the food is piled up into a heap (rice, noodles, heaped vegetables or meat pieces), "flat" when
   it lies in a thin layer (a fried egg, a cutlet, slices laid side by side), "whole" for one whole item or a piece

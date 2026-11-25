@@ -197,6 +197,7 @@
 !/docs/gemini_vision_v0.md
 !/src/portion/nutrition_model.py
 !/tests/test_nutrition_model.py
+!/tests/test_campus_menu_coverage.py
 !/docs/nutrition_model_v0.md
 !/src/ui/theme.py
 !/tests/test_ui_theme.py

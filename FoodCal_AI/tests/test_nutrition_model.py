@@ -149,6 +149,15 @@ class NutritionModelTests(unittest.TestCase):
         iced = food_nutrition([('milk', 50), ('ice', 50)], 'none')
         self.assertEqual(iced['visible_kcal_per_100g'], D('31.5'))  # ice adds weight, not energy
 
+    def test_dessert_syrup_and_converted_rows(self):
+        plain = food_nutrition([('douhua', 100)], 'sweet_soup')  # TFDA Q2104201 豆花（未加糖）, sugar 0.5 g
+        low, high = plain['hidden_sugar_g_per_100g']
+        base = plain['nutrients_per_100g']['sugar_g']
+        self.assertTrue(base + low <= D('12.8') <= base + high)  # TFDA Q2104101 豆花（花生，含糖水）12.8 g
+        self.assertEqual(INGREDIENTS['red_beans'][1], D('128'))  # TFDA 紅豆（乾）328 x USDA 128/329
+        self.assertEqual(INGREDIENTS['pasta'][1], D('158'))      # USDA 20121 cooked pasta
+        self.assertEqual(INGREDIENTS['glass_noodles'][1], D('100'))  # TFDA 冬粉（乾）351 / 3.5
+
     def test_whole_fruit_counts_edible_grams_only(self):
         self.assertEqual(whole_density('banana'), D('0.61'))  # 0.95 x (1 - 35.3% peel, TFDA D08001 廢棄率)
         self.assertEqual(whole_density('toast'), INGREDIENTS['toast'][2])  # nothing to throw away
