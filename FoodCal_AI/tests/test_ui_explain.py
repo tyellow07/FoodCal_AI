@@ -63,7 +63,7 @@ class ExplainTests(unittest.TestCase):
         self.assertIn('brand_new_code', reason_text('brand_new_code'))
         self.assertIn('gate_identity_pending', reason_text('gate_identity_pending'))
         self.assertEqual(food_name('mystery_dish'), 'mystery_dish')
-        self.assertEqual(len(FOOD_NAMES), 18)
+        self.assertEqual(len(FOOD_NAMES), 25)  # 15 detection classes + 3 region classes + 7 shop drinks
 
 
     def test_supported_foods_match_the_taxonomy_fixture(self):

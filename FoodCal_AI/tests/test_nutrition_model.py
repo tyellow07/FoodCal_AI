@@ -3,8 +3,9 @@ from decimal import Decimal
 import unittest
 
 from src.portion.nutrition_model import (COOKING_METHODS, DEFAULT_COMPONENTS, INGREDIENTS, MACROS, MICRO_NOTES, MICROS,
-                                         NUTRIENTS, SEASONING_SODIUM, add_nutrients, empty_nutrients, energy_for_grams,
-                                         food_nutrition, macros_for_grams, nutrients_for_grams)
+                                         NUTRIENTS, SEASONING_SODIUM, WHOLE_REFUSE, add_nutrients, empty_nutrients,
+                                         energy_for_grams, food_nutrition, macros_for_grams, nutrients_for_grams,
+                                         whole_density)
 from src.portion.rough_volume import FOOD_TEMPLATES
 
 D = Decimal
@@ -17,8 +18,10 @@ class NutritionModelTests(unittest.TestCase):
             self.assertIn(method, COOKING_METHODS, key)
             self.assertEqual(sum(share for _, share in components), 100, key)
             self.assertTrue(all(name in INGREDIENTS for name, _ in components), key)
-        for key, (_, kcal, density, _, source) in INGREDIENTS.items():
-            self.assertTrue(0 < kcal < 900 and 0 < density < 2 and source, key)
+        for key, (_, kcal, density, _, source) in INGREDIENTS.items():  # tea and ice are 0 kcal
+            self.assertTrue(0 <= kcal < 900 and 0 < density < 2 and source, key)
+        self.assertTrue(set(WHOLE_REFUSE) <= set(INGREDIENTS))
+        self.assertTrue(all(0 <= refuse < 100 for refuse in WHOLE_REFUSE.values()))
 
     def test_plain_rice_has_no_hidden_energy(self):
         rice = food_nutrition([('cooked_rice', 100)], 'none')
@@ -42,16 +45,19 @@ class NutritionModelTests(unittest.TestCase):
     def test_stir_fried_greens_and_unknown_parts(self):
         greens = food_nutrition([('leafy_vegetable', 100)], 'stir_fried')
         self.assertEqual(greens['hidden_kcal_per_100g'], (D('26.5'), D('72.6')))  # 3-8 g oil, 0-0.5 g sugar
-        partial = food_nutrition([('leafy_vegetable', 50), ('dragon_fruit', 50)], 'none')
+        partial = food_nutrition([('leafy_vegetable', 50), ('durian', 50)], 'none')
         self.assertEqual((partial['known_share'], partial['visible_kcal_per_100g']), (D('0.50'), D('20.0')))
-        self.assertIsNone(food_nutrition([('dragon_fruit', 100)], 'none'))
+        self.assertIsNone(food_nutrition([('durian', 100)], 'none'))
         self.assertIsNone(food_nutrition([], 'none'))
 
     def test_macros_match_energy_and_include_hidden_oil(self):
         self.assertEqual(set(MACROS), set(INGREDIENTS))
         for key, (p, f, c) in MACROS.items():  # Atwater 4/9/4 lands near the stated energy (TFDA uses finer factors)
-            kcal = INGREDIENTS[key][1]
-            self.assertLess(abs(p * 4 + f * 9 + c * 4 - kcal) / kcal, D('0.25'), key)
+            kcal, atwater = INGREDIENTS[key][1], p * 4 + f * 9 + c * 4
+            if kcal < 10:  # tea, coffee, ice: a relative error means nothing near zero
+                self.assertLess(abs(atwater - kcal), 3, key)
+            else:
+                self.assertLess(abs(atwater - kcal) / kcal, D('0.25'), key)
         greens = food_nutrition([('leafy_vegetable', 100)], 'stir_fried')
         macros = macros_for_grams({'low': D(100), 'mid': D(100), 'high': D(100)}, greens)
         self.assertEqual(macros, {'protein': D('2.0'), 'carb': D('3.6'), 'fat': D('5.8')})  # + 5.5 g oil, 0.25 g sugar
@@ -106,6 +112,50 @@ class NutritionModelTests(unittest.TestCase):
         self.assertEqual(total['sodium_mg']['visible'], D('72') + D('380'))  # 200 g x (0.8 x 2 + 0.2 x 941) / 100 = 379.6
         self.assertTrue(total['fiber_g']['partial'])
         self.assertFalse(total['sodium_mg']['partial'])
+
+    def test_sweetness_ranges_cover_the_tfda_shop_drinks(self):
+        # TFDA 現調飲料, large cup without ice: total sugar g / 100 g for 微糖, 半糖, 全糖
+        measured = {'tea': (D('3.6'), D('4.9'), D('8.2')),        # O0701001-O0701201 烏龍茶
+                    'milk_tea': (D('3.8'), D('4.7'), D('8.6')),   # O0701701-O0701901 烏龍奶茶
+                    'bubble': (D('5.6'), D('6.4'), D('8.8'))}     # O0702001-O0702201 珍珠奶茶 (liquid part)
+        methods = ('drink_light_sugar', 'drink_half_sugar', 'drink_full_sugar')
+        for drink, totals in measured.items():
+            nutrition = food_nutrition([('tea' if drink == 'tea' else 'milk_tea', 100)], 'none')
+            base = nutrition['nutrients_per_100g']['sugar_g']  # the creamer's own sugar
+            for method, total in zip(methods, totals):
+                low, high = food_nutrition([('tea' if drink == 'tea' else 'milk_tea', 100)], method)['hidden_sugar_g_per_100g']
+                self.assertTrue(base + low <= total <= base + high, (drink, method, base, low, high))
+        cup = food_nutrition([('tea', 75), ('ice', 25)], 'drink_full_sugar')
+        self.assertEqual(cup['hidden_sugar_g_per_100g'], (D('7.1'), D('8.2')))  # per 100 g of the cup, ice included
+        self.assertLess(abs(700 * cup['hidden_sugar_g_per_100g'][0] / 100 - 50), 1)  # 台大：全糖超過 50 g / 700 mL
+        unknown = food_nutrition([('tea', 100)], 'drink_sugar_unknown')['hidden_sugar_g_per_100g']
+        self.assertEqual(unknown, (D(0), D('8.2')))
+        self.assertEqual(food_nutrition([('tea', 100)], 'drink_no_sugar')['hidden_kcal_per_100g'], (D('0.0'), D('0.0')))
+
+    def test_milk_tea_energy_covers_the_tfda_measurements(self):
+        kcal = {'drink_light_sugar': 59, 'drink_half_sugar': 62, 'drink_full_sugar': 75}  # 烏龍奶茶（去冰）
+        for method, measured in kcal.items():
+            tea = food_nutrition([('milk_tea', 100)], method)
+            low = tea['visible_kcal_per_100g'] + tea['hidden_kcal_per_100g'][0]
+            high = tea['visible_kcal_per_100g'] + tea['hidden_kcal_per_100g'][1]
+            self.assertTrue(low <= measured <= high, (method, low, high))
+
+    def test_drink_defaults_and_ready_made_sugar(self):
+        latte = food_nutrition(*DEFAULT_COMPONENTS['latte'])
+        self.assertLess(abs(latte['visible_kcal_per_100g'] - 43) / 43, D('0.05'))  # TFDA O0700301 拿鐵咖啡（無糖）43
+        cola = food_nutrition([('cola', 100)], 'drink_full_sugar')  # TFDA value already holds the sugar
+        self.assertEqual((cola['hidden_sugar_g_per_100g'], cola['nutrients_per_100g']['sugar_g']),
+                         ((D(0), D(0)), D('12.8')))
+        iced = food_nutrition([('milk', 50), ('ice', 50)], 'none')
+        self.assertEqual(iced['visible_kcal_per_100g'], D('31.5'))  # ice adds weight, not energy
+
+    def test_whole_fruit_counts_edible_grams_only(self):
+        self.assertEqual(whole_density('banana'), D('0.61'))  # 0.95 x (1 - 35.3% peel, TFDA D08001 廢棄率)
+        self.assertEqual(whole_density('toast'), INGREDIENTS['toast'][2])  # nothing to throw away
+        cut = food_nutrition([('banana', 100)], 'none')
+        whole = food_nutrition([('banana', 100)], 'none', whole=True)
+        self.assertEqual((cut['density'], whole['density'], whole['whole']), (D('0.63'), D('0.61'), True))
+        self.assertEqual(cut['visible_kcal_per_100g'], whole['visible_kcal_per_100g'])
 
     def test_energy_for_grams(self):
         greens = food_nutrition([('leafy_vegetable', 100)], 'stir_fried')

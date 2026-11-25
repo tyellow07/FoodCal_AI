@@ -2,7 +2,7 @@
 
 One request per photo: a downscaled, metadata-free JPEG plus instructions; the answer is constrained to a JSON
 schema (output_config.format) listing each visible food with a Traditional Chinese name, a known food key when it
-matches, the container (plate or bowl), an approximate box on a 0-1000 grid, visible ingredients and a confidence.
+matches, the container (plate, bowl or cup), an approximate box on a 0-1000 grid, visible ingredients and a confidence.
 Claude is asked only what is visible: no weights, calories or recipe guesses, so recipe priors never enter as
 visual evidence. Boxes are approximate; the page lets people exclude or add dishes by hand.
 
@@ -22,7 +22,7 @@ MAX_SIDE = 1568
 GRID = 1000
 FALLBACK_BETA = 'server-side-fallback-2026-07-01'
 CONFIDENCE = ('high', 'medium', 'low')
-CONTAINERS = ('plate', 'bowl')
+CONTAINERS = ('plate', 'bowl', 'cup')
 
 SCHEMA = {
     'type': 'object',
@@ -55,9 +55,10 @@ For every distinct food item you can see, report:
 - food_key: one of these keys when the item is that food, otherwise "other":
 {chr(10).join(f'  {key}' for key in sorted(FOOD_TEMPLATES))}
   (cooked_rice_region is plain cooked rice, cooked_noodle_region plain noodles, visible_fried_egg a fried egg.)
-- container: "bowl" when the food is served in a bowl (soups, noodle soups, rice bowls), otherwise "plate".
+- container: "bowl" when the food is served in a bowl (soups, noodle soups, rice bowls), "cup" for a drink in a cup
+  or glass, otherwise "plate".
 - box: the tightest box around the food on a {GRID} x {GRID} grid over the whole image (x to the right, y down,
-  0 to {GRID}); for bowl dishes, box the bowl opening.
+  0 to {GRID}); for bowl dishes and drinks, box the bowl or cup opening.
 - visible_ingredients: only ingredients you can actually see.
 - confidence: high, medium or low.
 
@@ -102,7 +103,7 @@ def _composition(food):
         out['components'] = parts
     if isinstance(food.get('cooking_method'), str):
         out['cooking_method'] = food['cooking_method']
-    if food.get('shape') in ('mound', 'flat'):  # piled up or lying flat: picks the height model for a side photo
+    if food.get('shape') in ('mound', 'flat', 'whole'):  # piled, flat or whole: picks the volume and height model
         out['shape'] = food['shape']
     return out
 

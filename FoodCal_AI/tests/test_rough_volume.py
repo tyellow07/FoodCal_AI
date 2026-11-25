@@ -62,6 +62,39 @@ class RoughVolumeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             rough_volume('pizza', [0, 0, 10, 10], CARD)
 
+    def test_drink_cup_corrects_the_rim_seen_from_above(self):
+        # A 700 mL shop cup (精裕 90U-700: 9 cm rim, 17.7 cm tall) seen from a phone 40 cm up looks 16.1 cm wide at
+        # the card's scale; the range must hold what it serves (about 650 mL) without counting that 16 cm rim.
+        seen = 9 * 40 / (40 - 17.7)
+        volume = rough_volume('bubble_milk_tea', [0, 0, round(seen * 100), round(seen * 100)], CARD)
+        self.assertEqual(volume['shape'], 'cup')
+        self.assertTrue(volume['volume_ml']['low'] <= 650 <= volume['volume_ml']['high'], volume['volume_ml'])
+        self.assertLess(volume['volume_ml']['high'], 1000)  # the uncorrected 16 cm rim would give over 2 L
+        on_plate = rough_volume('bubble_milk_tea', [0, 0, 900, 900], CARD, container='plate')
+        self.assertEqual(on_plate['shape'], 'plate')  # what the photo shows wins, as for bowls
+
+    def test_whole_item_is_an_ellipsoid_in_its_box(self):
+        # A 7.62 cm apple (USDA medium, 3 in) seen from 40 cm: its widest part is 3.8 cm up, so it looks 8.4 cm wide.
+        seen = 7.62 * 40 / (40 - 3.81)
+        box = [0, 0, round(seen * 100), round(seen * 100)]
+        whole = rough_volume('mystery_fruit', box, CARD, container='plate', shape='whole')
+        self.assertEqual(whole['shape'], 'whole')
+        true_ml = 4 / 3 * 3.14159 * 3.81 ** 3
+        self.assertTrue(whole['volume_ml']['low'] <= true_ml <= whole['volume_ml']['high'], whole['volume_ml'])
+        flat = rough_volume('mystery_fruit', box, CARD, container='plate')
+        self.assertLess(flat['volume_ml']['high'], true_ml)  # the plate layer would miss most of a whole fruit
+        cup = rough_volume('bubble_milk_tea', box, CARD, shape='whole')
+        self.assertEqual(cup['shape'], 'cup')  # whole applies to plate foods only
+
+    def test_whole_fruit_rows_count_only_the_edible_part(self):
+        seen = 7.62 * 40 / (40 - 3.81)
+        apple = dict(item(1, 'mystery_fruit', [0, 0, round(seen * 100), round(seen * 100)]), container='plate',
+                     shape='whole', components=[('apple', 100)], cooking_method='none')
+        rows, total, missing = portion_rows([apple], CARD, {}, {})
+        grams = rows[0]['grams']
+        self.assertTrue(grams['low'] <= 182 <= grams['high'] + 5, grams)  # USDA 9003: medium apple 182 g edible
+        self.assertEqual(rows[0]['nutrition']['density'], Decimal('0.78'))  # 0.95 x (1 - 17.8% core and peel)
+
     def test_reference_table_needs_sources(self):
         table = load_food_reference(reference_rows())
         self.assertEqual(table['cooked_rice_region']['density'], Decimal('0.800'))

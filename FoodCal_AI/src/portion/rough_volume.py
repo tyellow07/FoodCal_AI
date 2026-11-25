@@ -4,7 +4,10 @@ Method (docs/rough_volume_estimation_v0.md): the ISO ID-1 card (85.60 x 53.98 mm
 each food uses a geometric shape template, as in reference-object + shape-model food volume studies:
 
 - plate foods: volume = box area x footprint fill x average thickness;
-- bowl foods:  volume = bowl volume (spherical cap from the rim diameter and a depth ratio) x fill level.
+- bowl foods:  volume = bowl volume (spherical cap from the rim diameter and a depth ratio) x fill level;
+- drinks in a cup: volume = taper x cylinder (rim diameter, height = a ratio of the rim) x fill level. The rim
+  stands far above the card, so it looks wider than it is; the true rim is solved for a phone 30-50 cm up;
+- whole items (shape 'whole': a fruit, a bun): an ellipsoid in the box, its height a ratio of the shorter side.
 
 Every parameter is a range, so every result is a wide interval with a geometric-mean point value. Nothing
 here was fitted to weighed food: results are labeled rough (粗估), carry coverage_validated = False and are
@@ -22,6 +25,15 @@ D = Decimal
 PLATE_FILL = (D('0.6'), D('0.85'))        # food footprint / its box
 BOWL_DEPTH_RATIO = (D('0.35'), D('0.5'))  # bowl depth / rim diameter
 BOWL_FILL = (D('0.6'), D('0.9'))          # food volume / bowl volume
+# Drink cups, from cup makers' tables (達瑞 PP cups 380-890 c.c. with rim and height; 精裕 90U-700 90 x 177 mm):
+# height 0.9-2.0 rims (drink cups 360-750 c.c. are 1.1-2.0), capacity 0.53-0.63 of the cylinder of the same rim and
+# height. Fill: a sealed shop cup is served a little below its brim capacity (assumption).
+CUP_HEIGHT_RATIO = (D('1.1'), D('2.0'))
+CUP_TAPER = (D('0.53'), D('0.63'))
+CUP_FILL = (D('0.85'), D('0.95'))
+CAMERA_HEIGHT_CM = (D('30'), D('50'))     # phone above the table in a top photo (as multi_view.TOP_CAMERA_CM)
+WHOLE_HEIGHT_RATIO = (D('0.6'), D('1.0'))  # whole item: height / shorter side of its box (bun ... round fruit)
+PI = D(str(math.pi))
 
 # Average thickness (cm) over the food footprint for plate foods; None marks bowl foods. Rough priors for
 # Taiwanese campus dishes, to be replaced by measured values when the team has them.
@@ -44,9 +56,16 @@ FOOD_TEMPLATES = {
     'cooked_rice_region': ('plate', (D('1.5'), D('3'))),
     'cooked_noodle_region': ('plate', (D('2'), D('4'))),
     'visible_fried_egg': ('plate', (D('0.8'), D('1.5'))),
+    'bubble_milk_tea': ('cup', None),
+    'milk_tea_drink': ('cup', None),
+    'fresh_milk_tea_drink': ('cup', None),
+    'tea_drink': ('cup', None),
+    'soy_milk_drink': ('cup', None),
+    'latte': ('cup', None),
+    'americano': ('cup', None),
 }
-# Foods Claude names that have no template of their own use one of these, chosen by the container it reports.
-GENERIC_TEMPLATES = {'plate': ('plate', (D('1'), D('3'))), 'bowl': ('bowl', None)}
+# Foods with no template of their own use one of these, chosen by the container the vision model reports.
+GENERIC_TEMPLATES = {'plate': ('plate', (D('1'), D('3'))), 'bowl': ('bowl', None), 'cup': ('cup', None)}
 REFERENCE_COLUMNS = ('food', 'grams', 'volume_ml', 'density_source_url', 'kcal_per_100g', 'kcal_source_url',
                      'retrieved_at', 'entered_by')
 DENSITY_RANGE = (D('0.05'), D('3'))
@@ -123,30 +142,68 @@ def _interval(low, high, step=D('1')):
     return {'low': low, 'mid': mid, 'high': high}
 
 
-def rough_volume(food, box_px, card_box_px, container=None):
+def cup_volume(rim_seen_cm):
+    """(low, high) mL of a drink whose cup rim measures rim_seen_cm at the card's scale in a top photo.
+
+    The rim is H = ratio x d cm above the card, so a phone C cm up sees it C / (C - H) times wider: the true rim is
+    d = seen x C / (C + ratio x seen). Every combination of the ranges is tried.
+    """
+    volumes = []
+    for ratio in CUP_HEIGHT_RATIO:
+        for camera in CAMERA_HEIGHT_CM:
+            rim = rim_seen_cm * camera / (camera + ratio * rim_seen_cm)
+            cylinder = PI / 4 * rim * rim * ratio * rim
+            volumes.extend(cylinder * taper * fill for taper in CUP_TAPER for fill in CUP_FILL)
+    return min(volumes), max(volumes)
+
+
+def whole_volume(width_cm, depth_cm):
+    """(low, high) mL of an ellipsoid in a width x depth box, its widest part seen from a phone 30-50 cm up."""
+    volumes = []
+    for ratio in WHOLE_HEIGHT_RATIO:
+        for camera in CAMERA_HEIGHT_CM:
+            # widest at half its height h = ratio x short side: seen camera / (camera - h / 2) times too wide
+            seen_short = min(width_cm, depth_cm)
+            shrink = camera / (camera + ratio * seen_short / 2)
+            w, d = width_cm * shrink, depth_cm * shrink
+            volumes.append(PI / 6 * w * d * ratio * min(w, d))
+    return min(volumes), max(volumes)
+
+
+def rough_volume(food, box_px, card_box_px, container=None, shape=None):
     """Volume interval in mL for one food box, using the card in the same photo for scale.
 
-    Foods without their own template use the generic plate or bowl template for the container given.
+    Foods without their own template use the generic plate, bowl or cup template for the container given.
+    shape 'whole' (from the vision model) measures a plate food as a whole item, an ellipsoid in its box.
     """
     template = FOOD_TEMPLATES.get(food)
     if container in GENERIC_TEMPLATES and (template is None or template[0] != container):
-        template = GENERIC_TEMPLATES[container]  # what the photo shows (plate or bowl) wins over a mismatched key
+        template = GENERIC_TEMPLATES[container]  # what the photo shows (plate, bowl, cup) wins over a mismatched key
     if template is None:
         raise ValueError('no_shape_template: ' + str(food))
     scale = cm_per_px(card_box_px)
     width, height = (v * scale for v in _box(box_px, 'invalid_food_box'))
-    shape, thickness = template
-    if shape == 'plate':
+    kind, thickness = template
+    if kind == 'plate' and shape == 'whole':
+        kind = 'whole'
+        volume = _interval(*whole_volume(width, height))
+        assumptions = {'height_ratio': WHOLE_HEIGHT_RATIO, 'camera_height_cm': CAMERA_HEIGHT_CM}
+    elif kind == 'plate':
         area = width * height
         volume = _interval(area * PLATE_FILL[0] * thickness[0], area * PLATE_FILL[1] * thickness[1])
         assumptions = {'footprint_fill': PLATE_FILL, 'thickness_cm': thickness}
+    elif kind == 'cup':
+        rim = (width + height) / 2
+        volume = _interval(*cup_volume(rim))
+        assumptions = {'rim_seen_cm': rim.quantize(D('0.1')), 'height_ratio': CUP_HEIGHT_RATIO, 'taper': CUP_TAPER,
+                       'fill_level': CUP_FILL, 'camera_height_cm': CAMERA_HEIGHT_CM}
     else:
         diameter = (width + height) / 2
         volume = _interval(_cap(diameter, diameter * BOWL_DEPTH_RATIO[0]) * BOWL_FILL[0],
                            _cap(diameter, diameter * BOWL_DEPTH_RATIO[1]) * BOWL_FILL[1])
         assumptions = {'rim_diameter_cm': diameter.quantize(D('0.1')), 'depth_ratio': BOWL_DEPTH_RATIO,
                        'fill_level': BOWL_FILL}
-    return {'food': food, 'shape': shape, 'box_cm': (width.quantize(D('0.1')), height.quantize(D('0.1'))),
+    return {'food': food, 'shape': kind, 'box_cm': (width.quantize(D('0.1')), height.quantize(D('0.1'))),
             'volume_ml': volume, 'assumptions': assumptions, 'coverage_validated': False}
 
 
@@ -194,9 +251,9 @@ def kcal_for_grams(grams, entry):
     return (_number(grams, 'invalid_grams') * entry['kcal_per_100g'] / 100).quantize(D('1'))
 
 
-def rough_portion(food, box_px, card_box_px, reference, container=None):
+def rough_portion(food, box_px, card_box_px, reference, container=None, shape=None):
     """rough_volume plus grams (volume x density) and kcal when the reference table has them."""
-    out = rough_volume(food, box_px, card_box_px, container)
+    out = rough_volume(food, box_px, card_box_px, container, shape)
     entry = (reference or {}).get(food)
     out['grams'] = out['kcal'] = None
     if entry and entry['density'] is not None:

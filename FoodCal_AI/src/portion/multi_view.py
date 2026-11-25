@@ -42,6 +42,8 @@ SLAB_FOODS = frozenset({'Over-easy egg', 'visible_fried_egg', 'deep-fried_chicke
 BOWL_BASE_RATIO = (0.45, 0.7)        # foot (base) diameter / rim diameter
 BOWL_BOTTOM_CM = (0.3, 0.8)          # outer height minus inner depth
 ROUNDED_BOWL = (0.85, 1.0)           # a rounded bowl holds less than the straight-walled frustum of the same size
+CUP_BASE_RATIO = (0.42, 0.57)        # straight-walled drink cup: a frustum holding 0.53-0.63 of its cylinder, as
+                                     # in the cup makers' tables (rough_volume.CUP_TAPER); no rounding factor
 HEAP_FACTOR = (0.5, 0.65)            # heap above a bowl rim: paraboloid-like cap over the rim circle
 CAMERA_DISTANCE_CM = (30.0, 42.0, 55.0)  # phone held at arm's length: low, nominal, high (perspective)
 SAMPLES = 41                         # points along a silhouette when searching for its top
@@ -251,7 +253,7 @@ def _bowl_food(q, depth, rim_r, base, heap, rounded):
     return frustum_volume(depth, rim_r, base_r) * rounded + math.pi * rim_r ** 2 * q * heap
 
 
-def bowl_volume(rim_cm, side_container_box_px, side_food_box_px, geometry):
+def bowl_volume(rim_cm, side_container_box_px, side_food_box_px, geometry, cup=False):
     """((low, nominal, high) food volume mL, (low, nominal, high) inner depth cm) for a bowl dish.
 
     rim_cm is the rim diameter as read in the top photo with the card's scale. The rim stands H cm above the table,
@@ -259,42 +261,86 @@ def bowl_volume(rim_cm, side_container_box_px, side_food_box_px, geometry):
     gives H, the rim is corrected (C is not known and spans TOP_CAMERA_CM). The bowl's extent in the side photo gives
     its height; where the top of the food shows relative to the bowl's top edge gives the fill level, or the heap
     above the rim.
+
+    cup (a drink cup): a tall cup's rim is so high that the top-photo correction is very uncertain, so the rim is
+    read from the cup's width in the side photo instead. It is H sin t nearer that camera than the card, so it looks
+    larger by dist / (dist - H sin t) for a camera dist cm away (CAMERA_DISTANCE_CM). Cups are straight-walled
+    frustums with the cup makers' taper (CUP_BASE_RATIO) instead of the bowl's base ratio and rounding.
     """
-    _, container_px = _side_box(side_container_box_px)
+    container_w_px, container_px = _side_box(side_container_box_px)
     _side_box(side_food_box_px)
     rise_px = float(side_container_box_px[1]) - float(side_food_box_px[1])  # food top above the bowl's top edge
     spread = _spread_px(container_px)
+    width_spread = _spread_px(container_w_px)
+    rim_from_side = cup
+    base_ratios, roundings = (CUP_BASE_RATIO, (1.0,)) if cup else (BOWL_BASE_RATIO, ROUNDED_BOWL)
 
-    def solve(e_cm, rise_cm, t, base, bottom, dist, top_camera):
-        rim_r = rim_cm / 2
+    def solve(e_cm, rise_cm, t, base, bottom, dist, top_camera, rim_seen):
+        rim_r = rim_seen / 2
         for _ in range(3):  # the height needs the rim, the rim correction needs the height
             height = _solve(lambda H: _proj(H, rim_r, t, dist) - _proj(0.0, -rim_r * base, t, dist), e_cm,
                             bottom + 0.1, 60.0)
-            rim_r = rim_cm / 2 * max(0.3, (top_camera - height) / top_camera)
+            near = (dist - height * math.sin(t)) / dist if rim_from_side else (top_camera - height) / top_camera
+            rim_r = rim_seen / 2 * max(0.3, near)
         depth = height - bottom
         f = lambda q: _food_rise(q, height, rim_r, base, bottom, t, dist)
         low_q = _solve(f, rise_cm, -depth, 3 * rim_r)
         high_q = _solve(f, rise_cm + 1e-6, -depth, 3 * rim_r)  # a heap can hide behind the far rim
         return depth, rim_r, (low_q, high_q)
 
+    widths = (container_w_px - width_spread, container_w_px + width_spread) if rim_from_side else (None,)
     volumes, depths = [], []
-    for e_px, s, t, base, bottom, dist, top_camera, rise in product(
-            (container_px - spread, container_px + spread), _scales(geometry), _angles(geometry), BOWL_BASE_RATIO,
+    for e_px, s, t, base, bottom, dist, top_camera, rise, w_px in product(
+            (container_px - spread, container_px + spread), _scales(geometry), _angles(geometry), base_ratios,
             BOWL_BOTTOM_CM, (CAMERA_DISTANCE_CM[0], CAMERA_DISTANCE_CM[2]), (TOP_CAMERA_CM[0], TOP_CAMERA_CM[2]),
-            (rise_px - spread, rise_px + spread)):
-        depth, rim_r, qs = solve(e_px * s, rise * s, t, base, bottom, dist, top_camera)
+            (rise_px - spread, rise_px + spread), widths):
+        rim_seen = w_px * s if rim_from_side else rim_cm
+        depth, rim_r, qs = solve(e_px * s, rise * s, t, base, bottom, dist, top_camera, rim_seen)
         if depth <= 0.5:
             continue
         depths.append(depth)
         volumes.extend(_bowl_food(q, depth, rim_r, base, heap, rounded)
-                       for q, heap, rounded in product(qs, HEAP_FACTOR, ROUNDED_BOWL))
+                       for q, heap, rounded in product(qs, HEAP_FACTOR, roundings))
     if not depths:
         raise ValueError('side_bowl_not_measurable')
-    s, base = geometry['cm_per_px'], _mid(BOWL_BASE_RATIO)
+    s, base = geometry['cm_per_px'], _mid(base_ratios)
     depth, rim_r, (q, _) = solve(container_px * s, rise_px * s, math.radians(geometry['elevation_deg']), base,
-                                 _mid(BOWL_BOTTOM_CM), CAMERA_DISTANCE_CM[1], TOP_CAMERA_CM[1])
-    nominal = _bowl_food(q, max(depth, 0.6), rim_r, base, _mid(HEAP_FACTOR), _mid(ROUNDED_BOWL))
+                                 _mid(BOWL_BOTTOM_CM), CAMERA_DISTANCE_CM[1], TOP_CAMERA_CM[1],
+                                 container_w_px * s if rim_from_side else rim_cm)
+    nominal = _bowl_food(q, max(depth, 0.6), rim_r, base, _mid(HEAP_FACTOR), sum(roundings) / len(roundings))
     return (min(volumes), nominal, max(volumes)), (min(depths), depth, max(depths))
+
+
+def whole_heights(side_box_px, geometry, depth_cm):
+    """(low, nominal, high) height of a whole item, an ellipsoid h tall and d deep along the view.
+
+    Unlike a heap, its outline does not reach the table at its front edge: an ellipsoid seen from elevation t spans
+    E = sqrt((d sin t)^2 + (h cos t)^2) in the side photo, so h = sqrt(E^2 - (d sin t)^2) / cos t.
+    """
+    _, extent_px = _side_box(side_box_px)
+    spread = _spread_px(extent_px)
+
+    def height(e, d, t):
+        return math.sqrt(max(0.0, e * e - (d * math.sin(t)) ** 2)) / math.cos(t)
+
+    heights = [height(e_px * s, d, t) for e_px, s, t, d in product(
+        (extent_px - spread, extent_px + spread), _scales(geometry), _angles(geometry), depth_cm)]
+    if max(heights) <= 0.2:
+        raise ValueError('side_height_not_measurable')
+    nominal = height(extent_px * geometry['cm_per_px'], _mid(depth_cm), math.radians(geometry['elevation_deg']))
+    return min(heights), nominal, max(heights)
+
+
+def whole_ellipsoid(top_w, top_h, heights):
+    """(low, nominal, high) mL of a whole item: an ellipsoid of the measured height in the top-photo box.
+
+    Its widest part is half its height above the card, so the top photo sees it camera / (camera - h / 2) too wide.
+    """
+    def volume(h, camera):
+        shrink = (camera - h / 2) / camera
+        return math.pi / 6 * top_w * shrink * top_h * shrink * h
+    low, nominal, high = heights
+    return (volume(low, TOP_CAMERA_CM[0]), volume(nominal, TOP_CAMERA_CM[1]), volume(high, TOP_CAMERA_CM[2]))
 
 
 def profile_for(food, container, gemini_profile=None):
@@ -312,8 +358,9 @@ def multi_view_volume(food, top_box_px, top_card_px, side_box_px, side_geometry,
                       side_container_box_px=None, gemini_profile=None):
     """Volume interval in mL from the top photo (footprint) and the side photo (height), like rough_volume's output.
 
-    Plate dishes use side_box_px (the food) for the height; bowl dishes also need side_container_box_px (the whole
-    bowl, rim to base) for the depth, and side_box_px then marks the top of the visible food.
+    Plate dishes use side_box_px (the food) for the height; bowl dishes and drinks in a cup also need
+    side_container_box_px (the whole bowl or cup, rim to base) for the depth, and side_box_px then marks the top of the
+    visible food or drink. A whole item (gemini_profile 'whole') is an ellipsoid of the measured height.
     """
     template = FOOD_TEMPLATES.get(food)
     if container in GENERIC_TEMPLATES and (template is None or template[0] != container):
@@ -325,7 +372,15 @@ def multi_view_volume(food, top_box_px, top_card_px, side_box_px, side_geometry,
     side_w_px, _ = _side_box(side_box_px)
     shape = template[0]
     elevation = round(side_geometry['elevation_deg'], 1)
-    if shape == 'plate':
+    if shape == 'plate' and gemini_profile == 'whole':
+        shape = 'whole'
+        depth = footprint_depth(top_w, top_h, side_w_px * side_geometry['cm_per_px'])
+        h = whole_heights(side_box_px, side_geometry, depth)
+        volume = _interval3(*whole_ellipsoid(top_w, top_h, h), D('1'))
+        height = _interval3(*h, D('0.1'))
+        assumptions = {'profile': 'whole', 'camera_height_cm': (TOP_CAMERA_CM[0], TOP_CAMERA_CM[2]),
+                       'footprint_depth_cm': tuple(round(v, 1) for v in depth), 'elevation_deg': elevation}
+    elif shape == 'plate':
         profile = profile_for(food, container, gemini_profile)
         depth = footprint_depth(top_w, top_h, side_w_px * side_geometry['cm_per_px'])
         h, ml = plate_estimate(side_box_px, side_geometry, depth, profile, top_w * top_h)
@@ -333,15 +388,19 @@ def multi_view_volume(food, top_box_px, top_card_px, side_box_px, side_geometry,
         height = _interval3(*h, D('0.1'))
         assumptions = {'footprint_fill': PLATE_FILL, 'profile': profile, 'shape_power': PROFILE_POWER[profile],
                        'footprint_depth_cm': tuple(round(v, 1) for v in depth), 'elevation_deg': elevation}
-    else:
+    else:  # a bowl, or a drink cup (a tall, narrow bowl: the same frustum, rim correction and fill level)
         if side_container_box_px is None:
             raise ValueError('side_container_box_missing')
         rim = (top_w + top_h) / 2
-        food_ml, depth = bowl_volume(rim, side_container_box_px, side_box_px, side_geometry)
+        food_ml, depth = bowl_volume(rim, side_container_box_px, side_box_px, side_geometry,
+                                     cup=shape == 'cup')
         volume = _interval3(*food_ml, D('1'))
         height = _interval3(*depth, D('0.1'))
-        assumptions = {'rim_diameter_cm': round(rim, 1), 'base_ratio': BOWL_BASE_RATIO, 'bottom_cm': BOWL_BOTTOM_CM,
-                       'rounded_bowl': ROUNDED_BOWL, 'heap_factor': HEAP_FACTOR, 'elevation_deg': elevation}
+        cup = shape == 'cup'
+        assumptions = {'rim_diameter_cm': round(rim, 1), 'rim_from': 'side' if cup else 'top',
+                       'base_ratio': CUP_BASE_RATIO if cup else BOWL_BASE_RATIO, 'bottom_cm': BOWL_BOTTOM_CM,
+                       'rounded_bowl': (1.0,) if cup else ROUNDED_BOWL, 'heap_factor': HEAP_FACTOR,
+                       'elevation_deg': elevation}
     return {'food': food, 'shape': shape, 'method': 'top+side',
             'box_cm': (D(str(round(top_w, 1))), D(str(round(top_h, 1)))),
             'height_cm': height, 'volume_ml': volume, 'assumptions': assumptions, 'coverage_validated': False}

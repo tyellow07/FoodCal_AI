@@ -8,7 +8,8 @@ from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 
 from .i18n import DEFAULT, language, t
 
-# Detection taxonomy (15 Roboflow Taiwanese-food classes) and annotation spec v2 ingredient classes.
+# Detection taxonomy (15 Roboflow Taiwanese-food classes), annotation spec v2 ingredient classes and shop drinks
+# (the food keys Gemini may name and the hand-added dish menu offers).
 FOOD_NAMES = {
     'Over-easy egg': '荷包蛋', 'bawan': '肉圓', 'beef_noodles': '牛肉麵', 'braised_napa_cabbage': '白菜滷',
     'braised_pork_over_rice': '滷肉飯', 'chicken_mushroom_soup': '香菇雞湯',
@@ -17,6 +18,9 @@ FOOD_NAMES = {
     'fried_instant_noodles': '炒泡麵', 'fried_rice_noodles': '炒米粉', 'loofah': '絲瓜',
     'turkey_rice': '火雞肉飯',
     'visible_fried_egg': '煎蛋', 'cooked_rice_region': '熟米飯', 'cooked_noodle_region': '熟麵條',
+    # Drinks (shop cups), for Gemini's food_key and the hand-added dish menu.
+    'bubble_milk_tea': '珍珠奶茶', 'milk_tea_drink': '奶茶', 'fresh_milk_tea_drink': '鮮奶茶',
+    'tea_drink': '茶飲（紅茶、綠茶、烏龍）', 'soy_milk_drink': '豆漿', 'latte': '拿鐵', 'americano': '美式咖啡',
 }
 
 REASONS = {

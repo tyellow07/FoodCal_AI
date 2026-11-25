@@ -23,9 +23,9 @@ NOTES = {
     'kcal_missing': '熱量表還沒有這道菜，只能顯示重量',
     'composition_partly_unknown': '有些成分不在食材表裡，熱量只算認得的部分',
     'side_photo_angle_out_of_range': '側面照的角度不對（要從桌面上方約 15–35 度拍），這道菜仍用單張照片估',
-    'side_container_box_missing': '側面照沒有框到整個碗，這道菜仍用單張照片估',
+    'side_container_box_missing': '側面照沒有框到整個碗或杯子，這道菜仍用單張照片估',
     'side_height_not_measurable': '側面照量不出這道菜的高度，仍用單張照片估',
-    'side_bowl_not_measurable': '側面照量不出碗的深度，仍用單張照片估',
+    'side_bowl_not_measurable': '側面照量不出碗或杯子的深度，仍用單張照片估',
     'invalid_side_box': '側面照的框不正確，這道菜仍用單張照片估',
 }
 
@@ -47,12 +47,15 @@ def _point(value):
 
 
 def nutrition_of(item):
-    """Composition (from Gemini, else the default for a known dish) -> food_nutrition result, or None."""
+    """Composition (from Gemini, else the default for a known dish) -> food_nutrition result, or None.
+
+    A food Gemini saw whole or in its peel (shape 'whole') is weighed by its outline, so only edible grams count.
+    """
     components, method = item.get('components'), item.get('cooking_method')
     if not components and item.get('class_name') in DEFAULT_COMPONENTS:
         components, default_method = DEFAULT_COMPONENTS[item['class_name']]
         method = method or default_method
-    return food_nutrition(components, method or 'none') if components else None
+    return food_nutrition(components, method or 'none', item.get('shape') == 'whole') if components else None
 
 
 def _scale(interval, factor):
@@ -109,7 +112,8 @@ def portion_rows(items, card_box, reference, user_grams, side=None):
             row['notes'].append('card_missing')
         else:
             try:
-                rough = rough_portion(class_name, box, card_box, reference, detection.get('container'))
+                rough = rough_portion(class_name, box, card_box, reference, detection.get('container'),
+                                      detection.get('shape'))
             except ValueError as error:
                 row['notes'].append(str(error).split(':')[0])
             else:

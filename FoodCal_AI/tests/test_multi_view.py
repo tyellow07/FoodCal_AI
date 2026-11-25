@@ -19,6 +19,7 @@ from src.evaluation import multi_view_sim as sim
 from src.portion.card_locator import SIDE_SQUASHES, load_card_reference, locate_card
 from src.portion.multi_view import (CARD_LONG_CM, CARD_SHORT_CM, footprint_depth, multi_view_volume, peak_height,
                                     plate_extent, side_view_geometry)
+from src.portion.rough_volume import rough_volume
 from src.ui import theme
 from src.ui.portions import portion_rows
 from tests.test_card_locator import LOGO_W_CM, card_image, photo_with_card, synthetic_logo
@@ -116,6 +117,40 @@ class SyntheticSceneTests(unittest.TestCase):
             self.assertTrue(volume['low'] <= true_ml <= volume['high'])
             self.assertLess(abs(float(volume['mid']) - true_ml) / true_ml, 0.15)
             self.assertTrue(out['height_cm']['low'] <= 6.5 <= out['height_cm']['high'])
+
+    def test_drink_cup_is_read_like_a_tall_bowl(self):
+        rng = random.Random(2)
+        cam = sim.side_camera(25, 42)
+        card = sim.measured_card((-12.5, 0), 0, cam, rng)
+        top_cam = sim.top_camera(40)
+        top_card = sim.measured_card((-12.5, 0), 0, top_cam, rng)
+        cup, drink, true_ml = sim.bowl_scene_points(4.5, 0.56, 17.7, 0.3, 0.9, 0.0)  # a 700 mL cup, 90% full
+        top_box = sim.bbox(sim.project(sim._circle(4.5, 17.7, (0.0, 0.0)), top_cam))
+        out = multi_view_volume('bubble_milk_tea', top_box, top_card, sim.bbox(sim.project(drink, cam)),
+                                side_view_geometry(card), 'cup', sim.bbox(sim.project(cup, cam)))
+        self.assertEqual(out['shape'], 'cup')
+        self.assertTrue(out['volume_ml']['low'] <= true_ml <= out['volume_ml']['high'], (true_ml, out['volume_ml']))
+        single = rough_volume('bubble_milk_tea', top_box, top_card)['volume_ml']
+        self.assertTrue(single['low'] <= true_ml <= single['high'], (true_ml, single))
+        side_error = abs(float(out['volume_ml']['mid']) - true_ml) / true_ml
+        self.assertLess(side_error, 0.1)  # the measured height and rim width beat the cup-size prior
+        self.assertLess(side_error, abs(float(single['mid']) - true_ml) / true_ml)
+
+    def test_whole_fruit_height_comes_from_its_outline(self):
+        rng = random.Random(4)
+        cam = sim.side_camera(25, 42)
+        card = sim.measured_card((-12.5, 0), 0, cam, rng)
+        top_cam = sim.top_camera(40)
+        top_card = sim.measured_card((-12.5, 0), 0, top_cam, rng)
+        r = 3.81  # a 7.62 cm apple resting on the table
+        sphere = [(r * math.sin(a) * math.cos(b), r * math.sin(a) * math.sin(b), r + r * math.cos(a))
+                  for a in (math.pi * i / 24 for i in range(25)) for b in (math.pi * j / 24 for j in range(48))]
+        true_ml = 4 / 3 * math.pi * r ** 3
+        out = multi_view_volume('mystery_fruit', sim.bbox(sim.project(sphere, top_cam)), top_card,
+                                sim.bbox(sim.project(sphere, cam)), side_view_geometry(card), 'plate', None, 'whole')
+        self.assertEqual(out['shape'], 'whole')
+        self.assertTrue(out['height_cm']['low'] <= 2 * r <= out['height_cm']['high'], out['height_cm'])
+        self.assertTrue(out['volume_ml']['low'] <= true_ml <= out['volume_ml']['high'], (true_ml, out['volume_ml']))
 
     def test_bowl_needs_its_container_box(self):
         with self.assertRaisesRegex(ValueError, 'side_container_box_missing'):

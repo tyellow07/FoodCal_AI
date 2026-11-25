@@ -58,7 +58,7 @@ SCHEMA = {
                                    'share_percent': {'type': 'integer'}},
                     'required': ['ingredient', 'share_percent']}},
                 'cooking_method': {'type': 'string', 'enum': sorted(COOKING_METHODS)},
-                'shape': {'type': 'string', 'enum': ['mound', 'flat']},
+                'shape': {'type': 'string', 'enum': ['mound', 'flat', 'whole']},
             },
             'required': ['name_zh', 'name_en', 'name_ja', 'name_ko', 'name_id', 'name_vi', 'food_key', 'container',
                          'box_2d', 'visible_ingredients', 'confidence', 'components', 'cooking_method', 'shape']}},
@@ -80,20 +80,25 @@ For every distinct food item you can see, report:
 - food_key: one of these keys only when the item is exactly that dish, otherwise "other":
 {chr(10).join(f'  {key}' for key in sorted(FOOD_TEMPLATES))}
   (cooked_rice_region is plain cooked rice, cooked_noodle_region plain noodles, visible_fried_egg a fried egg.)
-- container: "bowl" when the food is served in a bowl (soups, noodle soups, rice bowls), otherwise "plate".
-- box_2d: [ymin, xmin, ymax, xmax] of the tightest box around the food, normalised to 0-{GRID}; for bowl dishes,
-  box the bowl opening.
+- container: "bowl" when the food is served in a bowl (soups, noodle soups, rice bowls), "cup" for a drink in a cup,
+  glass or bottle, otherwise "plate".
+- box_2d: [ymin, xmin, ymax, xmax] of the tightest box around the food, normalised to 0-{GRID}; for bowl dishes and
+  drinks, box the bowl or cup opening (the rim) as seen from above.
 - visible_ingredients: only ingredients you can actually see, named in Traditional Chinese (for example 高麗菜, 紅蘿蔔,
   雞肉, 薑絲).
 - confidence: high, medium or low.
 - components: what the item is made of, judged from what you see, as ingredient keys with your estimate of each
   one's share of the item's weight in percent (about 100 in total; count the broth of soups). Use "other" for
-  anything not listed. Keys:
+  anything not listed. For a drink, count the ice cubes you can see as ice and the pearls as tapioca_pearls; a shop
+  milk tea is milk_tea unless it is labelled 鮮奶 (fresh milk). Keys:
 {chr(10).join(f'  {key} = {INGREDIENTS[key][0]}' for key in sorted(INGREDIENTS))}
-- cooking_method: how it looks cooked, one of:
+- cooking_method: how it looks cooked, one of the keys below. For a drink, the sweetness: read it from the cup
+  sticker or label (全糖, 少糖, 半糖, 微糖, 無糖) when you can, use drink_sugar_unknown for a shop drink whose
+  sweetness you cannot read, and none for plain milk, black coffee or water. Raw fruit is none.
 {chr(10).join(f'  {key} = {COOKING_METHODS[key][0]}' for key in sorted(COOKING_METHODS))}
 - shape: "mound" when the food is piled up into a heap (rice, noodles, heaped vegetables or meat pieces), "flat" when
-  it lies in a thin layer (a fried egg, a cutlet, slices laid side by side).
+  it lies in a thin layer (a fried egg, a cutlet, slices laid side by side), "whole" for one whole item or a piece
+  still in its peel or rind (a whole banana, apple or orange, a steamed bun, corn on the cob, a watermelon wedge).
 
 Report only what is visible in the photo. Do not estimate weights, portions or calories, and do not add ingredients
 a recipe would usually contain but the photo does not show. Ignore plates, trays, cutlery, hands, the grey
