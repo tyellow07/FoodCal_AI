@@ -183,6 +183,7 @@
 !/src/portion/card_locator.py
 !/tools/setup_card_reference.py
 !/tests/test_card_locator.py
+!/tests/test_card_finder.py
 !/docs/multi_view_volume_v0.md
 !/src/portion/multi_view.py
 !/src/evaluation/multi_view_sim.py
