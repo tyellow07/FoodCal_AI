@@ -81,3 +81,9 @@
   - 白開水、鮮奶、黑咖啡用 `none`，生的水果也是 `none`。
 - 新的食材代碼和 7 種飲料的 `food_key` 都由程式自動列進指令（`INGREDIENTS`、`COOKING_METHODS`、`FOOD_TEMPLATES`）。
 - 甜度和熱量的算法見 `docs/nutrition_model_v0.md` 第 7 節。這次沒有用真的飲料照片測 Gemini；第一次實測時，要確認它會不會讀貼紙。
+
+## 7. 肉類（2026-11-26）
+
+- 食材清單多了 33 種肉（`docs/nutrition_model_v0.md` 第 9 節），提示詞自動列出。
+- 加一句：看得出部位或內臟就選那一項（例如 pork_jowl、beef_brisket、chicken_gizzard），否則用一般的 chicken、pork、beef、duck。
+- `whole` 形狀也包括帶骨的肉（雞腿、雞翅、排骨、豬腳），克數只算肉。

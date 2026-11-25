@@ -2,7 +2,7 @@
 from decimal import Decimal
 import unittest
 
-from src.portion.nutrition_model import (COOKING_METHODS, DEFAULT_COMPONENTS, INGREDIENTS, MACROS, MICRO_NOTES, MICROS,
+from src.portion.nutrition_model import (BONE_IN_REFUSE, COOKING_METHODS, DEFAULT_COMPONENTS, INGREDIENTS, MACROS, MICRO_NOTES, MICROS,
                                          NUTRIENTS, SEASONING_SODIUM, WHOLE_REFUSE, add_nutrients, empty_nutrients,
                                          energy_for_grams, food_nutrition, macros_for_grams, nutrients_for_grams,
                                          whole_density)
@@ -165,6 +165,29 @@ class NutritionModelTests(unittest.TestCase):
         whole = food_nutrition([('banana', 100)], 'none', whole=True)
         self.assertEqual((cut['density'], whole['density'], whole['whole']), (D('0.63'), D('0.61'), True))
         self.assertEqual(cut['visible_kcal_per_100g'], whole['visible_kcal_per_100g'])
+
+    def test_meats_by_cut(self):
+        """Cuts from TFDA, cooked by the same yield: lean < generic mince < shoulder < belly; organs and bone-in pieces."""
+        kcal = {key: INGREDIENTS[key][1] for key in ('pork_lean', 'pork', 'pork_shoulder', 'pork_belly')}
+        self.assertEqual(list(kcal.values()), sorted(kcal.values()))
+        self.assertEqual(INGREDIENTS['pork'][1], D('283'))  # TFDA I03104 pork mince average 212 / 0.75, no longer assumed
+        self.assertEqual(DEFAULT_COMPONENTS['turkey_rice'][0][1][0], 'turkey')
+        for key in ('chicken_thigh', 'pork_jowl', 'beef_steak', 'lamb', 'goose', 'chicken_liver', 'pork_intestine',
+                    'beef_tripe', 'duck_gizzard', 'jerky', 'luncheon_meat'):
+            self.assertIn(key, INGREDIENTS)
+            self.assertEqual(MICROS[key][3] is not None, True, key)  # cholesterol is measured for every meat row
+        self.assertIsNone(MICROS['chicken_liver'][1])  # sugar not analysed and carbohydrate 3.6 g: left unknown
+        self.assertEqual(MICROS['chicken_gizzard'][1], D(0))  # carbohydrate 0.4 g: sugar counted as 0
+
+    def test_meat_on_the_bone_counts_the_meat_only(self):
+        """A whole drumstick or wing is measured with its bone; the bone share grows as the meat cooks down."""
+        self.assertEqual(BONE_IN_REFUSE['chicken_wing'], D('49.5'))  # raw 42.4 % bone, meat x 0.75 when cooked
+        self.assertEqual(BONE_IN_REFUSE['pork_knuckle'], D('37.0'))  # the TFDA row is already stewed
+        self.assertEqual(whole_density('chicken_wing'), D('0.53'))   # 1.05 x (1 - 49.5 %)
+        self.assertEqual(whole_density('chicken_breast'), INGREDIENTS['chicken_breast'][2])  # boneless
+        drumstick = food_nutrition([('chicken', 100)], 'braised', whole=True)
+        self.assertEqual(drumstick['density'], D('0.58'))
+        self.assertLess(drumstick['density'], food_nutrition([('chicken', 100)], 'braised')['density'])
 
     def test_energy_for_grams(self):
         greens = food_nutrition([('leafy_vegetable', 100)], 'stir_fried')
