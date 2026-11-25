@@ -50,7 +50,7 @@ INGREDIENTS = {
     'dried_tofu': ('豆干', D('170'), D('1.0'), False, 'TFDA R4700201 豆干絲 170'),
     'chicken': ('雞肉（熟）', D('212'), D('0.85'), False, 'TFDA I0404302 棒棒腿（肉雞，生）159 ÷ 烹調產率約 0.75'),
     'chicken_cutlet': ('雞排肉（熟，不含裹粉）', D('277'), D('0.85'), False, 'TFDA I0404402 雞排（肉雞，生）208 ÷ 約 0.75'),
-    'pork': ('豬肉（熟）', D('300'), D('0.85'), False, '假設值：五花與瘦肉差異大，待補 TFDA 部位'),
+    'pork': ('豬肉（熟）', D('283'), D('0.85'), False, 'TFDA I03104 豬絞肉平均值（生）212 ÷ 約 0.75；部位不明時用肥瘦平均的絞肉；梅花、五花、瘦肉另有項目'),
     'braised_pork_mince': ('肉燥', D('397'), D('0.95'), True, 'TFDA P1000301 肉燥 397'),
     'beef': ('牛肉（熟）', D('199'), D('0.85'), False, 'TFDA I0108301 牛後腿腱子心（生）139 ÷ 約 0.70'),
     'fish': ('魚肉（熟）', D('149'), D('0.85'), False, 'TFDA J0414201 高麗馬加鰆（生）119 ÷ 約 0.80'),
@@ -217,6 +217,40 @@ INGREDIENTS = {
     'douhua': ('豆花（未加糖水）', D('39'), D('1.0'), False, 'TFDA Q2104201 傳統豆花（未加糖）39；密度：假設值'),
     'taro_balls': ('芋圓／地瓜圓／小湯圓', D('214'), D('1.1'), False, 'TFDA R4100101 芋圓（未烹調）214，煮熟吸水後會略低；密度：假設值'),
     'cream': ('鮮奶油（奶蓋）', D('340'), D('0.6'), False, 'TFDA M0900301 奶油（液態）340；密度：假設值（打發）'),
+    # ---- meats (2026-11-26, docs/nutrition_model_v0.md section 9) ----
+    'chicken_thigh': ('雞腿肉（去骨，熟）', D('220'), D('0.85'), False, 'TFDA I0404501 去皮去骨雞腿（肉雞，生）165 ÷ 約 0.75'),
+    'chicken_wing': ('雞翅（熟，可吃部分）', D('280'), D('0.85'), False, 'TFDA I04062 三節翅平均值（生，去骨含皮）210 ÷ 約 0.75；整隻帶骨廢棄率 42.4%'),
+    'chicken_skin': ('雞皮（熟）', D('589'), D('0.9'), False, 'TFDA I0421001 雞皮（肉雞，生）442 ÷ 約 0.75（煎烤會逼出部分油，可能偏高）'),
+    'chicken_gizzard': ('雞胗（熟）', D('119'), D('0.95'), False, 'TFDA I0420401 雞胗（肉雞，生）89 ÷ 約 0.75；密度：假設值'),
+    'chicken_heart': ('雞心（熟）', D('253'), D('0.95'), False, 'TFDA I0420101 雞心（肉雞，生）190 ÷ 約 0.75；密度：假設值'),
+    'chicken_liver': ('雞肝（熟）', D('148'), D('0.95'), False, 'TFDA I0420301 雞肝（肉雞，生）111 ÷ 約 0.75；密度：假設值'),
+    'chicken_feet': ('雞腳（滷，可吃部分）', D('209'), D('0.9'), False, 'TFDA I0420801 雞腳（肉雞，生，去骨）209；燉滷後與生的相近（USDA SR Legacy 5335 煮熟雞腳 215），不除產率；整隻帶骨廢棄率 58.2%'),
+    'turkey': ('火雞肉（熟）', D('188'), D('0.85'), False, 'TFDA I0700101 火雞肉（生，含皮去骨）141 ÷ 約 0.75'),
+    'pork_shoulder': ('梅花肉／豬肩胛（熟）', D('393'), D('0.85'), False, 'TFDA I0300401 豬肩胛肉（生）295 ÷ 約 0.75'),
+    'pork_jowl': ('松阪豬／豬頸肉（熟）', D('379'), D('0.85'), False, 'TFDA I0310301 豬頸肉（生）284 ÷ 約 0.75'),
+    'pork_lean': ('豬瘦肉（後腿，熟）', D('160'), D('0.85'), False, 'TFDA I0302301 豬後腿瘦肉（生）120 ÷ 約 0.75'),
+    'pork_tenderloin': ('豬小里肌（熟）', D('185'), D('0.85'), False, 'TFDA I0306101 豬小里肌（生）139 ÷ 約 0.75'),
+    'pork_ribs': ('豬小排／肋排（熟，可吃部分）', D('383'), D('0.85'), False, 'TFDA I0304301 豬小排（生，去骨）287 ÷ 約 0.75；整塊帶骨廢棄率 40.9%'),
+    'pork_knuckle': ('豬腳（滷，可吃部分）', D('237'), D('0.95'), True, 'TFDA R5101101 滷豬腳（去骨）237；帶骨廢棄率 37%；密度：假設值'),
+    'pork_intestine': ('豬大腸（熟）', D('264'), D('0.95'), False, 'TFDA I0321801 豬大腸（生）198 ÷ 約 0.75；密度：假設值'),
+    'pork_stomach': ('豬肚（熟）', D('137'), D('0.95'), False, 'TFDA I0321201 熟豬肚（水煮）137；密度：假設值'),
+    'pig_blood': ('豬血（豬血湯的豬血）', D('29'), D('1.0'), False, 'TFDA I0320601 豬血 29；密度：假設值'),
+    'pork_kidney': ('豬腰（熟）', D('109'), D('0.95'), False, 'TFDA I0321601 豬腎（生）82 ÷ 約 0.75；密度：假設值'),
+    'pork_heart': ('豬心（熟）', D('171'), D('0.95'), False, 'TFDA I0320101 豬心（生）128 ÷ 約 0.75；密度：假設值'),
+    'pork_ear': ('豬耳朵（滷）', D('292'), D('0.95'), False, 'TFDA I0320401 豬耳（生）219 ÷ 約 0.75；密度：假設值'),
+    'pork_tongue': ('豬舌（熟）', D('247'), D('0.95'), False, 'TFDA I0320501 豬舌（生）185 ÷ 約 0.75；密度：假設值'),
+    'beef_brisket': ('牛腩（熟）', D('322'), D('0.85'), False, 'TFDA I0104101 牛前胸肉 331、I0104201 牛修清前胸肉 120（生）平均 ÷ 約 0.70（比照牛肉）；牛腩肥瘦不一，取平均'),
+    'beef_steak': ('牛排（熟）', D('260'), D('0.85'), False, 'TFDA I0100301 沙朗 162、I0106201 腓力 184、I0106101 紐約克 200（生）平均 ÷ 約 0.70'),
+    'beef_short_rib': ('牛小排（熟）', D('414'), D('0.85'), False, 'TFDA I0100101 去骨牛小排（生）290 ÷ 約 0.70'),
+    'beef_tripe': ('牛肚（熟）', D('75'), D('0.95'), False, 'TFDA I01201 牛肚平均值（生）56 ÷ 約 0.75；密度：假設值'),
+    'lamb': ('羊肉（熟）', D('245'), D('0.85'), False, 'TFDA I0210101 綿羊肉切片 198、I0200301 山羊後腿肉火鍋片 170（生）平均 ÷ 約 0.75'),
+    'goose': ('鵝肉（熟）', D('249'), D('0.85'), False, 'TFDA I0600101 鵝肉（生，含皮去骨）187 ÷ 約 0.75'),
+    'duck_wing': ('鴨翅（滷，可吃部分）', D('227'), D('0.85'), False, 'TFDA I0520601 鴨翅（生，去骨）170 ÷ 約 0.75；整隻帶骨廢棄率 57.2%'),
+    'duck_gizzard': ('鴨胗（滷）', D('129'), D('0.95'), False, 'TFDA I0520201 鴨胗（生）97 ÷ 約 0.75；密度：假設值'),
+    'duck_intestine': ('鴨腸（熟）', D('125'), D('0.95'), False, 'TFDA I0520401 鴨腸（生）94 ÷ 約 0.75；密度：假設值'),
+    'jerky': ('肉乾（豬、牛）', D('336'), D('0.9'), True, 'TFDA R5200101 牛肉乾 335、R5200201 片狀豬肉乾 329、R5200301 條狀豬肉乾 345 平均；密度：假設值'),
+    'chinese_bacon': ('臘肉', D('525'), D('1.0'), True, 'TFDA R5100901 臘肉（五花肉）525；密度：假設值'),
+    'luncheon_meat': ('午餐肉（罐頭）', D('315'), D('1.0'), True, 'TFDA 沒有，用 USDA SR Legacy 7908 豬肉火腿午餐肉罐頭 315；密度：假設值'),
 }
 
 # Protein, fat, carbohydrate g per 100 g as eaten (same TFDA rows as above; cooked meat = raw / the same yield).
@@ -234,7 +268,7 @@ MACROS = {
     'dried_tofu': (D('18.3'), D('8.6'), D('4.8')),
     'chicken': (D('22.4'), D('12.9'), D('0.4')),
     'chicken_cutlet': (D('20.4'), D('21.1'), D('0.0')),
-    'pork': (D('20.0'), D('25.0'), D('0.0')),             # assumption, like its energy value
+    'pork': (D('24.9'), D('19.5'), D('0')),
     'braised_pork_mince': (D('9.5'), D('38.1'), D('4.2')),
     'beef': (D('28.3'), D('8.6'), D('0.0')),
     'fish': (D('24.3'), D('5.0'), D('0.4')),
@@ -401,6 +435,40 @@ MACROS = {
     'douhua': (D('3.2'), D('1.9'), D('2.1')),
     'taro_balls': (D('0.9'), D('0.2'), D('52.1')),
     'cream': (D('2'), D('39.1'), D('0')),
+    # ---- meats (2026-11-26, docs/nutrition_model_v0.md section 9) ----
+    'chicken_thigh': (D('26.4'), D('11.9'), D('0')),
+    'chicken_wing': (D('24.4'), D('19.5'), D('0')),
+    'chicken_skin': (D('15.6'), D('57.9'), D('0')),
+    'chicken_gizzard': (D('22.1'), D('2.7'), D('0.4')),
+    'chicken_heart': (D('17.7'), D('19.7'), D('0.1')),
+    'chicken_liver': (D('25.1'), D('4.7'), D('3.6')),
+    'chicken_feet': (D('20.7'), D('13.3'), D('1.2')),
+    'turkey': (D('28.1'), D('7.5'), D('0')),
+    'pork_shoulder': (D('22'), D('33.1'), D('0')),
+    'pork_jowl': (D('22.9'), D('31.1'), D('1.1')),
+    'pork_lean': (D('28.1'), D('4.5'), D('0.4')),
+    'pork_tenderloin': (D('28.1'), D('7.2'), D('0')),
+    'pork_ribs': (D('24'), D('31.1'), D('0')),
+    'pork_knuckle': (D('28.4'), D('15.4'), D('0')),
+    'pork_intestine': (D('8.8'), D('25.2'), D('2.5')),
+    'pork_stomach': (D('16'), D('7.6'), D('2.7')),
+    'pig_blood': (D('6.3'), D('0.3'), D('0.5')),
+    'pork_kidney': (D('20'), D('2.5'), D('2.3')),
+    'pork_heart': (D('18.1'), D('10.4'), D('1.3')),
+    'pork_ear': (D('32.3'), D('17.1'), D('1.2')),
+    'pork_tongue': (D('24.7'), D('15.7'), D('0')),
+    'beef_brisket': (D('26.5'), D('23.2'), D('0.6')),
+    'beef_steak': (D('29.7'), D('14.8'), D('0.8')),
+    'beef_short_rib': (D('24.4'), D('34.3'), D('0')),
+    'beef_tripe': (D('15.2'), D('1.1'), D('0.1')),
+    'lamb': (D('25.1'), D('15.3'), D('0.1')),
+    'goose': (D('20.8'), D('17.9'), D('3.2')),
+    'duck_wing': (D('30.4'), D('10.8'), D('0')),
+    'duck_gizzard': (D('27.3'), D('1.5'), D('0.4')),
+    'duck_intestine': (D('18.4'), D('5.2'), D('0')),
+    'jerky': (D('34.5'), D('6'), D('36')),
+    'chinese_bacon': (D('18.5'), D('49'), D('2.4')),
+    'luncheon_meat': (D('13.4'), D('26.6'), D('4.6')),
 }
 
 # Other nutrients: (key, name, unit, display step), in the order of the MICROS tuples.
@@ -593,6 +661,40 @@ MICROS = {
     'douhua': (D('0.6'), D('0.5'), D('0.3'), D('0'), D('22'), D('123'), D('300'), D('0.7')),
     'taro_balls': (D('0.8'), D('2.8'), D('0.1'), D('0'), D('2'), D('183'), D('29'), D('3')),
     'cream': (D('0'), D('3.2'), D('27.1'), D('127'), D('24'), D('98'), D('71'), D('0.4')),
+    # ---- meats (2026-11-26, docs/nutrition_model_v0.md section 9) ----
+    'chicken_thigh': (D('0'), D('0'), D('3.2'), D('154.7'), D('90.7'), D('397.3'), D('8'), D('1.1')),
+    'chicken_wing': (D('0'), D('0'), D('5.47'), D('136'), D('100'), D('237.3'), D('10.7'), D('0.7')),
+    'chicken_skin': (D('0'), D('0'), D('14.93'), D('181.3'), D('53.3'), D('194.7'), D('5.3'), D('0.8')),
+    'chicken_gizzard': (D('0'), D('0'), D('0.8'), D('272'), D('76'), D('249.3'), D('9.3'), D('2.9')),
+    'chicken_heart': (D('0'), D('0'), D('5.87'), D('200'), D('116'), D('282.7'), D('5.3'), D('5.9')),
+    'chicken_liver': (D('0'), None, D('2'), D('457.3'), D('124'), D('370.7'), D('5.3'), D('4')),
+    'chicken_feet': (D('0'), D('0'), D('2.9'), D('121'), D('102'), D('64'), D('24'), D('0.8')),
+    'turkey': (D('0'), D('0'), D('2.8'), D('72'), D('68'), D('482.7'), D('4'), D('1.3')),
+    'pork_shoulder': (D('0'), D('0'), D('13.07'), D('94.7'), D('70.7'), D('384'), D('4'), D('1.2')),
+    'pork_jowl': (D('0'), D('0.27'), D('11.2'), D('88'), D('57.3'), D('286.7'), D('4'), D('0.7')),
+    'pork_lean': (D('0'), D('0.13'), D('1.6'), D('76'), D('54.7'), D('541.3'), D('4'), D('1.5')),
+    'pork_tenderloin': (D('0'), D('0'), D('2.93'), D('90.7'), D('61.3'), D('514.7'), D('5.3'), D('1.9')),
+    'pork_ribs': (D('0'), D('0'), D('12.8'), D('104'), D('98.7'), D('338.7'), D('44'), D('1.3')),
+    'pork_knuckle': (D('0'), D('0'), D('6.9'), D('53'), D('187'), D('190'), D('40'), D('1.3')),
+    'pork_intestine': (D('0'), None, D('13.2'), D('166.7'), D('60'), D('22.7'), D('20'), D('2.3')),
+    'pork_stomach': (D('0'), None, D('3.7'), D('227'), D('30'), D('28'), D('17'), D('1.8')),
+    'pig_blood': (D('0'), D('0'), D('0.1'), D('50'), D('179'), D('30'), D('7'), D('28')),
+    'pork_kidney': (D('0'), None, D('0.8'), D('453.3'), D('136'), D('284'), D('9.3'), D('9.6')),
+    'pork_heart': (D('0'), None, D('4'), D('86.7'), D('98.7'), D('265.3'), D('4'), D('5.5')),
+    'pork_ear': (D('0'), D('0'), D('5.73'), D('129.3'), D('233.3'), D('56'), D('21.3'), D('1.7')),
+    'pork_tongue': (D('0'), D('0'), D('5.73'), D('148'), D('158.7'), D('281.3'), D('6.7'), D('4')),
+    'beef_brisket': (D('0'), None, D('11.79'), D('92.1'), D('73.6'), D('482.9'), D('7.1'), D('3.2')),
+    'beef_steak': (D('0'), D('0.05'), D('7.38'), D('89'), D('67.6'), D('546.2'), D('8.6'), D('3.9')),
+    'beef_short_rib': (D('0'), D('0'), D('15.43'), D('100'), D('84.3'), D('457.1'), D('11.4'), D('3.6')),
+    'beef_tripe': (D('0'), D('0'), D('0.53'), D('137.3'), D('109.3'), D('2.7'), D('58.7'), D('0.8')),
+    'lamb': (D('0'), D('0'), D('7.87'), D('68.7'), D('114.7'), D('404.7'), D('6'), D('2.4')),
+    'goose': (D('0'), None, D('4.67'), D('94.7'), D('72'), D('312'), D('14.7'), D('2.5')),
+    'duck_wing': (D('0'), D('0'), D('3.2'), D('176'), D('89.3'), D('188'), D('18.7'), D('2.4')),
+    'duck_gizzard': (D('0'), D('0'), D('0.53'), D('249.3'), D('105.3'), D('432'), D('4'), D('6.9')),
+    'duck_intestine': (D('0'), D('0'), D('2'), D('380'), D('70.7'), D('4'), D('36'), D('2')),
+    'jerky': (None, D('23.7'), D('2.43'), D('110.7'), D('1273'), D('683'), D('9.3'), D('2.6')),
+    'chinese_bacon': (D('0'), D('0'), D('18.8'), D('76'), D('1539'), D('221'), D('5'), D('0.9')),
+    'luncheon_meat': (D('0'), D('0'), D('9.99'), D('71'), D('1411'), D('409'), D('0'), D('0.6')),
 }
 PLANT_NO_CHOLESTEROL = '植物性，膽固醇 0（同類較新樣品如 R4700902 傳統豆腐、E3000104 甘藍記 0）'
 ANIMAL_NO_FIBER = '動物性，膳食纖維 0（同類較新樣品如 I0108302 牛腱、K01001 雞蛋平均值記 0）'
@@ -612,7 +714,7 @@ MICRO_NOTES = {
     'dried_tofu': '糖：R4700202 五香豆干；' + PLANT_NO_CHOLESTEROL,
     'chicken': '÷ 烹調產率 0.75；' + ANIMAL_NO_FIBER,
     'chicken_cutlet': '÷ 0.75；碳水 0 g，糖以 0 計；' + ANIMAL_NO_FIBER,
-    'pork': '假設：I03104 豬絞肉平均值 ÷ 0.75 代表豬肉；' + ANIMAL_NO_FIBER,
+    'pork': '÷ 0.75；' + ANIMAL_NO_FIBER,
     'braised_pork_mince': '膳食纖維、糖沒有資料（含醬油、蔥乾）',
     'beef': '÷ 0.70；糖：I0108302 牛後腿腱子心（2022 年樣品）；' + ANIMAL_NO_FIBER,
     'fish': '÷ 0.80；碳水 0.3 g，糖以 0 計；' + ANIMAL_NO_FIBER,
@@ -779,6 +881,40 @@ MICRO_NOTES = {
     'douhua': PLANT_NO_CHOLESTEROL,
     'taro_balls': 'R4100101 各項都有資料（未烹調）',
     'cream': '乳製品，膳食纖維 0',
+    # ---- meats (2026-11-26, docs/nutrition_model_v0.md section 9) ----
+    'chicken_thigh': '÷ 0.75；I0404501 各項都有資料',
+    'chicken_wing': '÷ 0.75；碳水 0 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'chicken_skin': '÷ 0.75；I0421001 各項都有資料',
+    'chicken_gizzard': '÷ 0.75；' + '碳水 ≤ 0.5 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'chicken_heart': '÷ 0.75；' + '碳水 ≤ 0.5 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'chicken_liver': '÷ 0.75；' + '糖沒有資料；' + ANIMAL_NO_FIBER,
+    'chicken_feet': '不除產率；' + ANIMAL_NO_FIBER,
+    'turkey': '÷ 0.75；碳水 0 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'pork_shoulder': '÷ 0.75；' + ANIMAL_NO_FIBER,
+    'pork_jowl': '÷ 0.75；' + ANIMAL_NO_FIBER,
+    'pork_lean': '÷ 0.75；' + ANIMAL_NO_FIBER,
+    'pork_tenderloin': '÷ 0.75；' + ANIMAL_NO_FIBER,
+    'pork_ribs': '÷ 0.75；' + ANIMAL_NO_FIBER,
+    'pork_knuckle': '碳水 0 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'pork_intestine': '÷ 0.75；' + '糖沒有資料；' + ANIMAL_NO_FIBER,
+    'pork_stomach': '糖沒有資料；' + ANIMAL_NO_FIBER,
+    'pig_blood': ANIMAL_NO_FIBER,
+    'pork_kidney': '÷ 0.75；' + '糖沒有資料；' + ANIMAL_NO_FIBER,
+    'pork_heart': '÷ 0.75；' + '糖沒有資料；' + ANIMAL_NO_FIBER,
+    'pork_ear': '÷ 0.75；' + ANIMAL_NO_FIBER,
+    'pork_tongue': '÷ 0.75；' + '碳水 ≤ 0.5 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'beef_brisket': '兩筆平均 ÷ 0.70；糖沒有資料；' + ANIMAL_NO_FIBER,
+    'beef_steak': '三筆平均 ÷ 0.70；腓力缺的糖以 0 計（碳水 0.1 g）；' + ANIMAL_NO_FIBER,
+    'beef_short_rib': '÷ 0.70；' + ANIMAL_NO_FIBER,
+    'beef_tripe': '÷ 0.75；' + '碳水 ≤ 0.5 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'lamb': '兩筆平均 ÷ 0.75；綿羊缺的糖以 0 計（碳水 0 g）；' + ANIMAL_NO_FIBER,
+    'goose': '÷ 0.75；' + '糖沒有資料；' + ANIMAL_NO_FIBER,
+    'duck_wing': '÷ 0.75；' + ANIMAL_NO_FIBER,
+    'duck_gizzard': '÷ 0.75；' + '碳水 ≤ 0.5 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'duck_intestine': '÷ 0.75；' + ANIMAL_NO_FIBER,
+    'jerky': '三筆平均；膳食纖維沒有資料（含糖、果醬醃料）',
+    'chinese_bacon': ANIMAL_NO_FIBER,
+    'luncheon_meat': 'USDA 7908 各項都有資料',
 }
 
 # key: (name, oil g per 100 g (low, high), sugar g per 100 g (low, high), source note)
@@ -849,6 +985,23 @@ WHOLE_REFUSE = {  # percent, TFDA 廢棄率 of the row each ingredient uses
     'corn': D('38.7'), 'potato': D('11.8'), 'sweet_potato': D('15.5'), 'tomato': D('2.0'),
 }
 
+# Meat on the bone photographed as one piece (shape 'whole': a drumstick, chicken wings, spare ribs, pork knuckle) is
+# weighed from its outline bone and all. Edible grams per mL = BONE_IN_DENSITY (a piece of meat with its bone; an
+# assumption, meat is about 1.05 g/mL) x (1 - the bone share of the cooked piece). TFDA's 廢棄率 is the bone share of
+# the raw piece, r; the meat loses water in cooking (yield y, as in the ingredient row) and the bone does not, so the
+# cooked share is r / (r + y (1 - r)).
+BONE_IN_DENSITY = D('1.05')
+BONE_IN_RAW = {  # key: (TFDA 廢棄率 %, cooking yield of the ingredient row; 1 when the row is cooked or not divided)
+    'chicken': (D('37.9'), D('0.75')),        # I0404302 drumstick
+    'chicken_wing': (D('42.4'), D('0.75')),   # I04062
+    'chicken_feet': (D('58.2'), D('1')),      # I0420801, not divided by a yield
+    'duck': (D('18.9'), D('0.75')),           # I0504101 duck leg
+    'duck_wing': (D('57.2'), D('0.75')),      # I0520601
+    'pork_ribs': (D('40.9'), D('0.75')),      # I0304301 spare ribs
+    'pork_knuckle': (D('37.0'), D('1')),      # R5101101, already stewed
+}
+BONE_IN_REFUSE = {key: (100 * r / (r + y * (100 - r))).quantize(D('0.1')) for key, (r, y) in BONE_IN_RAW.items()}
+
 # Default composition for the known food keys (used when Gemini gives none, and for hand-added dishes). Drinks
 # assume normal ice at 25% of the cup (an assumption; Gemini reports the ice it can see) and an unknown sweetness.
 DEFAULT_COMPONENTS = {
@@ -869,7 +1022,7 @@ DEFAULT_COMPONENTS = {
     'fried_instant_noodles': ([('instant_noodles', 85), ('leafy_vegetable', 15)], 'stir_fried'),
     'fried_rice_noodles': ([('rice_noodles', 85), ('leafy_vegetable', 15)], 'stir_fried'),
     'loofah': ([('gourd_vegetable', 100)], 'stir_fried'),
-    'turkey_rice': ([('cooked_rice', 85), ('chicken', 15)], 'none'),
+    'turkey_rice': ([('cooked_rice', 85), ('turkey', 15)], 'none'),
     'bubble_milk_tea': ([('milk_tea', 60), ('tapioca_pearls', 15), ('ice', 25)], 'drink_sugar_unknown'),
     'milk_tea_drink': ([('milk_tea', 75), ('ice', 25)], 'drink_sugar_unknown'),
     'fresh_milk_tea_drink': ([('fresh_milk_tea', 75), ('ice', 25)], 'drink_sugar_unknown'),
@@ -885,9 +1038,11 @@ def _bounds(low, high, step=D('1')):
 
 
 def whole_density(key):
-    """Edible grams per mL of a whole item's outline (WHOLE_REFUSE), or the ingredient's usual density."""
+    """Edible grams per mL of a whole item's outline (WHOLE_REFUSE, BONE_IN_REFUSE), or the usual density."""
     if key in WHOLE_REFUSE:
         return (WHOLE_DENSITY * (1 - WHOLE_REFUSE[key] / 100)).quantize(D('0.01'))
+    if key in BONE_IN_REFUSE:
+        return (BONE_IN_DENSITY * (1 - BONE_IN_REFUSE[key] / 100)).quantize(D('0.01'))
     return INGREDIENTS[key][2]
 
 

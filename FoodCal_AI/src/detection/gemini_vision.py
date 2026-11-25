@@ -90,7 +90,8 @@ For every distinct food item you can see, report:
 - components: what the item is made of, judged from what you see, as ingredient keys with your estimate of each
   one's share of the item's weight in percent (about 100 in total; count the broth of soups). Use "other" for
   anything not listed. For a drink, count the ice cubes you can see as ice and the pearls as tapioca_pearls; a shop
-  milk tea is milk_tea unless it is labelled 鮮奶 (fresh milk). Keys:
+  milk tea is milk_tea unless it is labelled 鮮奶 (fresh milk). Pick a meat's cut or organ when you can tell it
+  (pork_jowl, beef_brisket, chicken_gizzard), otherwise the plain chicken, pork, beef or duck. Keys:
 {chr(10).join(f'  {key} = {INGREDIENTS[key][0]}' for key in sorted(INGREDIENTS))}
 - cooking_method: how it looks cooked, one of the keys below. For a drink, the sweetness: read it from the cup
   sticker or label (全糖, 少糖, 半糖, 微糖, 無糖) when you can, use drink_sugar_unknown for a shop drink whose
@@ -99,7 +100,8 @@ For every distinct food item you can see, report:
 {chr(10).join(f'  {key} = {COOKING_METHODS[key][0]}' for key in sorted(COOKING_METHODS))}
 - shape: "mound" when the food is piled up into a heap (rice, noodles, heaped vegetables or meat pieces), "flat" when
   it lies in a thin layer (a fried egg, a cutlet, slices laid side by side), "whole" for one whole item or a piece
-  still in its peel or rind (a whole banana, apple or orange, a steamed bun, corn on the cob, a watermelon wedge).
+  still in its peel or rind (a whole banana, apple or orange, a steamed bun, corn on the cob, a watermelon wedge), or
+  meat on the bone (a drumstick, chicken wings, spare ribs, pork knuckle).
 
 Report only what is visible in the photo. Do not estimate weights, portions or calories, and do not add ingredients
 a recipe would usually contain but the photo does not show. Ignore plates, trays, cutlery, hands, the grey
