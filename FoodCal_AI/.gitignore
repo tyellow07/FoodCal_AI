@@ -75,6 +75,7 @@
 !/src/ui/__init__.py
 !/src/ui/adapter.py
 !/src/ui/app.py
+!/src/ui/corner_picker.py
 !/src/visual_ingredients/__init__.py
 !/src/visual_ingredients/adapter.py
 !/src/visual_ingredients/review.py

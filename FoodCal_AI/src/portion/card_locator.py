@@ -54,15 +54,26 @@ SHAPE_AREA_SHARE = (0.004, 0.25)  # card area as a share of the photo
 SHAPE_ASPECT = (1.45, 1.75)       # long / short side; ID-1 is 1.586
 
 
-def order_card_corners(points):
-    """Four corners in card order: around the shape clockwise on screen, starting at the end of a long edge nearest
-    the photo's top left, so the first edge (TL->TR) is a long edge as multi_view.side_view_geometry expects."""
+def order_card_corners(points, first='long'):
+    """Four corners (any order, e.g. as clicked) in card order: clockwise on screen, so TL->TR is the first edge.
+
+    first='long': the first edge is a long one, starting at the corner nearest the photo's top left (top photos,
+    where the card keeps its shape). first='level': the first edge is the top one of the most level pair, as for a
+    hand-drawn box in a side photo, where the squash can make the long side look short; multi_view.side_view_geometry
+    then takes it as the long side facing the camera.
+    """
     pts = np.array(points, float).reshape(4, 2)
     centre = pts.mean(0)
     pts = pts[np.argsort(np.arctan2(pts[:, 1] - centre[1], pts[:, 0] - centre[0]))]  # clockwise with y down
-    edges = [np.linalg.norm(pts[(i + 1) % 4] - pts[i]) for i in range(4)]
-    starts = [i for i in range(4) if edges[i] + edges[(i + 2) % 4] >= edges[(i + 1) % 4] + edges[(i + 3) % 4]]
-    start = min(starts, key=lambda i: pts[i].sum())
+    sides = [pts[(i + 1) % 4] - pts[i] for i in range(4)]
+    edges = [float(np.linalg.norm(v)) for v in sides]
+    if first == 'level':
+        tilt = [abs(v[1]) / (abs(v[0]) + 1e-9) for v in sides]
+        pair = 0 if tilt[0] + tilt[2] <= tilt[1] + tilt[3] else 1
+        start = min((pair, pair + 2), key=lambda i: pts[i][1] + pts[(i + 1) % 4][1])
+    else:
+        starts = [i for i in range(4) if edges[i] + edges[(i + 2) % 4] >= edges[(i + 1) % 4] + edges[(i + 3) % 4]]
+        start = min(starts, key=lambda i: pts[i].sum())
     return [[round(float(x), 1), round(float(y), 1)] for x, y in np.roll(pts, -start, axis=0)]
 
 

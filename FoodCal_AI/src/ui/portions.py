@@ -15,9 +15,9 @@ from .explain import dish_name
 from .i18n import t
 
 NOTES = {
-    'card_missing': '先在照片上框出學生證，才能估體積',
-    'card_box_shape_not_a_card': '框的長寬比不像學生證（約 1.6 : 1），請重新框',
-    'invalid_card_box': '學生證的框不正確，請重新框',
+    'card_missing': '先在照片上標出學生證，才能估體積',
+    'card_box_shape_not_a_card': '標出的形狀不像學生證（長寬約 1.6 : 1），請拖動角落調整或重點',
+    'invalid_card_box': '學生證的位置不正確，請重新標',
     'no_shape_template': '這道菜還沒有形狀模板，請自己填重量',
     'density_missing': '密度表還沒有這道菜，只能估體積；可以自己填重量',
     'kcal_missing': '熱量表還沒有這道菜，只能顯示重量',

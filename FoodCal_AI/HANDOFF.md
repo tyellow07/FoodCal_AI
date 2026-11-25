@@ -59,6 +59,7 @@ python -B -m src.pipeline.diagnostic_demo
 - 2026-11-26 水果、飲料與更多食物（`docs/nutrition_model_v0.md` 第 7 節、`docs/rough_volume_estimation_v0.md` 第 8 節、`docs/multi_view_volume_v0.md` 第 7 節）：633 tests，633 passed，0 skipped（新增 9 項）；diagnostic_demo exit 0；`tools.benchmark_multi_view` 原有三種形狀的數字不變。只用合成資料與模擬場景。
 - 2026-11-26 校園菜單檢查與第二批 84 種食材（`docs/nutrition_model_v0.md` 第 8 節、`tests/test_campus_menu_coverage.py`）：635 tests，635 passed，0 skipped。
 - 2026-11-26 多種方式找學生證（`docs/rough_volume_estimation_v0.md` 第 9 節、`tests/test_card_finder.py`）：643 tests，643 passed，0 skipped。
+- 2026-11-26 點四個角標學生證（`docs/demo_ui_v0.md` 最後一節、`src/ui/corner_picker.py`）：645 tests，645 passed，0 skipped；Chrome 預覽腳本實際點過。
 
 ## 私有測試與缺席資源
 

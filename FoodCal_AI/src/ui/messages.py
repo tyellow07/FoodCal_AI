@@ -280,50 +280,53 @@ MESSAGES = {
                        '. Model {model} · {seconds} dtk · {tokens_in}/{tokens_out} token (kuota gratis)',
                        '. Mô hình {model} · {seconds} giây · {tokens_in}/{tokens_out} token (hạn mức miễn phí)'),
     'warn.card_shape': _(
-        '學生證是依外形推測的：請確認綠框框在學生證上，不對的話按「重框學生證」。',
+        '學生證是依外形推測的：請確認綠框框在學生證上，不對的話按「重新標學生證」。',
         'The student card was guessed from its shape: check that the green outline is on the card, and re-mark it '
         'if not.',
-        '学生証は形から推定しました。緑の枠が学生証に合っているか確認し、違えば「学生証を囲み直す」を押してください。',
+        '学生証は形から推定しました。緑の枠が学生証に合っているか確認し、違えば「学生証を指定し直す」を押してください。',
         '학생증을 모양으로 추정했습니다. 초록 테두리가 학생증에 맞는지 확인하고, 아니면 「학생증 다시 표시」를 누르세요.',
         'Kartu mahasiswa ditebak dari bentuknya: pastikan garis hijau ada di kartu, dan tandai ulang bila tidak.',
-        'Thẻ sinh viên được đoán từ hình dạng: hãy kiểm tra khung xanh lá nằm đúng trên thẻ, nếu sai thì khoanh lại.'),
+        'Thẻ sinh viên được đoán từ hình dạng: hãy kiểm tra khung xanh lá nằm đúng trên thẻ, nếu sai thì đánh dấu lại.'),
     'warn.no_card': _(
-        '沒有學生證就換算不了份量：按「框出學生證」在照片上框出來，或在下面直接填每道菜的克數。',
-        'Without the student card the portions cannot be scaled: press "Box the student card" to mark it on the '
-        'photo, or type the grams of each dish below.',
-        '学生証がないと分量を換算できません。「学生証を囲む」を押して写真の上で囲むか、下で各料理のグラム数を直接入力してください。',
-        '학생증이 없으면 양을 환산할 수 없습니다. "학생증 표시하기"를 눌러 사진에 표시하거나, 아래에 요리별 그램 수를 직접 입력하세요.',
-        'Tanpa kartu mahasiswa porsi tidak bisa dihitung: tekan "Tandai kartu mahasiswa" untuk menandainya di foto, '
-        'atau isi gram tiap hidangan di bawah.',
-        'Không có thẻ sinh viên thì không quy đổi được khẩu phần: bấm "Khoanh thẻ sinh viên" để đánh dấu trên ảnh, '
-        'hoặc nhập số gam của từng món bên dưới.'),
+        '沒有學生證就換算不了份量：按「標出學生證」在照片上點它的四個角，或在下面直接填每道菜的克數。',
+        'Without the student card the portions cannot be scaled: press "Mark the student card" and click its four '
+        'corners on the photo, or type the grams of each dish below.',
+        '学生証がないと分量を換算できません。「学生証を指定」を押して写真の上で四隅をクリックするか、下で各料理のグラム数を直接入力してください。',
+        '학생증이 없으면 양을 환산할 수 없습니다. "학생증 표시하기"를 눌러 사진에서 네 모서리를 클릭하거나, 아래에 요리별 그램 수를 직접 입력하세요.',
+        'Tanpa kartu mahasiswa porsi tidak bisa dihitung: tekan "Tandai kartu mahasiswa" lalu klik keempat sudutnya di '
+        'foto, atau isi gram tiap hidangan di bawah.',
+        'Không có thẻ sinh viên thì không quy đổi được khẩu phần: bấm "Đánh dấu thẻ sinh viên" rồi bấm bốn góc thẻ trên '
+        'ảnh, hoặc nhập số gam của từng món bên dưới.'),
     'toggle.boxes': _('顯示辨識框', 'Show boxes', '認識枠を表示', '인식 박스 표시', 'Tampilkan kotak', 'Hiện khung'),
-    'btn.card_box': _('框出學生證', 'Box the student card', '学生証を囲む', '학생증 표시하기', 'Tandai kartu mahasiswa',
-                      'Khoanh thẻ sinh viên'),
-    'btn.card_rebox': _('重框學生證', 'Re-box the student card', '学生証を囲み直す', '학생증 다시 표시', 'Tandai ulang kartu',
-                        'Khoanh lại thẻ'),
-    'btn.card_help': _('在照片上拖曳框住學生證，用來換算份量',
-                       'Drag a box around the student card on the photo; it sets the scale for portions',
-                       '写真の上でドラッグして学生証を囲みます。分量の換算に使います',
-                       '사진 위에서 드래그해 학생증을 표시합니다. 양을 환산하는 기준이 됩니다',
-                       'Seret kotak di sekeliling kartu mahasiswa pada foto; dipakai untuk menghitung porsi',
-                       'Kéo một khung quanh thẻ sinh viên trên ảnh; dùng để quy đổi khẩu phần'),
+    'btn.card_box': _('標出學生證', 'Mark the student card', '学生証を指定', '학생증 표시하기', 'Tandai kartu mahasiswa',
+                      'Đánh dấu thẻ sinh viên'),
+    'btn.card_rebox': _('重新標學生證', 'Re-mark the student card', '学生証を指定し直す', '학생증 다시 표시', 'Tandai ulang kartu',
+                        'Đánh dấu lại thẻ'),
+    'btn.card_help': _('在照片上點學生證的四個角（卡片斜放也可以），用來換算份量',
+                       'Click the four corners of the student card on the photo (a tilted card is fine); it sets the '
+                       'scale for portions',
+                       '写真の上で学生証の四隅をクリックします（斜めでも大丈夫）。分量の換算に使います',
+                       '사진에서 학생증의 네 모서리를 클릭하세요(비스듬해도 됩니다). 양을 환산하는 기준이 됩니다',
+                       'Klik keempat sudut kartu mahasiswa di foto (boleh miring); dipakai untuk menghitung porsi',
+                       'Bấm vào bốn góc thẻ sinh viên trên ảnh (thẻ nằm nghiêng cũng được); dùng để quy đổi khẩu phần'),
     'btn.add_dish': _('＋ 加一道菜', '+ Add a dish', '＋ 料理を追加', '+ 요리 추가', '+ Tambah hidangan', '+ Thêm món'),
     'btn.add_help': _('Gemini 漏掉的菜，自己在照片上框出來', 'Box a dish Gemini missed on the photo yourself',
                       'Gemini が見落とした料理を、写真の上で自分で囲みます', 'Gemini가 놓친 요리를 사진 위에 직접 표시합니다',
                       'Tandai sendiri di foto hidangan yang terlewat oleh Gemini', 'Tự khoanh trên ảnh món mà Gemini bỏ sót'),
-    'plate_mode.card': _('框學生證', 'Box the card', '学生証を囲む', '학생증 표시', 'Tandai kartu', 'Khoanh thẻ'),
+    'plate_mode.card': _('標學生證', 'Mark the card', '学生証を指定', '학생증 표시', 'Tandai kartu', 'Đánh dấu thẻ'),
     'plate_mode.add': _('加一道菜', 'Add a dish', '料理を追加', '요리 추가', 'Tambah hidangan', 'Thêm món'),
     'pick.card_lead': _(
-        '在照片上按住滑鼠拖曳，框住整張學生證（平放、邊緣大致和照片邊緣平行），放開就會套用。',
-        'Press and drag on the photo to box the whole student card (lying flat, edges roughly parallel to the photo '
-        'edges); it applies when you let go.',
-        '写真の上でマウスを押したままドラッグし、学生証全体を囲みます（平らに置き、辺が写真の縁とほぼ平行）。離すと反映されます。',
-        '사진 위에서 마우스를 누른 채 드래그해 학생증 전체를 표시하세요(평평하게, 가장자리가 사진 테두리와 거의 평행). 놓으면 바로 적용됩니다.',
-        'Tekan dan seret di foto untuk menandai seluruh kartu mahasiswa (datar, tepinya kira-kira sejajar tepi '
-        'foto); langsung diterapkan saat dilepas.',
-        'Nhấn giữ và kéo trên ảnh để khoanh trọn thẻ sinh viên (nằm phẳng, các cạnh gần song song với mép ảnh); thả '
-        'tay là áp dụng.'),
+        '在照片上點學生證的四個角（順序不拘，卡片斜放也可以），點完第四個就會套用。點偏了可以拖動角落，或按「重點」。',
+        'Click the four corners of the student card on the photo, in any order (a tilted card is fine); it applies '
+        'after the fourth. Drag a corner to adjust it, or press "Start over".',
+        '写真の上で学生証の四隅をクリックしてください（順序は自由、斜めでも可）。4 つ目で反映されます。ずれたら角をドラッグするか、「やり直す」を押してください。',
+        '사진에서 학생증의 네 모서리를 클릭하세요(순서 상관없음, 비스듬해도 됨). 네 번째를 찍으면 적용됩니다. 어긋나면 모서리를 끌거나 "다시 찍기"를 누르세요.',
+        'Klik keempat sudut kartu mahasiswa di foto, urutan bebas (kartu miring tidak apa-apa); diterapkan setelah '
+        'sudut keempat. Seret sudut untuk menggeser, atau tekan "Ulangi".',
+        'Bấm lần lượt bốn góc thẻ sinh viên trên ảnh, thứ tự tùy ý (thẻ nằm nghiêng cũng được); áp dụng sau góc thứ '
+        'tư. Kéo một góc để chỉnh, hoặc bấm "Làm lại".'),
+    'pick.corners_status': _('已點 {n}/4 個角', '{n} of 4 corners', '{n}/4 隅', '{n}/4 모서리', '{n} dari 4 sudut', '{n}/4 góc'),
+    'pick.corners_reset': _('重點', 'Start over', 'やり直す', '다시 찍기', 'Ulangi', 'Làm lại'),
     'pick.add_lead': _(
         '選菜名，再在照片上拖曳框住這道菜（碗裝的菜框整個碗口）。',
         'Pick the dish, then drag a box around it on the photo (for a bowl, box the whole rim).',
@@ -388,14 +391,14 @@ MESSAGES = {
 
     # ---- Nutrition panel -------------------------------------------------------------------------------------
     'nut.reason_no_card': _(
-        '還沒有學生證可以換算大小：按照片下面的「框出學生證」，或直接填每道菜的克數。',
-        'No student card to scale sizes yet: press "Box the student card" under the photo, or type the grams of each '
+        '還沒有學生證可以換算大小：按照片下面的「標出學生證」，或直接填每道菜的克數。',
+        'No student card to scale sizes yet: press "Mark the student card" under the photo, or type the grams of each '
         'dish.',
-        'サイズを換算する学生証がまだありません。写真の下の「学生証を囲む」を押すか、各料理のグラム数を直接入力してください。',
+        'サイズを換算する学生証がまだありません。写真の下の「学生証を指定」を押すか、各料理のグラム数を直接入力してください。',
         '크기를 환산할 학생증이 아직 없습니다. 사진 아래의 "학생증 표시하기"를 누르거나 요리별 그램 수를 직접 입력하세요.',
         'Belum ada kartu mahasiswa untuk menghitung ukuran: tekan "Tandai kartu mahasiswa" di bawah foto, atau isi '
         'gram tiap hidangan.',
-        'Chưa có thẻ sinh viên để quy đổi kích thước: bấm "Khoanh thẻ sinh viên" dưới ảnh, hoặc nhập số gam của từng món.'),
+        'Chưa có thẻ sinh viên để quy đổi kích thước: bấm "Đánh dấu thẻ sinh viên" dưới ảnh, hoặc nhập số gam của từng món.'),
     'nut.reason_missing': _(
         '還不能算合計：{names} 沒有熱量數字，請填克數或排除。',
         'No total yet: there is no calorie figure for {names}; type the grams or exclude it.',
@@ -517,10 +520,10 @@ MESSAGES = {
                             '위에서 찍은 사진과 함께 분석합니다', 'dianalisis bersama foto dari atas',
                             'sẽ phân tích cùng ảnh chụp từ trên xuống'),
     'side.note_pending': _('還沒分析', 'not analysed yet', 'まだ解析していません', '아직 분석 전', 'belum dianalisis', 'chưa phân tích'),
-    'side.note_need_card': _('要先框出側面照裡的學生證', 'box the student card in the side photo first',
-                             '先に側面写真の学生証を囲んでください', '먼저 측면 사진의 학생증을 표시하세요',
+    'side.note_need_card': _('要先標出側面照裡的學生證', 'mark the student card in the side photo first',
+                             '先に側面写真の学生証を指定してください', '먼저 측면 사진의 학생증을 표시하세요',
                              'tandai dulu kartu mahasiswa di foto samping',
-                             'cần khoanh thẻ sinh viên trong ảnh chụp nghiêng trước'),
+                             'cần đánh dấu thẻ sinh viên trong ảnh chụp nghiêng trước'),
     'side.note_unmeasured': _('沒有量到高度', 'no height measured', '高さを測れませんでした', '높이를 재지 못함',
                               'tinggi tidak terukur', 'không đo được chiều cao'),
     'btn.side_retake': _('換一張側面照', 'Choose another side photo', '別の側面写真にする', '다른 측면 사진 선택',
@@ -530,17 +533,17 @@ MESSAGES = {
     'chip.measured': _('已量高度', 'Heights measured', '高さ測定済み', '높이 측정됨', 'Tinggi terukur', 'Đã đo chiều cao'),
     'chip.optional': _('選填', 'Optional', '任意', '선택', 'Opsional', 'Không bắt buộc'),
     'side.info_need_card': _(
-        '沒有自動找到側面照裡的學生證：在側面照上拖曳框出學生證，再按「用這個框繼續」。',
-        'The student card in the side photo was not found automatically: drag a box around it on the side photo, then '
-        'press "Continue with this box".',
-        '側面写真の学生証を自動で見つけられませんでした。側面写真の上でドラッグして学生証を囲み、「この枠で続ける」を押してください。',
-        '측면 사진에서 학생증을 자동으로 찾지 못했습니다. 측면 사진 위에서 드래그해 학생증을 표시한 뒤 "이 박스로 계속"을 누르세요.',
-        'Kartu mahasiswa di foto samping tidak ditemukan otomatis: seret kotak di sekelilingnya pada foto samping, '
-        'lalu tekan "Lanjut dengan kotak ini".',
-        'Không tự tìm thấy thẻ sinh viên trong ảnh chụp nghiêng: kéo khung quanh thẻ trên ảnh chụp nghiêng, rồi bấm '
-        '"Tiếp tục với khung này".'),
-    'btn.side_card_go': _('用這個框繼續 →', 'Continue with this box →', 'この枠で続ける →', '이 박스로 계속 →',
-                          'Lanjut dengan kotak ini →', 'Tiếp tục với khung này →'),
+        '沒有自動找到側面照裡的學生證：在側面照上點學生證的四個角，再按「用這四個角繼續」。',
+        'The student card in the side photo was not found automatically: click its four corners on the side photo, '
+        'then press "Continue with these corners".',
+        '側面写真の学生証を自動で見つけられませんでした。側面写真の上で学生証の四隅をクリックし、「この四隅で続ける」を押してください。',
+        '측면 사진에서 학생증을 자동으로 찾지 못했습니다. 측면 사진에서 학생증의 네 모서리를 클릭한 뒤 "이 네 모서리로 계속"을 누르세요.',
+        'Kartu mahasiswa di foto samping tidak ditemukan otomatis: klik keempat sudutnya di foto samping, lalu tekan '
+        '"Lanjut dengan sudut ini".',
+        'Không tự tìm thấy thẻ sinh viên trong ảnh chụp nghiêng: bấm vào bốn góc thẻ trên ảnh chụp nghiêng, rồi bấm '
+        '"Tiếp tục với các góc này".'),
+    'btn.side_card_go': _('用這四個角繼續 →', 'Continue with these corners →', 'この四隅で続ける →', '이 네 모서리로 계속 →',
+                          'Lanjut dengan sudut ini →', 'Tiếp tục với các góc này →'),
     'btn.side_retry': _('再分析一次 →', 'Analyse again →', 'もう一度解析 →', '다시 분석 →', 'Analisis lagi →', 'Phân tích lại →'),
     'btn.side_go': _('分析側面照 →', 'Analyse the side photo →', '側面写真を解析 →', '측면 사진 분석 →', 'Analisis foto samping →',
                      'Phân tích ảnh chụp nghiêng →'),
@@ -559,9 +562,9 @@ MESSAGES = {
         'harus datar, sisi belakang di atas, sisi panjang menghadap Anda.',
         'Góc chụp ảnh nghiêng chưa đúng: hạ thấp người và chụp ở khoảng 15–35° so với mặt bàn; thẻ sinh viên phải '
         'nằm phẳng, mặt sau lên trên, cạnh dài hướng về bạn.'),
-    'err.side_bad_box': _('學生證的框不正確，請重框。', 'The student card box is not right; please box it again.',
-                      '学生証の枠が正しくありません。囲み直してください。', '학생증 박스가 올바르지 않습니다. 다시 표시하세요.',
-                      'Kotak kartu mahasiswa tidak tepat; tandai ulang.', 'Khung thẻ sinh viên chưa đúng; hãy khoanh lại.'),
+    'err.side_bad_box': _('學生證的位置不正確，請重新標。', 'The student card marking is not right; please mark it again.',
+                      '学生証の指定が正しくありません。指定し直してください。', '학생증 표시가 올바르지 않습니다. 다시 표시하세요.',
+                      'Tanda kartu mahasiswa tidak tepat; tandai ulang.', 'Đánh dấu thẻ sinh viên chưa đúng; hãy đánh dấu lại.'),
     'side.caption': _(
         '相機仰角約 {deg}°（建議 15–35°）· 學生證{card}，已在送出前塗掉 · 模型 {model} · {seconds} 秒',
         'Camera angle about {deg}° (15–35° recommended) · student card {card}, painted over before sending · model '
@@ -1228,18 +1231,19 @@ MESSAGES = {
     'nutrient.iron_mg': _o('Iron', '鉄', '철', 'Zat besi', 'Sắt'),
 
     # portions.NOTES
-    'note.card_missing': _o('Box the student card on the photo first to estimate the volume',
-                            '体積を推定するには、まず写真の上で学生証を囲んでください', '부피를 추정하려면 먼저 사진에서 학생증을 표시하세요',
+    'note.card_missing': _o('Mark the student card on the photo first to estimate the volume',
+                            '体積を推定するには、まず写真の上で学生証を指定してください', '부피를 추정하려면 먼저 사진에서 학생증을 표시하세요',
                             'Tandai dulu kartu mahasiswa di foto untuk memperkirakan volume',
-                            'Hãy khoanh thẻ sinh viên trên ảnh trước để ước tính thể tích'),
+                            'Hãy đánh dấu thẻ sinh viên trên ảnh trước để ước tính thể tích'),
     'note.card_box_shape_not_a_card': _o(
-        'The box does not have the shape of a student card (about 1.6 : 1); please box it again',
-        '枠の縦横比が学生証（約 1.6 : 1）と違います。囲み直してください', '박스의 가로세로 비율이 학생증(약 1.6 : 1)과 다릅니다. 다시 표시하세요',
-        'Rasio kotak tidak seperti kartu mahasiswa (sekitar 1,6 : 1); tandai ulang',
-        'Tỉ lệ khung không giống thẻ sinh viên (khoảng 1,6 : 1); hãy khoanh lại'),
-    'note.invalid_card_box': _o('The student card box is not right; please box it again', '学生証の枠が正しくありません。囲み直してください',
-                                '학생증 박스가 올바르지 않습니다. 다시 표시하세요', 'Kotak kartu mahasiswa tidak tepat; tandai ulang',
-                                'Khung thẻ sinh viên chưa đúng; hãy khoanh lại'),
+        'The marked shape is not a student card (about 1.6 : 1); drag a corner to adjust it or start over',
+        '指定した形が学生証（約 1.6 : 1）と違います。角をドラッグして調整するか、やり直してください',
+        '표시한 모양이 학생증(약 1.6 : 1)과 다릅니다. 모서리를 끌어 조정하거나 다시 찍으세요',
+        'Bentuk yang ditandai tidak seperti kartu mahasiswa (sekitar 1,6 : 1); seret sudut untuk menyesuaikan atau ulangi',
+        'Hình đã đánh dấu không giống thẻ sinh viên (khoảng 1,6 : 1); kéo một góc để chỉnh hoặc làm lại'),
+    'note.invalid_card_box': _o('The student card marking is not right; please mark it again', '学生証の指定が正しくありません。指定し直してください',
+                                '학생증 표시가 올바르지 않습니다. 다시 표시하세요', 'Tanda kartu mahasiswa tidak tepat; tandai ulang',
+                                'Đánh dấu thẻ sinh viên chưa đúng; hãy đánh dấu lại'),
     'note.no_shape_template': _o('No shape template for this dish yet; please type its weight',
                                  'この料理にはまだ形状テンプレートがありません。重さを入力してください',
                                  '이 요리는 아직 모양 템플릿이 없습니다. 무게를 직접 입력하세요',

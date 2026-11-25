@@ -25,6 +25,7 @@ from src.ui.explain import dish_name, food_name, reason_text, summarize
 from src.ui.i18n import DEFAULT, FALLBACK, LANGUAGES, NOTES_LANGUAGE, from_locale, join, known, language, set_language, t
 from src.ui.portions import note_text, nutrition_of, portion_rows, read_food_reference_csv
 from src.portion.card_locator import find_card, load_card_designs, load_card_reference
+from src.ui.corner_picker import corner_picker
 from src.portion.multi_view import side_view_geometry
 from src.portion.nutrition_model import (COOKING_METHODS, INGREDIENTS, add_nutrients, empty_nutrients, macros_for_grams,
                                          nutrients_for_grams)
@@ -397,10 +398,14 @@ def result_photo(result, image, items):
             change_photo()
 
 
+def corner_labels():
+    return {'status': t('pick.corners_status'), 'reset': t('pick.corners_reset')}
+
+
 def card_picker(image):
-    """The photo as a box picker for the student card; a usable box is used at once and the photo comes back."""
+    """The photo to click the student card's four corners on; a card-shaped outline is used at once."""
     st.markdown(theme.pick_intro(t('btn.card_box'), t('pick.card_lead')), unsafe_allow_html=True)
-    picked = box_picker(image, key='card_picker_' + input_tag(), name='card')
+    picked = corner_picker(image, key='card_corners_' + input_tag(), labels=corner_labels())
     if picked is not None and picked != st.session_state.get('card_box'):
         try:
             cm_per_px(picked)
@@ -637,7 +642,7 @@ def side_section(items, rows, key):
         st.error(error_text(side['error']))
     if side.get('need_card') and side.get('image') is not None:
         st.info(t('side.info_need_card'))
-        box = box_picker(side['image'], key='side_card_' + tag, name='card')
+        box = corner_picker(side['image'], key='side_card_' + tag, labels=corner_labels(), side=True)
         if st.button(t('btn.side_card_go'), type='primary', disabled=box is None or not (consent and key),
                      key='side_card_go_' + tag):
             run_side_view(side['image'], box, 'manual', items, key)
