@@ -34,6 +34,10 @@ TOTAL_BUDGET_S = 75
 _FLASH = re.compile(r'gemini-(\d+(?:\.\d+)?)-flash')
 _LITE = re.compile(r'gemini-(\d+(?:\.\d+)?)-flash-lite')
 _ORDER_CACHE = {}
+# Gemini refuses a schema whose enums branch too much (400 "too much branching for serving"): on 2026-11-26 the
+# 226-key ingredient enum broke every request. So ingredient keys are listed in the instructions and checked on
+# our side (ingredient_key), and every enum left in the schemas stays at most this long (tested).
+MAX_ENUM = 64
 _LAST_GOOD = {}  # endpoint cache key -> model that answered last time; tried first next time
 
 SCHEMA = {
@@ -55,7 +59,7 @@ SCHEMA = {
                 'confidence': {'type': 'string', 'enum': list(CONFIDENCE)},
                 'components': {'type': 'array', 'items': {
                     'type': 'object',
-                    'properties': {'ingredient': {'type': 'string', 'enum': sorted(INGREDIENTS) + ['other']},
+                    'properties': {'ingredient': {'type': 'string'},  # a key from the instructions; see MAX_ENUM
                                    'share_percent': {'type': 'integer'}},
                     'required': ['ingredient', 'share_percent']}},
                 'cooking_method': {'type': 'string', 'enum': sorted(COOKING_METHODS)},
@@ -89,8 +93,8 @@ For every distinct food item you can see, report:
   雞肉, 薑絲).
 - confidence: high, medium or low.
 - components: what the item is made of, judged from what you see, as ingredient keys with your estimate of each
-  one's share of the item's weight in percent (about 100 in total; count the broth of soups). Use "other" for
-  anything not listed. For a drink, count the ice cubes you can see as ice and the pearls as tapioca_pearls; a shop
+  one's share of the item's weight in percent (about 100 in total; count the broth of soups). Write each key exactly
+  as listed below; use "other" for anything not listed. For a drink, count the ice cubes you can see as ice and the pearls as tapioca_pearls; a shop
   milk tea is milk_tea unless it is labelled 鮮奶 (fresh milk). Pick a meat's cut or organ when you can tell it
   (pork_jowl, beef_brisket, chicken_gizzard), otherwise the plain chicken, pork, beef or duck. Likewise pick the
   fish or seafood when you can tell it (tilapia, saury, salmon_sashimi, oyster, crab_stick), otherwise the plain
@@ -211,6 +215,15 @@ def _parse_json(response):
         raise RecognitionError('gemini_answer_unreadable') from None
 
 
+def ingredient_key(text):
+    """An ingredient key as Gemini wrote it -> the table's key ('Pork Belly' -> pork_belly), else 'other'.
+
+    The schema cannot hold the ingredient keys as an enum (see MAX_ENUM), so this check replaces it.
+    """
+    key = re.sub(r'[\s\-]+', '_', str(text or '').strip().lower())
+    return key if key in INGREDIENTS else 'other'
+
+
 def _answer_from(response):
     answer = _parse_json(response)
     if not isinstance(answer, dict) or not isinstance(answer.get('foods'), list):
@@ -221,6 +234,11 @@ def _answer_from(response):
         if not (isinstance(box, list) and len(box) == 4 and all(isinstance(v, (int, float)) for v in box)):
             continue
         y0, x0, y1, x1 = box
+        parts = food.get('components')
+        if isinstance(parts, list):
+            parts = [{**part, 'ingredient': ingredient_key(part.get('ingredient'))} for part in parts
+                     if isinstance(part, dict)]
+            food = {**food, 'components': parts}
         foods.append({**food, 'box': {'x_min': x0, 'y_min': y0, 'x_max': x1, 'y_max': y1}})
     return {'foods': foods, 'notes': answer.get('notes', '')}
 

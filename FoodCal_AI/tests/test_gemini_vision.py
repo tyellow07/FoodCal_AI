@@ -12,6 +12,7 @@ from PIL import Image
 from src.detection import gemini_vision as gv
 from src.detection.claude_vision import MAX_SIDE, RecognitionError
 from src.detection.gemini_vision import SCHEMA, mask_card, model_order, recognize_foods_gemini
+from src.portion.nutrition_model import INGREDIENTS
 
 MODELS = ('gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite')
 
@@ -156,6 +157,33 @@ class GeminiVisionTests(unittest.TestCase):
         self.assertEqual(item['components'], [('cooked_rice', 80), ('braised_pork_mince', 20)])
         self.assertEqual(item['cooking_method'], 'braised')
         self.assertIn('components', SCHEMA['properties']['foods']['items']['required'])
+
+    def test_schemas_stay_small_enough_for_gemini(self):
+        """A long enum makes Gemini refuse every request (400 "too much branching"), whatever the photo."""
+        def enums(node):
+            if isinstance(node, dict):
+                if 'enum' in node:
+                    yield node['enum']
+                for value in node.values():
+                    yield from enums(value)
+            elif isinstance(node, list):
+                for value in node:
+                    yield from enums(value)
+        for schema in (SCHEMA, gv.SIDE_SCHEMA):
+            for values in enums(schema):
+                self.assertLessEqual(len(values), gv.MAX_ENUM, values[:5])
+        prompt = gv.instructions()
+        for key in INGREDIENTS:  # no enum, so every key must be in the instructions instead
+            self.assertIn(f'  {key} = ', prompt)
+
+    def test_ingredient_keys_are_checked_on_our_side(self):
+        dish = dict(food(name_zh='滷肉飯', name_en='Braised pork rice', key='braised_pork_over_rice', container='bowl'),
+                    components=[{'ingredient': 'Cooked Rice', 'share_percent': 70},
+                                {'ingredient': 'braised-pork-mince', 'share_percent': 20},
+                                {'ingredient': 'unicorn_steak', 'share_percent': 10}, 'not a component'],
+                    cooking_method='braised')
+        [item] = run(FakeClient(reply(dish)), self.image)['items']
+        self.assertEqual(item['components'], [('cooked_rice', 70), ('braised_pork_mince', 20), ('other', 10)])
 
     def test_malformed_boxes_are_skipped_not_fatal(self):
         bad = dict(food(), box_2d=[1, 2, 3])
