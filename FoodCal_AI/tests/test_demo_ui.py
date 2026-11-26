@@ -383,6 +383,21 @@ class StreamlitOfflineTests(unittest.TestCase):
         self.assertTrue(any('標出學生證' in w.value for w in app.warning))
         self.assertFalse(any('修正工具' in m.value for m in app.markdown))
 
+    def test_a_dish_can_be_skipped_for_now_and_added_back(self):
+        app = self.photo_app()
+        app.checkbox(key='gemini_consent').check().run()
+        self.recognised(app).run()
+        tag = str(app.session_state['input_key'][0])[:12]
+        box = app.checkbox(key=f'skip_{tag}_G1')
+        self.assertEqual(box.label, '暫時取消')
+        box.check().run()
+        self.assertFalse(app.exception)
+        self.assertEqual(app.checkbox(key=f'skip_{tag}_G1').label, '已暫時取消「白飯」（把勾拿掉就加回來）')
+        self.assertFalse(any('class="fc-kcal"' in m.value for m in app.markdown))  # no dish left to count
+        app.checkbox(key=f'skip_{tag}_G1').uncheck().run()
+        self.assertEqual(app.checkbox(key=f'skip_{tag}_G1').label, '暫時取消')
+        self.assertTrue(any('class="fc-kcal"' in m.value for m in app.markdown))
+
     def test_hand_added_dish_has_its_own_remove_button(self):
         app = self.photo_app()
         app.checkbox(key='gemini_consent').check().run()
