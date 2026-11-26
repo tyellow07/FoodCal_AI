@@ -231,7 +231,7 @@ MESSAGES = {
         'sekitar 5–30 detik lebih lama).',
         'Ảnh chụp từ trên xuống được nhận diện trước, sau đó ảnh chụp nghiêng dùng để đo chiều cao (gọi Gemini thêm '
         'một lần, lâu hơn khoảng 5–30 giây).'),
-    'btn.change_photo': _('換一張照片', 'Choose another photo', '別の写真にする', '다른 사진 선택', 'Ganti foto', 'Đổi ảnh khác'),
+    'btn.change_photo': _('換一張照片', 'Change photo', '別の写真にする', '다른 사진 선택', 'Ganti foto', 'Đổi ảnh khác'),
     'btn.cancel': _('取消', 'Cancel', 'キャンセル', '취소', 'Batal', 'Hủy'),
     'btn.remove': _('移除', 'Remove', '削除', '삭제', 'Hapus', 'Gỡ'),
     'spin.card': _('找學生證中…', 'Looking for the student card…', '学生証を探しています…', '학생증을 찾는 중…',
@@ -283,7 +283,7 @@ MESSAGES = {
         '學生證是依外形推測的：請確認綠框框在學生證上，不對的話按「重新標學生證」。',
         'The student card was guessed from its shape: check that the green outline is on the card, and re-mark it '
         'if not.',
-        '学生証は形から推定しました。緑の枠が学生証に合っているか確認し、違えば「学生証を指定し直す」を押してください。',
+        '学生証は形から推定しました。緑の枠が学生証に合っているか確認し、違えば「学生証を再指定」を押してください。',
         '학생증을 모양으로 추정했습니다. 초록 테두리가 학생증에 맞는지 확인하고, 아니면 「학생증 다시 표시」를 누르세요.',
         'Kartu mahasiswa ditebak dari bentuknya: pastikan garis hijau ada di kartu, dan tandai ulang bila tidak.',
         'Thẻ sinh viên được đoán từ hình dạng: hãy kiểm tra khung xanh lá nằm đúng trên thẻ, nếu sai thì đánh dấu lại.'),
@@ -300,7 +300,7 @@ MESSAGES = {
     'toggle.boxes': _('顯示辨識框', 'Show boxes', '認識枠を表示', '인식 박스 표시', 'Tampilkan kotak', 'Hiện khung'),
     'btn.card_box': _('標出學生證', 'Mark the student card', '学生証を指定', '학생증 표시하기', 'Tandai kartu mahasiswa',
                       'Đánh dấu thẻ sinh viên'),
-    'btn.card_rebox': _('重新標學生證', 'Re-mark the student card', '学生証を指定し直す', '학생증 다시 표시', 'Tandai ulang kartu',
+    'btn.card_rebox': _('重新標學生證', 'Re-mark the card', '学生証を再指定', '학생증 다시 표시', 'Tandai ulang kartu',
                         'Đánh dấu lại thẻ'),
     'btn.card_help': _('在照片上點學生證的四個角（卡片斜放也可以），用來換算份量',
                        'Click the four corners of the student card on the photo (a tilted card is fine); it sets the '

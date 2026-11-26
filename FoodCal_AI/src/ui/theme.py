@@ -93,10 +93,18 @@ CSS = """
 .st-key-fc_side_staged [data-testid="stImage"] img { height:84px; object-fit:cover; border-radius:8px; }
 /* Language menu: pinned to the top right of the window, in Streamlit's header bar, so it stays in view on every
    step and while scrolling. A globe drawn in front of the chosen language marks what it is. */
-.st-key-fc_lang { position:fixed; top:.6rem; right:3.4rem; width:11.5rem !important; z-index:999991; }
+.st-key-fc_lang { position:fixed; top:.6rem; right:3.4rem; width:13rem !important; z-index:999991; }
 .st-key-fc_lang [data-testid="stSelectbox"] [role="group"] { padding-left:1.8rem; background-repeat:no-repeat;
   background-position:.65rem center;
   background-size:16px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233d6b4f' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18'/%3E%3Cpath d='M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18'/%3E%3C/svg%3E"); }
+/* Buttons share narrow rows (four under the photo on a wide screen, two on a phone): a long label in English,
+   Indonesian or Japanese wraps onto a second line instead of ending in "…". */
+[data-testid^="stBaseButton"] [data-testid="stMarkdownContainer"],
+[data-testid^="stBaseButton"] [data-testid="stMarkdownContainer"] p { white-space:normal; overflow:visible;
+  text-overflow:clip; text-align:center; line-height:1.3; }
+[data-testid="stCheckbox"] [data-testid="stWidgetLabel"] [data-testid="stMarkdownContainer"],
+[data-testid="stCheckbox"] [data-testid="stWidgetLabel"] [data-testid="stMarkdownContainer"] p { white-space:normal;
+  overflow:visible; text-overflow:clip; line-height:1.3; }
 .fc-brand { display:flex; justify-content:space-between; align-items:center; color:var(--fc-muted);
             font-size:.78rem; letter-spacing:.14em; text-transform:uppercase; font-weight:600; }
 .fc-badge { background:#1f2a24; color:#fff; border-radius:6px; padding:2px 8px; font-size:.7rem; letter-spacing:.08em; }
@@ -155,7 +163,7 @@ CSS = """
 /* Phones: the answer first, compact chrome, thumbnails side by side, no iOS zoom on number boxes. */
 @media (max-width: 640px) {
   .block-container { padding: 2.8rem .85rem 2rem !important; }
-  .st-key-fc_lang { top:.5rem; right:3rem; width:9.8rem !important; }
+  .st-key-fc_lang { top:.5rem; right:3rem; width:12.6rem !important; }
   .fc-brand { font-size:.6rem; letter-spacing:.08em; }
   .fc-badge { display:none; }
   .fc-title { font-size:1.55rem; }
