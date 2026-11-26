@@ -133,6 +133,11 @@ CSS = """
 .fc-name { font-weight:650; color:var(--fc-ink); font-size:1.02rem; }
 .fc-meta { color:var(--fc-muted); font-size:.78rem; line-height:1.35; }
 .fc-hidden { color:#9a6b2f; font-size:.78rem; }
+.fc-recipes { border-left:3px solid #e2c99e; background:#fbf6ee; border-radius:0 10px 10px 0; padding:.55rem .8rem;
+              margin:.1rem 0 .9rem; }
+.fc-recipes-head { color:#9a6b2f; font-size:.74rem; font-weight:650; line-height:1.35; margin-bottom:.3rem; }
+.fc-recipe { color:var(--fc-ink); font-size:.84rem; line-height:1.4; margin:.15rem 0; }
+.fc-recipe b { font-weight:650; margin-right:.35rem; }
 .fc-panel { background:var(--fc-green-soft); border:1px solid #d5e0cf; border-radius:16px; padding:1.1rem 1.2rem; }
 .fc-kcal { font-size:3.3rem; font-weight:600; color:var(--fc-ink); line-height:1; }
 .fc-kcal small { font-size:.85rem; color:var(--fc-muted); font-weight:500; margin-left:.3rem; }
@@ -312,6 +317,16 @@ def side_staged(name, note):
 def card_head(label, chip=None):
     chip_html = f'<span class="fc-chip">{escape(chip)}</span>' if chip else ''
     return f'<div class="fc-head"><span class="fc-label">{escape(label)}</span>{chip_html}</div>'
+
+
+def recipe_list(recipes):
+    """Each dish's usual recipe, under the dish names: where the cooking methods (the hidden oil and sugar) come from.
+
+    recipes: [(dish name, recipe sentence)]. Set apart in the colour of the hidden kcal, because a recipe explains
+    hidden calories but is not visual proof.
+    """
+    lines = ''.join(f'<div class="fc-recipe"><b>{escape(name)}</b>{escape(recipe)}</div>' for name, recipe in recipes)
+    return f'<div class="fc-recipes"><div class="fc-recipes-head">{escape(t("recog.recipes_head"))}</div>{lines}</div>'
 
 
 def item_header(index, name, meta, hidden=None):

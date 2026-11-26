@@ -13,7 +13,8 @@ from unittest import mock
 from PIL import Image
 
 from src.evaluation import recognition_metrics, score_recognition
-from src.evaluation.recognition_metrics import JUDGEMENT_COLUMNS, LABEL_COLUMNS, PREDICTIONS_SCHEMA, normalise_name
+from src.evaluation.recognition_metrics import (JUDGEMENT_COLUMNS, LABEL_COLUMNS, PREDICTIONS_SCHEMA, normalise_name,
+                                               predicted_dishes)
 from tools import evaluate_recognition
 from tools.meal_workspace import write_csv
 from tools.run_gemini_batch import load_predictions, photo_files, run_batch
@@ -128,6 +129,24 @@ class NameMatching(unittest.TestCase):
         turned = answers({'m1': [item('G1', '白飯', (0, 0, 500, 500))]}, size=(750, 1000))
         with self.assertRaisesRegex(ValueError, 'image_size_mismatch'):
             recognition_metrics(labels, turned)
+
+    def test_ingredient_boxes_of_one_dish_are_joined_back_into_the_dish(self):
+        """Gemini boxes each ingredient (rice, then the egg on it); the dish is scored as one, around both boxes."""
+        dish = {'id': 'D1', 'names': {'zh-TW': '荷包蛋飯', 'en': 'Fried egg rice'}, 'display_name': '荷包蛋飯',
+                'recipe': '白飯上放一顆煎蛋'}
+        rice = dict(item('G1', '白飯', (100, 100, 500, 500), components=[('cooked_rice', 100)]), dish=dish)
+        egg = dict(item('G2', '荷包蛋', (200, 150, 400, 300), components=[('egg', 100)], confidence='medium'),
+                   dish=dish)
+        tea = item('G3', '紅茶', (600, 100, 800, 400), components=[('tea', 100)])  # saved before dishes: as it is
+        [joined, alone] = predicted_dishes(
+            {'width': 1000, 'height': 800, 'items': [rice, egg, tea]}, size=(Decimal(1000), Decimal(800)))
+        self.assertEqual((joined['detection_id'], joined['name'], joined['box'], joined['confidence']),
+                         ('D1', '荷包蛋飯', [100, 100, 500, 500], 'medium'))
+        self.assertEqual(joined['ingredients'], {'cooked_rice', 'egg'})
+        self.assertNotIn(normalise_name('白飯'), joined['names'])  # an ingredient's name is not the dish's
+        self.assertEqual((alone['detection_id'], alone['name']), ('G3', '紅茶'))
+        labels = [label('m1', '1', '荷包蛋飯', (100, 100, 500, 500))]
+        self.assertEqual(recognition_metrics(labels, answers({'m1': [rice, egg]}))['correct'], 1)
 
     def test_ingredients_are_compared_on_correctly_named_dishes(self):
         labels = [label('m1', '1', '炒高麗菜', (0, 0, 400, 400), ingredients='leafy_vegetable;carrot')]

@@ -190,15 +190,21 @@ MESSAGES = {
     'start.title': _('開始辨識這張照片', 'Recognise this photo', 'この写真を認識する', '이 사진 인식하기', 'Kenali foto ini',
                      'Nhận diện ảnh này'),
     'start.lead': _(
-        'Gemini 會列出每道菜、看得到的食材和烹調方式，通常 5–30 秒。辨識完，這裡會換成熱量和營養素。',
-        'Gemini lists each dish, its visible ingredients and how it was cooked, usually in 5–30 s. Afterwards, '
-        'calories and nutrients appear here.',
-        'Gemini が料理ごとに見える食材と調理法を挙げます（通常 5〜30 秒）。認識が終わると、ここにカロリーと栄養素が表示されます。',
-        'Gemini가 요리마다 보이는 재료와 조리법을 정리합니다(보통 5–30초). 인식이 끝나면 여기에 칼로리와 영양소가 표시됩니다.',
-        'Gemini mencantumkan tiap hidangan, bahan yang terlihat, dan cara memasaknya, biasanya 5–30 detik. Setelah '
-        'itu, kalori dan zat gizi muncul di sini.',
-        'Gemini liệt kê từng món, nguyên liệu nhìn thấy và cách nấu, thường mất 5–30 giây. Xong rồi, calo và chất '
-        'dinh dưỡng sẽ hiện ở đây.'),
+        'Gemini 會把每道菜拆成看得到的食材（白飯、雞肉、豆腐、蛋…）分別框出來，再依這道菜的食譜判斷料理方式，通常 5–30 秒。'
+        '辨識完，這裡會換成熱量和營養素。',
+        "Gemini splits each dish into the ingredients it can see (rice, chicken, tofu, egg…), boxes each one, and takes "
+        "the cooking method from the dish's usual recipe, usually in 5–30 s. Afterwards, calories and nutrients appear "
+        'here.',
+        'Gemini が料理を見える食材（ごはん、鶏肉、豆腐、卵…）に分けてそれぞれ枠で囲み、その料理の一般的なレシピから調理法を'
+        '判断します（通常 5〜30 秒）。認識が終わると、ここにカロリーと栄養素が表示されます。',
+        'Gemini가 요리를 보이는 재료(밥, 닭고기, 두부, 달걀…)로 나눠 각각 상자로 표시하고, 그 요리의 일반적인 레시피로 '
+        '조리법을 판단합니다(보통 5–30초). 인식이 끝나면 여기에 칼로리와 영양소가 표시됩니다.',
+        'Gemini memecah tiap hidangan menjadi bahan yang terlihat (nasi, ayam, tahu, telur…), memberi kotak pada '
+        'masing-masing, lalu menentukan cara memasaknya dari resep umum hidangan itu, biasanya 5–30 detik. Setelah itu, '
+        'kalori dan zat gizi muncul di sini.',
+        'Gemini tách từng món thành các nguyên liệu nhìn thấy (cơm, gà, đậu phụ, trứng…), khoanh từng thứ, rồi suy ra '
+        'cách nấu từ công thức thông thường của món đó, thường mất 5–30 giây. Xong rồi, calo và chất dinh dưỡng sẽ hiện '
+        'ở đây.'),
     'consent.label': _('我了解並同意把照片傳給 Google Gemini 辨識',
                        'I understand and agree to send the photo to Google Gemini for recognition',
                        '写真を Google Gemini に送って認識することを理解し、同意します',
@@ -393,6 +399,16 @@ MESSAGES = {
                            'Gemini が写真から認識しました。枠の位置はおおよそです。', 'Gemini가 사진을 보고 인식했습니다. 박스 위치는 대략적입니다.',
                            'Gemini mengenali dari foto; posisi kotak hanya perkiraan.',
                            'Gemini nhận diện từ ảnh; vị trí khung chỉ là tương đối.'),
+    'recog.recipes_head': _(
+        '料理方式依食譜推測：看不到的油、糖從這裡估，不是照片上看到的。',
+        'Cooking methods come from usual recipes: the unseen oil and sugar are estimated from them, not seen in the photo.',
+        '調理法は一般的なレシピからの推測です。見えない油・砂糖はここから見積もったもので、写真に写っているものではありません。',
+        '조리법은 일반적인 레시피에서 추정했습니다. 보이지 않는 기름·설탕은 여기서 추정한 것이며 사진에서 본 것이 아닙니다.',
+        'Cara memasak diperkirakan dari resep umum: minyak dan gula yang tak terlihat dihitung dari sini, bukan dari foto.',
+        'Cách nấu được suy ra từ công thức thông thường: dầu, đường không nhìn thấy được ước tính từ đây, không phải '
+        'thấy trong ảnh.'),
+    'meta.in_dish': _('屬於{dish}', 'part of {dish}', '{dish}の一部', '{dish}의 일부', 'bagian dari {dish}',
+                      'thuộc món {dish}'),
     'recog.hidden': _('＋ 看不到的油、糖約 {kcal} kcal（依食譜估計）', '+ about {kcal} kcal of unseen oil and sugar (recipe estimate)',
                       '＋ 見えない油・砂糖 約 {kcal} kcal（レシピから推定）', '+ 보이지 않는 기름·설탕 약 {kcal} kcal(레시피 기반 추정)',
                       '+ sekitar {kcal} kcal minyak dan gula yang tak terlihat (perkiraan dari resep)',
