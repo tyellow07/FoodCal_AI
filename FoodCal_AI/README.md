@@ -82,7 +82,7 @@ UI 預設使用合成展示，服務位址以啟動輸出為準。Tk GUI 需要 
 
 ## 驗證與分享界線
 
-本次離線測試共 398 項：386 passed、0 failures、0 errors、12 skipped。4 項缺 Streamlit；8 項無可用 Tcl/Tk 初始化環境。已執行的測試包含 19 項新增 AI 草稿邏輯測試；GUI 互動測試未算通過。完整範圍及未攜入的私有資料測試見 `HANDOFF.md`。2026-11-11 在 macOS／Python 3.12.0 修正三個測試檔的可攜性問題後，398 項全數通過、0 skipped（含 Streamlit 4 項與 Tk 8 項）；加入 Portion Contract v0 後為 422 項、再加入標註跨程序鎖後為 431 項、接入份量／熱量診斷輸出後為 435 項、2026-11-13 加入照片食材來源審查 v0 後為 465 項、2026-11-19 增補後為 491 項，皆全數通過（0 skipped），詳見 `HANDOFF.md`。
+目前（2026-11-26，main）：`.venv/bin/python -B -m unittest discover -s tests` 共 666 項，全部通過、0 skipped（macOS、Python 3.12.0）；`python -B -m src.pipeline.diagnostic_demo` exit 0。每次增補的測試數記在 `HANDOFF.md`「離線驗證」。以下是 2026-11-08 交接時的原始紀錄：本次離線測試共 398 項：386 passed、0 failures、0 errors、12 skipped。4 項缺 Streamlit；8 項無可用 Tcl/Tk 初始化環境。已執行的測試包含 19 項新增 AI 草稿邏輯測試；GUI 互動測試未算通過。完整範圍及未攜入的私有資料測試見 `HANDOFF.md`。2026-11-11 在 macOS／Python 3.12.0 修正三個測試檔的可攜性問題後，398 項全數通過、0 skipped（含 Streamlit 4 項與 Tk 8 項）；加入 Portion Contract v0 後為 422 項、再加入標註跨程序鎖後為 431 項、接入份量／熱量診斷輸出後為 435 項、2026-11-13 加入照片食材來源審查 v0 後為 465 項、2026-11-19 增補後為 491 項，皆全數通過（0 skipped），詳見 `HANDOFF.md`。
 
 不包含 data/runs/work、圖片、模型權重、人工 revisions、私人 manifest、TFDA 營養原件、模型原始輸出、API Keys、虛擬環境或 Codex sessions。資料與權重須另行取得合法使用權；此目錄不是完整私人工作資料備份。
 

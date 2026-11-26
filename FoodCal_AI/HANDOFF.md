@@ -63,6 +63,7 @@ python -B -m src.pipeline.diagnostic_demo
 - 2026-11-26 肉類補齊 33 種（`docs/nutrition_model_v0.md` 第 9 節）：647 tests，647 passed，0 skipped。
 - 2026-11-26 海鮮 27 種（`docs/nutrition_model_v0.md` 第 10 節）：649 tests，649 passed，0 skipped；diagnostic_demo exit 0。
 - 2026-11-26 菜色辨識評估（`docs/recognition_evaluation_v0.md`、`tools/run_gemini_batch.py`、`tools/evaluate_recognition.py`、`tests/test_recognition_eval.py`）：666 tests，666 passed，0 skipped（新增 17 項）；只用合成標註、合成回答與合成照片，沒有送任何照片給 Gemini。
+- 2026-11-26 六種語言 × 五種寬度（360–1280 px）檢查，修正被截掉的語言選單、按鈕與開關文字（`docs/demo_ui_v0.md` 最後一節）：666 tests，666 passed，0 skipped；diagnostic_demo exit 0；src/ 涵蓋率 91.4%。
 
 ## 私有測試與缺席資源
 
@@ -99,14 +100,15 @@ python -B -m src.pipeline.diagnostic_demo
 - `.venv` 已安裝 `requirements-model.txt`（ultralytics 8.4.174、torch 2.15.0，原有鎖定版本不變），Ultralytics 匿名統計已關閉（`yolo settings sync=False`）。
 - 真實推論在網頁與 `tools/measure_latency.py` 跑通：CPU 首次載入約 1.5 秒，之後 p95 0.045 秒；只用過合成測試圖，尚未用校園餐照片。
 
-## 2026-11-19 之後的優先順序
+## 2026-11-26 之後的優先順序
 
-完整評分表、目前自評（約 21.5／100）與「分數從哪裡來」見 `docs/project_rubric_v0.md`。測試涵蓋率用 `python -B -m tools.measure_coverage`（標準函式庫，src/ 約 87.4%）。
-
+完整評分表、目前自評（2026-11-26 約 23.5／100）與「分數從哪裡來」見 `docs/project_rubric_v0.md` 第 9、10 節。測試涵蓋率用 `python -B -m tools.measure_coverage`（標準函式庫，src/ 約 91.4%）。網頁辨識已改用 Gemini（`docs/gemini_vision_v0.md`），原本 YOLO 15 類不夠用的問題不再擋住展示。
 
 1. 收真實資料（不能用程式取代）：依 `docs/meal_evaluation_protocol_v0.md` 建 ≥ 30 餐秤重測試集，另依 `docs/portion_calibration_protocol_v0.md`
    在不同天收校準樣本（白飯、麵、煎蛋各 ≥ 30 筆）。兩者不能混用。
-2. 團隊決策：照片審查第 10 節八項、TFDA 條款核對者、校準核可者與份量複核者。
-3. 辨識類別：現有 15 類是台灣小吃，三份校園菜單（漢堡、吐司、丼飯、便當）大多不在類別內；需決定補資料重訓或限縮展示範圍（訓練需另行授權）。
-4. 已完成（2026-11-19）：標註記錄可選的 `reference_card` 框（不是食材類別，未改 annotation_spec），GUI 有學生證框模式；校園餐工作流程見 `docs/campus_meal_workflow_v0.md`。
-5. 找 ≥ 5 位非組員做易用性測試：流程、問卷、範本與計分已備妥（`docs/usability_test_v0.md`）。
+2. 菜名辨識評估：依 `docs/recognition_evaluation_v0.md` 人工標出同一批校園照片的正確菜名和框，跑 `tools.run_gemini_batch`、`tools.evaluate_recognition`，列出 ≥ 3 個失敗案例。
+3. 團隊決策：照片審查第 10 節八項、TFDA 條款核對者、校準核可者與份量複核者。
+4. 找 ≥ 5 位非組員做易用性測試（`docs/usability_test_v0.md`），其中一次用真手機完成 T1（模擬器已在 360／390 px、六種語言看過，`docs/demo_ui_v0.md` 最後一節）。
+5. 辨識速度：Gemini 一次 8.9–37 秒，評分表 4c 要 p95 ≤ 5 秒。
+6. 工程：組員在 macOS 與 Windows 各做一次乾淨安裝；之後的變更走 PR，由作者以外的人 review。
+7. 已完成：標註的 `reference_card` 框與校園餐工作流程（2026-11-19）；食材表 226 種，含肉類與海鮮（2026-11-26，`docs/nutrition_model_v0.md` 第 9、10 節）。

@@ -264,7 +264,7 @@ class LanguageSwitchTests(unittest.TestCase):
         self.assertTrue(app.session_state['gemini_consent'])
         self.assertEqual(app.radio[0].value, 'upload')  # keyed, so the new label cannot reset it
         self.assertIn('result', app.session_state)
-        self.assertTrue(any(b.label == 'Choose another photo' for b in app.button))
+        self.assertTrue(any(b.label == 'Change photo' for b in app.button))
         self.assertTrue(any('class="fc-name"' in m.value and 'White rice' in m.value for m in app.markdown))
         self.assertTrue(any('class="fc-panel"' in m.value and 'Nutrition' in m.value and '150 g' in m.value
                             for m in app.markdown))
