@@ -6,6 +6,10 @@ decide is never guessed: the pair is listed as pending and nothing is scored unt
 
 Labels may carry a box (then the predicted box must overlap it, IoU >= 0.5, as in rubric item 2a) or only a name
 (then any dish in the same photo may match). All inputs are plain rows; nothing is modified, written or sent.
+
+Since 2026-11-26 Gemini boxes each visible ingredient and names the dish it belongs to; predicted_dishes joins the
+ingredients of one dish back into that dish (its names, the box around all its ingredients, all their ingredient keys),
+so dishes are still compared with dishes. Answers saved before that (one item per dish) are read as they are.
 """
 from collections import Counter
 from decimal import Decimal
@@ -89,21 +93,32 @@ def predicted_dishes(entry, size=None):
         if abs((width / height) / (size[0] / size[1]) - 1) > ASPECT_TOLERANCE:
             raise ValueError('image_size_mismatch')  # not the same photo, or turned another way
         scale = (size[0] / width, size[1] / height)
-    dishes = []
+    groups = {}  # dish id (or the item's own id when it names no dish) -> (named thing, its items)
     for item in entry.get('items') or []:
-        names = dict(item.get('names') or {})
-        shown = names.get('zh-TW') or item.get('display_name') or names.get('en') or ''
+        dish = item.get('dish') if isinstance(item.get('dish'), dict) and item['dish'].get('id') else None
+        key = 'dish:' + str(dish['id']) if dish else 'item:' + str(item['detection_id'])
+        groups.setdefault(key, (dish or item, []))[1].append(item)
+    dishes = []
+    for key, (named, items) in groups.items():
+        names = dict(named.get('names') or {})
+        shown = names.get('zh-TW') or named.get('display_name') or names.get('en') or ''
         box = None
         if scale is not None:
-            cells = item.get('bounding_box') or {}
-            if not all(k in cells for k in BOX_KEYS):
-                raise ValueError('invalid_prediction_box')
-            box = _box(cells, 'invalid_prediction_box')
-            box = [box[0] * scale[0], box[1] * scale[1], box[2] * scale[0], box[3] * scale[1]]
-        dishes.append({'detection_id': str(item['detection_id']), 'name': shown,
-                       'names': {normalise_name(n) for n in [item.get('display_name'), *names.values()] if n} - {''},
-                       'box': box, 'confidence': item.get('confidence'),
-                       'ingredients': {part[0] for part in item.get('components') or []}})
+            boxes = []
+            for item in items:
+                cells = item.get('bounding_box') or {}
+                if not all(k in cells for k in BOX_KEYS):
+                    raise ValueError('invalid_prediction_box')
+                boxes.append(_box(cells, 'invalid_prediction_box'))
+            box = [min(b[0] for b in boxes) * scale[0], min(b[1] for b in boxes) * scale[1],
+                   max(b[2] for b in boxes) * scale[0], max(b[3] for b in boxes) * scale[1]]
+        confidences = [item.get('confidence') for item in items]
+        dishes.append({'detection_id': key.split(':', 1)[1] if key.startswith('dish:') else str(items[0]['detection_id']),
+                       'name': shown,
+                       'names': {normalise_name(n) for n in [named.get('display_name'), *names.values()] if n} - {''},
+                       'box': box,
+                       'confidence': next((c for c in ('low', 'medium', 'high') if c in confidences), confidences[0]),
+                       'ingredients': {part[0] for item in items for part in item.get('components') or []}})
     return dishes
 
 

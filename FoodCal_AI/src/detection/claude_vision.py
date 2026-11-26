@@ -136,6 +136,7 @@ def items_from_answer(answer, width, height, prefix='C'):
             'confidence': food['confidence'] if food['confidence'] in CONFIDENCE else 'low',
             'visible_ingredients': list(food.get('visible_ingredients') or []),
             **_composition(food),
+            **({'dish': food['dish']} if isinstance(food.get('dish'), dict) else {}),  # Gemini: the dish it is part of
             'bounding_box': {'x_min': round(x0 * width / GRID, 1), 'y_min': round(y0 * height / GRID, 1),
                              'x_max': round(x1 * width / GRID, 1), 'y_max': round(y1 * height / GRID, 1)},
         })

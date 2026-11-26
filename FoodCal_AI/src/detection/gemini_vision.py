@@ -1,11 +1,18 @@
 """Food recognition with Google's Gemini API (free tier), the web page's recognition engine since 2026-11-20.
 
 One request per photo: a downscaled, metadata-free JPEG with the student card painted over (the page finds the
-card first), plus instructions; the answer is constrained to a JSON schema listing each visible food with its name
-in every page language (Traditional Chinese, English, Japanese, Korean, Indonesian, Vietnamese), a known food key
-when it matches, the container, a box in Gemini's native [ymin, xmin, ymax, xmax] 0-1000 format, visible
-ingredients and a confidence. Free-text notes come in the page language. Only what is visible is asked for: no
-weights, calories or recipe guesses.
+card first), plus instructions; the answer is constrained to a JSON schema in two levels (since 2026-11-26):
+
+- dishes: each dish on the tray, named in every page language (Traditional Chinese, English, Japanese, Korean,
+  Indonesian, Vietnamese), with one sentence on its usual recipe (in the page language);
+- foods: the visible ingredients, one box each, so every portion is measured from one ingredient's own box. Each
+  names its dish, is named with how it is cooked (照燒雞, 白切雞, 滷豆腐, 白飯), and gives a known food key when it
+  matches, the container, a box in Gemini's native [ymin, xmin, ymax, xmax] 0-1000 format, a confidence, its
+  ingredient keys with shares, the cooking method from the dish's recipe, and a shape. Bowls and cups stay one item:
+  their contents are stacked and measured from the bowl.
+
+Only what is visible becomes a food; the recipe explains the cooking method (the hidden oil and sugar) and is never
+visual proof. No weights or calories are asked for. Free-text notes come in the page language.
 
 Free-tier terms let Google use submitted content to improve its products, with human review; the page says so
 before the user agrees. Keys come from the caller (the visitor's own key typed on the page, else Streamlit
@@ -21,7 +28,7 @@ from PIL import ImageDraw
 
 from src.portion.nutrition_model import COOKING_METHODS, INGREDIENTS
 from src.portion.rough_volume import FOOD_TEMPLATES
-from .claude_vision import CONFIDENCE, CONTAINERS, GRID, RecognitionError, items_from_answer, jpeg_bytes
+from .claude_vision import CONFIDENCE, CONTAINERS, GRID, NAME_FIELDS, RecognitionError, items_from_answer, jpeg_bytes
 
 # Free-tier quotas are per model (2026-11-20, AI Studio): Flash models 5 requests/minute and 20/day each, Flash Lite
 # 15/minute and 500/day. On 2026-11-20 the Flash models often answered 503/504 on the free tier while Flash Lite
@@ -40,22 +47,23 @@ _ORDER_CACHE = {}
 MAX_ENUM = 64
 _LAST_GOOD = {}  # endpoint cache key -> model that answered last time; tried first next time
 
+NAMES = {field: {'type': 'string'} for _, field in NAME_FIELDS}  # name_zh, name_en, ... one per page language
+
 SCHEMA = {
     'type': 'object',
     'properties': {
+        'dishes': {'type': 'array', 'items': {
+            'type': 'object',
+            'properties': {'number': {'type': 'integer'}, **NAMES, 'recipe': {'type': 'string'}},
+            'required': ['number', *NAMES, 'recipe']}},
         'foods': {'type': 'array', 'items': {
             'type': 'object',
             'properties': {
-                'name_zh': {'type': 'string'},
-                'name_en': {'type': 'string'},
-                'name_ja': {'type': 'string'},
-                'name_ko': {'type': 'string'},
-                'name_id': {'type': 'string'},
-                'name_vi': {'type': 'string'},
+                'dish_number': {'type': 'integer'},
+                **NAMES,
                 'food_key': {'type': 'string', 'enum': sorted(FOOD_TEMPLATES) + ['other']},
                 'container': {'type': 'string', 'enum': list(CONTAINERS)},
                 'box_2d': {'type': 'array', 'items': {'type': 'integer'}, 'minItems': 4, 'maxItems': 4},
-                'visible_ingredients': {'type': 'array', 'items': {'type': 'string'}},
                 'confidence': {'type': 'string', 'enum': list(CONFIDENCE)},
                 'components': {'type': 'array', 'items': {
                     'type': 'object',
@@ -65,58 +73,71 @@ SCHEMA = {
                 'cooking_method': {'type': 'string', 'enum': sorted(COOKING_METHODS)},
                 'shape': {'type': 'string', 'enum': ['mound', 'flat', 'whole']},
             },
-            'required': ['name_zh', 'name_en', 'name_ja', 'name_ko', 'name_id', 'name_vi', 'food_key', 'container',
-                         'box_2d', 'visible_ingredients', 'confidence', 'components', 'cooking_method', 'shape']}},
+            'required': ['dish_number', *NAMES, 'food_key', 'container', 'box_2d', 'confidence', 'components',
+                         'cooking_method', 'shape']}},
         'notes': {'type': 'string'},
     },
-    'required': ['foods', 'notes'],
+    'required': ['dishes', 'foods', 'notes'],
 }
 
 def instructions(notes_language='Traditional Chinese'):
-    """The recognition instructions; Gemini writes its notes in notes_language (the page language)."""
-    return f"""You identify the foods visible in one photo of a meal from a Taiwanese university cafeteria.
+    """The recognition instructions; Gemini writes the recipes and notes in notes_language (the page language)."""
+    return f"""You identify the food in one photo of a meal from a Taiwanese university cafeteria, ingredient by
+ingredient. Portions are measured from your boxes, so each food box must hold one ingredient.
 
-For every distinct food item you can see, report:
-- name_zh: the specific dish name a Taiwanese cafeteria would use when you can tell (for example 紫米飯, 炒高麗菜,
-  醬燒雞丁, 白斬雞, 滷肉飯, 荷包蛋), not just the main ingredient.
-- name_en: a short English name.
-- name_ja, name_ko, name_id, name_vi: the same dish named in Japanese, Korean, Indonesian and Vietnamese, short, as a
-  menu in that language would write it, for students who read those languages.
-- food_key: one of these keys only when the item is exactly that dish, otherwise "other":
+First list the dishes (dishes), every dish you can see:
+- number: 1, 2, 3 ... in the order you list them.
+- name_zh: the dish name a Taiwanese cafeteria would use (for example 照燒雞腿飯, 滷肉飯, 炒高麗菜, 番茄炒蛋, 麻婆豆腐,
+  白飯). name_en, name_ja, name_ko, name_id, name_vi: the same dish in English, Japanese, Korean, Indonesian and
+  Vietnamese, short, as a menu in that language would write it.
+- recipe: in {notes_language}, one short sentence on how this dish is usually made: the cooking method and the oil,
+  sugar or sauce its recipe usually uses (for example: chicken thigh pan-fried, then glazed with soy sauce, mirin and
+  sugar). This is recipe knowledge, not something you see.
+
+Then list the foods (foods), every visible ingredient of those dishes, each with its own box:
+- dish_number: the number of the dish it belongs to.
+- name_zh: the ingredient named with how it is cooked, the way a menu would say it (for example 白飯, 照燒雞, 白切雞,
+  滷豆腐, 荷包蛋, 炒高麗菜, 滷肉燥). name_en, name_ja, name_ko, name_id, name_vi: the same in those languages.
+- Split a dish into its ingredients wherever they lie apart or one lies on top of another: the rice and each topping
+  of a rice plate, a fried egg on rice, chicken pieces beside the rice, tofu cubes and the sauce around them when you
+  can tell them apart. Keep one food when its ingredients are mixed too finely to box apart (fried rice, a stir-fry
+  of shredded vegetables, minced pork sauce) and give their shares in components.
+- Food in a bowl or a cup (soups, noodle soups, rice bowls, drinks) is one food for the whole bowl or cup: box the
+  rim and list what is in it in components with shares. Its contents are stacked, so it is measured from the bowl.
+- food_key: one of these keys only when the food is exactly that, otherwise "other":
 {chr(10).join(f'  {key}' for key in sorted(FOOD_TEMPLATES))}
   (cooked_rice_region is plain cooked rice, cooked_noodle_region plain noodles, visible_fried_egg a fried egg.)
-- container: "bowl" when the food is served in a bowl (soups, noodle soups, rice bowls), "cup" for a drink in a cup,
-  glass or bottle, otherwise "plate".
-- box_2d: [ymin, xmin, ymax, xmax] of the tightest box around the food, normalised to 0-{GRID}; for bowl dishes and
-  drinks, box the bowl or cup opening (the rim) as seen from above.
-- visible_ingredients: only ingredients you can actually see, named in Traditional Chinese (for example 高麗菜, 紅蘿蔔,
-  雞肉, 薑絲).
+- container: "bowl" when the food is served in a bowl, "cup" for a drink in a cup, glass or bottle, otherwise "plate".
+- box_2d: [ymin, xmin, ymax, xmax] of the tightest box around this food, normalised to 0-{GRID}; for a bowl or a drink,
+  box the bowl or cup opening (the rim) as seen from above.
 - confidence: high, medium or low.
-- components: what the item is made of, judged from what you see, as ingredient keys with your estimate of each
-  one's share of the item's weight in percent (about 100 in total; count the broth of soups). Write each key exactly
-  as listed below; use "other" for anything not listed. For a drink, count the ice cubes you can see as ice and the pearls as tapioca_pearls; a shop
-  milk tea is milk_tea unless it is labelled 鮮奶 (fresh milk). Pick a meat's cut or organ when you can tell it
-  (pork_jowl, beef_brisket, chicken_gizzard), otherwise the plain chicken, pork, beef or duck. Likewise pick the
-  fish or seafood when you can tell it (tilapia, saury, salmon_sashimi, oyster, crab_stick), otherwise the plain
-  fish, shrimp or squid. Keys:
+- components: what the food is made of, as ingredient keys with your estimate of each one's share of its weight in
+  percent (about 100 in total). Usually one key at 100; several only for mixed foods and bowls (count the broth of
+  soups). Write each key exactly as listed below; use "other" for anything not listed. For a drink, count the ice
+  cubes you can see as ice and the pearls as tapioca_pearls; a shop milk tea is milk_tea unless it is labelled 鮮奶
+  (fresh milk). Pick a meat's cut or organ when you can tell it (pork_jowl, beef_brisket, chicken_gizzard), otherwise
+  the plain chicken, pork, beef or duck. Likewise pick the fish or seafood when you can tell it (tilapia, saury,
+  salmon_sashimi, oyster, crab_stick), otherwise the plain fish, shrimp or squid. Keys:
 {chr(10).join(f'  {key} = {INGREDIENTS[key][0]}' for key in sorted(INGREDIENTS))}
-- cooking_method: how it looks cooked, one of the keys below. For a drink, the sweetness: read it from the cup
-  sticker or label (全糖, 少糖, 半糖, 微糖, 無糖) when you can, use drink_sugar_unknown for a shop drink whose
-  sweetness you cannot read, and none for plain milk, black coffee or water. Raw fruit is none. A dessert in
-  syrup (豆花, 仙草, 紅豆湯, 刨冰) is sweet_soup; count shaved ice as ice, plus its toppings and condensed milk.
+- cooking_method: how this ingredient is cooked in its dish's usual recipe (the recipe above), checked against what
+  you see (照燒 is sweet_sauce, 白切 is boiled_or_steamed, 滷 is braised); one of the keys below. Plain rice is none.
+  For a drink, the sweetness: read it from the cup sticker or label (全糖, 少糖, 半糖, 微糖, 無糖) when you can, use
+  drink_sugar_unknown for a shop drink whose sweetness you cannot read, and none for plain milk, black coffee or
+  water. Raw fruit is none. A dessert in syrup (豆花, 仙草, 紅豆湯, 刨冰) is sweet_soup; count shaved ice as ice, plus
+  its toppings and condensed milk.
 {chr(10).join(f'  {key} = {COOKING_METHODS[key][0]}' for key in sorted(COOKING_METHODS))}
 - shape: "mound" when the food is piled up into a heap (rice, noodles, heaped vegetables or meat pieces), "flat" when
-  it lies in a thin layer (a fried egg, a cutlet, slices laid side by side), "whole" for one whole item or a piece
-  still in its peel or rind (a whole banana, apple or orange, a steamed bun, corn on the cob, a watermelon wedge), or
-  meat on the bone (a drumstick, chicken wings, spare ribs, pork knuckle), a whole fish, or shrimp, crab, clams or
-  mussels still in their shells.
+  it lies in a thin layer (a fried egg, a cutlet, slices laid side by side, a topping spread over rice), "whole" for
+  one whole item or a piece still in its peel or rind (a whole banana, apple or orange, a steamed bun, corn on the
+  cob, a watermelon wedge), or meat on the bone (a drumstick, chicken wings, spare ribs, pork knuckle), a whole fish,
+  or shrimp, crab, clams or mussels still in their shells.
 
-Report only what is visible in the photo. Do not estimate weights, portions or calories, and do not add ingredients
-a recipe would usually contain but the photo does not show. Ignore plates, trays, cutlery, hands, the grey
-painted-over area and other non-food objects. A self-service (自助餐) plate holds separate dishes that touch each other: list every dish on its own, with
-its own box, components and cooking method; only a dish that is cooked or served as one (for example 滷肉飯, 炒飯,
-牛肉麵) is a single item. Boxes may overlap where dishes touch, but keep each one tight around its dish. If there is
-no food, return an empty list. Use notes, in {notes_language}, for
+Every food must be visible in the photo. The recipe only explains how a food is cooked; never add a food the photo
+does not show (oil, sugar, a sauce soaked in). Do not estimate weights, portions or calories. Ignore plates, trays,
+cutlery, hands, the grey painted-over area and other non-food objects. A self-service (自助餐) plate holds separate
+dishes that touch each other: list every dish on its own. Boxes may overlap where foods touch or lie on top of each
+other, but keep each one tight around its own food. If there is no food, return empty lists. Write all Chinese in
+Traditional Chinese characters as used in Taiwan (繁體中文), never Simplified. Use notes, in {notes_language}, for
 anything uncertain."""
 
 
@@ -224,10 +245,26 @@ def ingredient_key(text):
     return key if key in INGREDIENTS else 'other'
 
 
+def _dishes_from(answer):
+    """{dish number: {'id': 'D1', 'names': {page language: name}, 'display_name', 'recipe'}} from an answer."""
+    dishes = {}
+    for dish in answer.get('dishes') or []:
+        if not isinstance(dish, dict) or not isinstance(dish.get('number'), int) or dish['number'] in dishes:
+            continue
+        names = {code: dish[field].strip() for code, field in NAME_FIELDS
+                 if isinstance(dish.get(field), str) and dish[field].strip()}
+        recipe = dish.get('recipe')
+        dishes[dish['number']] = {'id': f"D{dish['number']}", 'names': names,
+                                  'display_name': names.get('zh-TW') or names.get('en') or '',
+                                  'recipe': recipe.strip() if isinstance(recipe, str) else ''}
+    return dishes
+
+
 def _answer_from(response):
     answer = _parse_json(response)
     if not isinstance(answer, dict) or not isinstance(answer.get('foods'), list):
         raise RecognitionError('gemini_answer_unreadable')
+    dishes = _dishes_from(answer)
     foods = []
     for food in answer['foods']:
         box = food.get('box_2d') if isinstance(food, dict) else None
@@ -239,8 +276,9 @@ def _answer_from(response):
             parts = [{**part, 'ingredient': ingredient_key(part.get('ingredient'))} for part in parts
                      if isinstance(part, dict)]
             food = {**food, 'components': parts}
-        foods.append({**food, 'box': {'x_min': x0, 'y_min': y0, 'x_max': x1, 'y_max': y1}})
-    return {'foods': foods, 'notes': answer.get('notes', '')}
+        dish = dishes.get(food.get('dish_number')) if isinstance(food.get('dish_number'), int) else None
+        foods.append({**food, 'box': {'x_min': x0, 'y_min': y0, 'x_max': x1, 'y_max': y1}, 'dish': dish})
+    return {'foods': foods, 'dishes': list(dishes.values()), 'notes': answer.get('notes', '')}
 
 
 def _generate(contents, instructions, schema, clients, models=None):
@@ -299,15 +337,21 @@ def _meta(response, model, endpoint, latency):
 
 
 def recognize_foods_gemini(image, *, clients, models=None, notes_language='Traditional Chinese'):
-    """{'items', 'notes', 'model', 'endpoint', 'usage', 'latency_s'} for one PIL image (already card-masked)."""
+    """{'items', 'dishes', 'notes', 'model', 'endpoint', 'usage', 'latency_s'} for one PIL image (already card-masked).
+
+    items are the visible ingredients, each with its dish under 'dish' (or None); dishes lists the dishes those items
+    belong to, in Gemini's order.
+    """
     from google.genai import types
     width, height = image.size
     contents = [types.Part.from_bytes(data=jpeg_bytes(image), mime_type='image/jpeg'),
                 'List the foods visible in this photo.']
     response, model, endpoint, latency = _generate(contents, instructions(notes_language), SCHEMA, clients, models)
     answer = _answer_from(response)
-    return {'items': items_from_answer(answer, width, height, prefix='G'), 'notes': answer['notes'],
-            **_meta(response, model, endpoint, latency)}
+    items = items_from_answer(answer, width, height, prefix='G')
+    used = {item['dish']['id'] for item in items if item.get('dish')}
+    return {'items': items, 'dishes': [dish for dish in answer['dishes'] if dish['id'] in used],
+            'notes': answer['notes'], **_meta(response, model, endpoint, latency)}
 
 
 SIDE_SCHEMA = {
@@ -328,8 +372,9 @@ SIDE_SCHEMA = {
 
 def side_instructions(notes_language='Traditional Chinese'):
     """The side photo instructions; Gemini writes its notes in notes_language (the page language)."""
-    return f"""You see a second photo of a meal, taken from the side at a low angle. The dishes were already
-identified in a photo taken from above; the user lists them with their numbers.
+    return f"""You see a second photo of a meal, taken from the side at a low angle. The foods were already
+identified in a photo taken from above (each one an ingredient of a dish, or a whole bowl or cup); the user lists
+them with their numbers. Below, "dish" means one listed food.
 
 For every listed dish you can see in this side photo, report:
 - number: the dish's number from the list.

@@ -4,8 +4,9 @@ Layout follows the proposal deck: workflow steps and the KEY RULE banner on top.
 shows one centred upload box with photo tips, and the sample photos apart below it. Once a photo is chosen it has two
 columns: the photo on the left and the start card on the right, where an optional side photo can join the top one.
 After recognition the left column holds the photo with numbered tags, the tools as buttons right under it (box the
-card, add a missed dish; the photo itself turns into the box picker), the side photo, then the numbered dishes with
-editable grams; the right column holds the nutrition panel (big kcal, macro bar, visible-vs-recipe split). Nothing a
+card, add a missed dish; the photo itself turns into the box picker), the side photo, then the dishes with their
+recipes and the numbered ingredients with editable grams (Gemini boxes each visible ingredient, so each portion is
+measured from its own box; the cooking method comes from the dish's recipe, never shown as visual proof); the right column holds the nutrition panel (big kcal, macro bar, visible-vs-recipe split). Nothing a
 user needs sits in a collapsed section; Gemini's raw answer shows only with ?dev=1 in the address. User images and
 results stay in session memory; photos go to Gemini only after the user agrees, with the student card painted over.
 
@@ -536,8 +537,22 @@ def start_card(raw, key):
         change_photo()
 
 
+def dishes_shown(items):
+    """The dishes the shown ingredients belong to, in order, each once (hand-added foods have none)."""
+    dishes, seen = [], set()
+    for item in items:
+        dish = item.get('dish')
+        if isinstance(dish, dict) and dish.get('id') not in seen:
+            seen.add(dish.get('id'))
+            dishes.append(dish)
+    return dishes
+
+
 def row_meta(row, item):
     bits = []
+    dish = item.get('dish')
+    if isinstance(dish, dict) and dish_name(dish) and dish_name(dish) != dish_name(item):
+        bits.append(t('meta.in_dish', dish=dish_name(dish)))
     nutrition = row['nutrition']
     if nutrition:
         keys = nutrition.get('part_keys') or [None] * len(nutrition['parts'])
@@ -565,10 +580,15 @@ def recognition_card(result, rows, items):
     model = (result or {}).get('model')
     st.markdown(theme.card_head(t('head.recognition'), model.replace('gemini-', '') if model else None),
                 unsafe_allow_html=True)
-    names = join(dish_name(i) for i in items) or t('recog.none')
-    st.markdown(f'<div class="fc-dish">{theme.escape(names)}</div>'
+    dishes = dishes_shown(items)
+    # The title names the dishes; ingredients without a dish (hand-added foods) are named themselves.
+    names = join([dish_name(d) for d in dishes] + [dish_name(i) for i in items if not isinstance(i.get('dish'), dict)])
+    st.markdown(f'<div class="fc-dish">{theme.escape(names or t("recog.none"))}</div>'
                 f'<div class="fc-sub">{theme.escape(result.get("notes") or t("recog.sub_default"))}</div>',
                 unsafe_allow_html=True)
+    recipes = [(dish_name(d), d['recipe']) for d in dishes if d.get('recipe')]
+    if recipes:
+        st.markdown(theme.recipe_list(recipes), unsafe_allow_html=True)
     st.markdown(theme.card_head(t('head.grams'), 'Grams'), unsafe_allow_html=True)
     manual_ids = {i['detection_id'] for i in st.session_state.get('manual_items', [])}
     for index, (row, item) in enumerate(zip(rows, items), 1):

@@ -17,8 +17,9 @@ from src.portion.nutrition_model import INGREDIENTS
 MODELS = ('gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite')
 
 
-def reply(*foods, notes='', finish='STOP', text=None, block=None):
-    body = text if text is not None else json.dumps({'foods': list(foods), 'notes': notes}, ensure_ascii=False)
+def reply(*foods, notes='', finish='STOP', text=None, block=None, dishes=()):
+    body = text if text is not None else json.dumps({'dishes': list(dishes), 'foods': list(foods), 'notes': notes},
+                                                    ensure_ascii=False)
     return SimpleNamespace(text=body, model_version='gemini-test-flash',
                            prompt_feedback=SimpleNamespace(block_reason=block) if block else None,
                            candidates=[SimpleNamespace(finish_reason=SimpleNamespace(name=finish))],
@@ -184,6 +185,37 @@ class GeminiVisionTests(unittest.TestCase):
                     cooking_method='braised')
         [item] = run(FakeClient(reply(dish)), self.image)['items']
         self.assertEqual(item['components'], [('cooked_rice', 70), ('braised_pork_mince', 20), ('other', 10)])
+
+    def test_ingredients_carry_their_dish_and_its_recipe(self):
+        """Each ingredient has its own box; the dish it belongs to (names, recipe) comes along for the page."""
+        def dish(number, zh, en, recipe):
+            return {'number': number, 'name_zh': zh, 'name_en': en, 'name_ja': '', 'name_ko': '', 'name_id': '',
+                    'name_vi': '', 'recipe': recipe}
+        dishes = [dish(1, '照燒雞腿飯', 'Teriyaki chicken rice', '雞腿肉煎過後用醬油、味醂、糖收汁，配白飯。'),
+                  dish(2, '燙青菜', 'Blanched greens', '青菜燙熟後淋油和醬油膏。'),
+                  dish(1, '重複的編號', 'Duplicate', '不該蓋掉第一道'),
+                  dish(3, '沒有食材的菜', 'Dish with no food', '這道菜沒有框，不會列出')]
+        rice = dict(food(), dish_number=1, components=[{'ingredient': 'cooked_rice', 'share_percent': 100}],
+                    cooking_method='none', shape='mound')
+        chicken = dict(food(name_zh='照燒雞', name_en='Teriyaki chicken', key='other', box=(300, 300, 600, 700)),
+                       dish_number=1, components=[{'ingredient': 'chicken', 'share_percent': 100}],
+                       cooking_method='sweet_sauce', shape='flat')
+        stray = dict(food(name_zh='不知道哪一道', name_en='Stray', key='other', box=(0, 0, 100, 100)), dish_number=9)
+        bad_box = dict(food(name_zh='燙青菜', name_en='Greens', key='other', box=(1, 2, 3)), dish_number=3)
+        result = run(FakeClient(reply(rice, chicken, stray, bad_box, dishes=dishes)), self.image)
+        first, second, third = result['items']
+        self.assertEqual((first['dish']['id'], second['dish']['id']), ('D1', 'D1'))
+        self.assertEqual(second['dish']['display_name'], '照燒雞腿飯')
+        self.assertEqual(second['dish']['names'], {'zh-TW': '照燒雞腿飯', 'en': 'Teriyaki chicken rice'})
+        self.assertIn('收汁', second['dish']['recipe'])
+        self.assertEqual((second['display_name'], second['components'], second['cooking_method'], second['shape']),
+                         ('照燒雞', [('chicken', 100)], 'sweet_sauce', 'flat'))
+        self.assertNotIn('dish', third)  # no such dish: shown on its own
+        self.assertEqual([d['id'] for d in result['dishes']], ['D1'])  # only dishes with a food in the list
+        prompt = gv.instructions()
+        for text in ('照燒雞', '白切雞', 'recipe', 'dish_number', 'Traditional Chinese characters'):
+            self.assertIn(text, prompt)
+        self.assertEqual(SCHEMA['required'], ['dishes', 'foods', 'notes'])
 
     def test_malformed_boxes_are_skipped_not_fatal(self):
         bad = dict(food(), box_2d=[1, 2, 3])

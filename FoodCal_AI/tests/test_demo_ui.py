@@ -398,6 +398,34 @@ class StreamlitOfflineTests(unittest.TestCase):
         self.assertEqual(app.checkbox(key=f'skip_{tag}_G1').label, '暫時取消')
         self.assertTrue(any('class="fc-kcal"' in m.value for m in app.markdown))
 
+    def test_ingredients_are_listed_under_their_dishes_with_the_recipe(self):
+        app = self.photo_app()
+        app.checkbox(key='gemini_consent').check().run()
+        self.recognised(app)
+        dish = {'id': 'D1', 'names': {'zh-TW': '照燒雞腿飯', 'en': 'Teriyaki chicken rice'}, 'display_name': '照燒雞腿飯',
+                'recipe': '雞腿肉煎過後用醬油、味醂、糖收汁。'}
+        result = app.session_state['result']
+        rice = {**result['items'][0], 'dish': dish}
+        chicken = {'detection_id': 'G2', 'class_name': 'teriyaki_chicken', 'display_name': '照燒雞',
+                   'names': {'zh-TW': '照燒雞', 'en': 'Teriyaki chicken'}, 'container': 'plate', 'dish': dish,
+                   'components': [('chicken', 100)], 'cooking_method': 'sweet_sauce', 'shape': 'flat',
+                   'bounding_box': {'x_min': 100, 'y_min': 100, 'x_max': 220, 'y_max': 200}}
+        app.session_state['result'] = {**result, 'items': [rice, chicken], 'dishes': [dish]}
+        app.run()
+        self.assertFalse(app.exception)
+        self.assertTrue(any('class="fc-dish"' in m.value and '照燒雞腿飯' in m.value for m in app.markdown))
+        self.assertTrue(any('class="fc-recipes"' in m.value and '收汁' in m.value and '依食譜推測' in m.value
+                            for m in app.markdown))
+        self.assertTrue(any('class="fc-name">照燒雞<' in m.value and '屬於照燒雞腿飯' in m.value for m in app.markdown))
+        self.assertTrue(any('class="fc-name">白飯<' in m.value for m in app.markdown))
+        app.selectbox(key='lang').set_value('en').run()
+        self.assertTrue(any('class="fc-name">Teriyaki chicken<' in m.value and 'part of Teriyaki chicken rice' in m.value
+                            for m in app.markdown))
+        tag = str(app.session_state['input_key'][0])[:12]
+        app.checkbox(key=f'skip_{tag}_G1').check().run()
+        app.checkbox(key=f'skip_{tag}_G2').check().run()
+        self.assertFalse(any('class="fc-recipes"' in m.value for m in app.markdown))  # no ingredient left of it
+
     def test_hand_added_dish_has_its_own_remove_button(self):
         app = self.photo_app()
         app.checkbox(key='gemini_consent').check().run()
