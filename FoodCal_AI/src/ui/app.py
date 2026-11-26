@@ -9,6 +9,10 @@ editable grams; the right column holds the nutrition panel (big kcal, macro bar,
 user needs sits in a collapsed section; Gemini's raw answer shows only with ?dev=1 in the address. User images and
 results stay in session memory; photos go to Gemini only after the user agrees, with the student card painted over.
 
+Visitors may paste their own Gemini API key in the start card: optional when the page has a shared key (secrets.toml
+or GEMINI_API_KEY), required when it has none. A typed key is used first, kept in this session's memory only (never
+saved, logged, put in the address or in the result), and a malformed one never falls back to the shared key.
+
 Every text is in the visitor's language (i18n.py, messages.py), picked at the top right; ?lang=ja in the address or
 the browser's language sets the first one. Session state keeps codes, not worded messages, so a switch rewords
 everything already on screen and keeps the photo, grams and consent.
@@ -44,6 +48,7 @@ SAMPLE_NAMES = ('campus_buffet', 'white_rice')  # sample photo stems with a name
 FOOD_REFERENCE_PATH = ROOT / 'data/food_reference/food_reference.csv'
 CARD_REFERENCE_DIR = ROOT / 'data/card_reference'
 SAMPLES_DIR = ROOT / 'data/samples'  # optional local sample photos (Git-ignored)
+OWN_KEY = 'own_api_key'  # session state only: the visitor's own Gemini key is never written anywhere
 
 
 def clear_session():
@@ -155,6 +160,34 @@ def gemini_key():
     except Exception:  # no secrets file yet
         key = None
     return key or os.environ.get('GEMINI_API_KEY') or None
+
+
+def well_formed_key(text):
+    """True for text that can be an API key: printable ASCII without spaces; Google checks the rest."""
+    return bool(text) and text.isascii() and text.isprintable() and not any(c.isspace() for c in text)
+
+
+def own_key():
+    """The visitor's own Gemini key as typed in the start card, trimmed; '' when none was typed."""
+    return str(st.session_state.get(OWN_KEY) or '').strip()
+
+
+def api_key():
+    """(key, source) for this run: the visitor's own key when one is typed, else the page's shared key.
+
+    source is 'own', 'shared' or None (no key at all). A typed key that cannot be a key gives (None, 'own'), so the
+    page waits for a corrected one instead of quietly sending the photo with the shared key.
+    """
+    typed = own_key()
+    if typed:
+        return (typed if well_formed_key(typed) else None), 'own'
+    shared = gemini_key()
+    return shared, 'shared' if shared else None
+
+
+def keyed_error(code):
+    """A key or quota error code, worded for the visitor's own key (err.<code>_own) when that key made the call."""
+    return code + '_own' if own_key() and known(f'err.{code}_own') else code
 
 
 def sample_photos():
@@ -275,7 +308,7 @@ def start_recognition(raw, key):
             found = recognize_foods_gemini(outgoing, clients=gemini_clients(key),
                                            notes_language=NOTES_LANGUAGE[language()])
     except RecognitionError as error:
-        st.session_state['gemini_error'] = str(error)
+        st.session_state['gemini_error'] = keyed_error(str(error))
         return
     for name in PER_PHOTO_KEYS:
         if name != 'side_photo':  # a side photo chosen before the start is analysed right below
@@ -283,7 +316,8 @@ def start_recognition(raw, key):
     st.session_state['card_auto'] = card or False
     if card:
         st.session_state['card_box'], st.session_state['card_source'] = card['quad'], 'auto'
-    st.session_state['result'] = {'engine': 'gemini', 'card_masked': bool(card), **found}
+    st.session_state['result'] = {'engine': 'gemini', 'card_masked': bool(card),
+                                  'key_source': 'own' if own_key() else 'shared', **found}
     st.session_state['image'] = image
     staged = st.session_state.get('side_photo') or {}
     if staged.get('image') is not None and found.get('items'):
@@ -297,8 +331,8 @@ def upload_stage(key):
         st.file_uploader(t('upload.label'), type=['png', 'jpg', 'jpeg', 'webp'],
                          key=f"upload_{st.session_state.get('upload_generation', 0)}", label_visibility='collapsed')
         st.markdown(theme.photo_tips(), unsafe_allow_html=True)
-        if not key:
-            st.warning(t('key.missing'))
+        if not key and gemini_key() is None:
+            st.info(t('key.missing'))  # the visitor's own key goes in the next step
     samples = sample_photos()
     if not samples:
         return
@@ -325,8 +359,9 @@ def recognition_caption(result):
     score = card_method_text(auto) if auto and source == 'auto' else ''
     masked = t('caption.masked') if result.get('card_masked') else ''
     usage = result.get('usage') or {}
+    quota = t('caption.key_own' if result.get('key_source') == 'own' else 'caption.key_shared')
     return card_text + score + masked + t('caption.model', model=result.get('model'), seconds=result.get('latency_s'),
-                                          tokens_in=usage.get('input_tokens'), tokens_out=usage.get('output_tokens'))
+                                          tokens_in=usage.get('input_tokens'), tokens_out=usage.get('output_tokens')) + quota
 
 
 def card_method_text(card):
@@ -459,14 +494,31 @@ def side_staged(staged, note, remove_key, retake=False):
             remove_side()
 
 
+def key_field():
+    """The visitor's own Gemini API key, in view in the start card: optional when the page has a shared key,
+    required when it has none. A password box; the key stays in session memory only."""
+    shared = gemini_key() is not None
+    st.text_input(t('key.label_optional' if shared else 'key.label_required'), type='password', key=OWN_KEY,
+                  placeholder=t('key.placeholder_optional' if shared else 'key.placeholder_required'),
+                  autocomplete='off')
+    typed = own_key()
+    if typed and not well_formed_key(typed):
+        st.warning(t('key.malformed'))
+    elif typed and shared:
+        st.caption(t('key.using_own'))
+    st.caption(t('key.help'))
+
+
 def start_card(raw, key):
-    """Next to the chosen photo: the optional side photo, consent, then start; or pick another photo."""
+    """Next to the chosen photo: the optional side photo, the visitor's own API key, consent, then start; or pick
+    another photo."""
     st.markdown(theme.start_intro(), unsafe_allow_html=True)
     staged = st.session_state.get('side_photo')
     if staged:
         side_staged(staged, t('side.note_with_top'), 'side_remove_start')
     else:
         side_drop()
+    key_field()
     consent = st.checkbox(t('consent.label'), key='gemini_consent')
     st.caption(t('consent.privacy'))
     readable = 'image' in preview_image(raw)
@@ -478,8 +530,8 @@ def start_card(raw, key):
         st.caption(t('start.side_caption'))
     if st.session_state.get('gemini_error'):
         st.error(error_text(st.session_state['gemini_error']))
-    if not key:
-        st.warning(t('key.missing'))
+    if not key and not own_key():
+        st.warning(t('key.needed'))
     if st.button(t('btn.change_photo'), key='change_photo_start', width='stretch'):
         change_photo()
 
@@ -589,7 +641,7 @@ def run_side_view(image, card, source, items, key):
             found = recognize_side_view(mask_card(image, _quad(card)), dishes, clients=gemini_clients(key),
                                         notes_language=NOTES_LANGUAGE[language()])
     except RecognitionError as error:
-        side['error'] = str(error)
+        side['error'] = keyed_error(str(error))
         st.session_state['side'] = side
         return
     st.session_state['side'] = {**side, 'geometry': geometry, **found}
@@ -799,8 +851,9 @@ def main():
     if st.session_state.get('mode') != mode:
         clear_session()
         st.session_state['mode'] = mode
-    if 'gemini_consent' in st.session_state:  # keep the answer while its checkbox is not drawn (after recognition)
-        st.session_state['gemini_consent'] = st.session_state['gemini_consent']
+    for kept in ('gemini_consent', OWN_KEY):  # keep consent and the typed key while their boxes are not drawn
+        if kept in st.session_state:
+            st.session_state[kept] = st.session_state[kept]
     # On by default, and kept while the switch is hidden (the photo is a box picker then).
     st.session_state['show_boxes'] = st.session_state.get('show_boxes', True)
     steps_slot = st.empty()
@@ -819,7 +872,7 @@ def main():
         else:
             st.caption(t('demo.hint'))
         return
-    key = gemini_key()
+    key, _ = api_key()
     raw = photo_bytes()
     if raw:
         stage_side_photo()

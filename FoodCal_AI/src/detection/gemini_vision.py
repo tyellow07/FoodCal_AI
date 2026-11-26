@@ -8,7 +8,8 @@ ingredients and a confidence. Free-text notes come in the page language. Only wh
 weights, calories or recipe guesses.
 
 Free-tier terms let Google use submitted content to improve its products, with human review; the page says so
-before the user agrees. Keys come from the caller (Streamlit secrets), never from this module or the repo.
+before the user agrees. Keys come from the caller (the visitor's own key typed on the page, else Streamlit
+secrets), never from this module or the repo; only a hash of a key is kept, to remember its model order.
 """
 from hashlib import sha256
 import json

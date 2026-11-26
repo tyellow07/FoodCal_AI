@@ -1,4 +1,5 @@
 """Pure offline UI adapter tests; optional Streamlit AppTest in UI environment."""
+import os
 from copy import deepcopy
 from io import BytesIO
 from pathlib import Path
@@ -402,6 +403,130 @@ class StreamlitOfflineTests(unittest.TestCase):
         app.query_params['dev'] = '1'
         app.run()
         self.assertTrue(app.json)
+
+    # ---- The visitor's own Gemini API key ---------------------------------------------------------------------
+
+    FOUND = {'model': 'test-model', 'latency_s': 1, 'usage': {}, 'notes': '',
+             'items': [{'detection_id': 'G1', 'class_name': 'cooked_rice_region', 'display_name': '白飯',
+                        'container': 'plate', 'components': [('cooked_rice', 100)], 'cooking_method': 'none',
+                        'bounding_box': {'x_min': 240, 'y_min': 120, 'x_max': 480, 'y_max': 360}}]}
+
+    def key_app(self, shared=None):
+        """The chosen-photo page with no GEMINI_API_KEY in the environment and, optionally, a shared key."""
+        app = AppTest.from_file(str(Path(__file__).resolve().parents[1]/'src/ui/app.py'), default_timeout=10)
+        app.session_state['mode'] = 'upload'
+        app.session_state['photo'] = {'raw': image_bytes(), 'name': 'lunch.png', 'source': 'upload'}
+        if shared:
+            app.secrets['GEMINI_API_KEY'] = shared
+        return app.run()
+
+    @staticmethod
+    def start_button(app):
+        return next(b for b in app.button if b.label == '開始辨識 →')
+
+    def recognise_with(self, app, **gemini):
+        """Click start with Gemini and the card finder mocked; returns the gemini_clients mock."""
+        with patch('src.detection.gemini_vision.recognize_foods_gemini', **gemini), \
+                patch('src.detection.gemini_vision.gemini_clients', return_value=[]) as clients, \
+                patch('src.portion.card_locator.load_card_reference', return_value=None), \
+                patch('src.portion.card_locator.load_card_designs', return_value=[]):
+            self.start_button(app).click().run()
+        return clients
+
+    def test_own_key_is_optional_beside_a_shared_key_and_used_first(self):
+        with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+            app = self.key_app(shared='shared-key')
+            box = app.text_input(key='own_api_key')
+            self.assertEqual(box.label, '自己的 Gemini API 金鑰（選填）')
+            self.assertFalse(app.expander)  # in view, not folded away
+            app.checkbox(key='gemini_consent').check().run()
+            self.assertFalse(self.start_button(app).disabled)  # the shared key is enough
+            box.input('  AIzaOwnKey_123-x  ').run()  # pasted with stray spaces around it
+            self.assertTrue(any('用你的金鑰' in c.value for c in app.caption))
+            clients = self.recognise_with(app, return_value=self.FOUND)
+            self.assertFalse(app.exception)
+            clients.assert_called_once_with('AIzaOwnKey_123-x')
+            self.assertEqual(app.session_state['result']['key_source'], 'own')
+            self.assertTrue(any('（你的金鑰）' in c.value for c in app.caption))
+            app.run()  # the key box is gone after recognition; the key stays for the side photo
+            self.assertEqual(app.session_state['own_api_key'].strip(), 'AIzaOwnKey_123-x')
+            app.query_params['dev'] = '1'
+            app.run()
+            self.assertTrue(app.json)
+            shown = ' '.join(str(j.value) for j in app.json) + ' '.join(str(v) for v in app.query_params.values())
+            self.assertNotIn('AIzaOwnKey', shown)  # never in the raw answer or the address
+
+    def test_shared_key_is_used_when_no_own_key_is_typed(self):
+        with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+            app = self.key_app(shared='shared-key')
+            app.checkbox(key='gemini_consent').check().run()
+            clients = self.recognise_with(app, return_value=self.FOUND)
+        clients.assert_called_once_with('shared-key')
+        self.assertEqual(app.session_state['result']['key_source'], 'shared')
+        self.assertTrue(any('（共用金鑰的免費額度）' in c.value for c in app.caption))
+
+    def test_without_a_shared_key_the_own_key_is_required(self):
+        with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+            app = self.key_app()
+            self.assertFalse(app.exception)
+            self.assertEqual(app.text_input(key='own_api_key').label, '你的 Gemini API 金鑰')
+            app.checkbox(key='gemini_consent').check().run()
+            self.assertTrue(self.start_button(app).disabled)
+            self.assertTrue(any('先在上面貼上' in w.value for w in app.warning))
+            app.text_input(key='own_api_key').input('AIzaOwnKey').run()
+            self.assertFalse(self.start_button(app).disabled)
+            self.assertFalse(any('先在上面貼上' in w.value for w in app.warning))
+
+    def test_upload_step_says_the_key_goes_in_the_next_step(self):
+        with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+            app = AppTest.from_file(str(Path(__file__).resolve().parents[1]/'src/ui/app.py'), default_timeout=10).run()
+            self.assertTrue(any('下一步貼上你自己的金鑰' in i.value for i in app.info))
+            app.secrets['GEMINI_API_KEY'] = 'shared-key'
+            app.run()
+            self.assertFalse(any('金鑰' in i.value for i in app.info))
+
+    def test_malformed_own_key_never_falls_back_to_the_shared_key(self):
+        with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+            app = self.key_app(shared='shared-key')
+            app.checkbox(key='gemini_consent').check().run()
+            app.text_input(key='own_api_key').input('AIza my key').run()
+        self.assertTrue(any('不像 API 金鑰' in w.value for w in app.warning))
+        self.assertTrue(self.start_button(app).disabled)
+
+    def test_key_errors_are_worded_for_whose_key_failed(self):
+        from src.detection.claude_vision import RecognitionError
+        with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+            app = self.key_app(shared='shared-key')
+            app.checkbox(key='gemini_consent').check().run()
+            app.text_input(key='own_api_key').input('AIzaOwnKey').run()
+            self.recognise_with(app, side_effect=RecognitionError('gemini_key_invalid'))
+            self.assertEqual(app.session_state['gemini_error'], 'gemini_key_invalid_own')
+            self.assertTrue(any('重新貼上' in e.value for e in app.error))
+            self.assertNotIn('result', app.session_state)
+            app.text_input(key='own_api_key').input('').run()  # back to the shared key
+            self.recognise_with(app, side_effect=RecognitionError('gemini_quota_exceeded'))
+            self.assertEqual(app.session_state['gemini_error'], 'gemini_quota_exceeded')
+            self.assertTrue(any('自己的 Gemini API 金鑰' in e.value for e in app.error))  # points to the own key
+
+    def test_own_key_survives_a_language_switch_and_a_new_photo(self):
+        with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+            app = self.key_app()
+            app.text_input(key='own_api_key').input('AIzaOwnKey').run()
+            app.selectbox(key='lang').set_value('ja').run()
+            self.assertEqual(app.text_input(key='own_api_key').label, 'あなたの Gemini API キー')
+            self.assertEqual(app.text_input(key='own_api_key').value, 'AIzaOwnKey')
+            next(b for b in app.button if b.key == 'change_photo_start').click().run()
+            self.assertEqual(app.session_state['own_api_key'], 'AIzaOwnKey')  # kept for the next photo
+            self.assertFalse(any('金鑰' in i.value or 'キー' in i.value for i in app.info))
+
+
+@unittest.skipIf(AppTest is None, 'Optional UI environment: install requirements-ui.txt')
+class OwnKeyHelperTests(unittest.TestCase):
+    def test_well_formed_key(self):
+        from src.ui.app import well_formed_key
+        self.assertTrue(well_formed_key('AIzaSyA-1_b2'))
+        for bad in ('', 'AIza key', 'AIza\tkey', '金鑰', 'AIza\x00'):
+            self.assertFalse(well_formed_key(bad), repr(bad))
 
 
 if __name__ == '__main__':

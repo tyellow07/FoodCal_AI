@@ -165,18 +165,19 @@ MESSAGES = {
                               'Cơm tự chọn trong trường'),
     'sample.white_rice': _('白飯', 'White rice', '白ごはん', '흰쌀밥', 'Nasi putih', 'Cơm trắng'),
     'key.missing': _(
-        '還沒有設定 Gemini API 金鑰：在 `FoodCal_AI/.streamlit/secrets.toml` 加一行 `GEMINI_API_KEY = "你的金鑰"`，'
-        '再重新整理這個頁面。',
-        'No Gemini API key yet: add the line `GEMINI_API_KEY = "your key"` to `FoodCal_AI/.streamlit/secrets.toml`, '
-        'then reload this page.',
-        'Gemini API キーがまだ設定されていません。`FoodCal_AI/.streamlit/secrets.toml` に '
-        '`GEMINI_API_KEY = "あなたのキー"` の1行を追加し、このページを再読み込みしてください。',
-        '아직 Gemini API 키가 설정되지 않았습니다. `FoodCal_AI/.streamlit/secrets.toml`에 '
-        '`GEMINI_API_KEY = "내 키"` 한 줄을 추가한 뒤 이 페이지를 새로 고침하세요.',
-        'Kunci API Gemini belum diatur: tambahkan baris `GEMINI_API_KEY = "kunci Anda"` ke '
-        '`FoodCal_AI/.streamlit/secrets.toml`, lalu muat ulang halaman ini.',
-        'Chưa có khóa API Gemini: thêm dòng `GEMINI_API_KEY = "khóa của bạn"` vào '
-        '`FoodCal_AI/.streamlit/secrets.toml`, rồi tải lại trang này.'),
+        '這個網頁沒有設定共用的 Gemini API 金鑰：選好照片後，在下一步貼上你自己的金鑰就能辨識。架站者也可以在 '
+        '`FoodCal_AI/.streamlit/secrets.toml` 加一行 `GEMINI_API_KEY = "金鑰"`。',
+        'This page has no shared Gemini API key: after choosing a photo, paste your own key in the next step. Whoever '
+        'runs the page can also add the line `GEMINI_API_KEY = "key"` to `FoodCal_AI/.streamlit/secrets.toml`.',
+        'このページには共有の Gemini API キーがありません。写真を選んだら、次の手順で自分のキーを貼り付けてください。ページの運営者は '
+        '`FoodCal_AI/.streamlit/secrets.toml` に `GEMINI_API_KEY = "キー"` の1行を追加することもできます。',
+        '이 페이지에는 공용 Gemini API 키가 없습니다. 사진을 고른 뒤 다음 단계에서 내 키를 붙여 넣으세요. 페이지 운영자는 '
+        '`FoodCal_AI/.streamlit/secrets.toml`에 `GEMINI_API_KEY = "키"` 한 줄을 추가할 수도 있습니다.',
+        'Halaman ini tidak punya kunci API Gemini bersama: setelah memilih foto, tempel kunci Anda sendiri di langkah '
+        'berikutnya. Pengelola halaman juga bisa menambahkan baris `GEMINI_API_KEY = "kunci"` ke '
+        '`FoodCal_AI/.streamlit/secrets.toml`.',
+        'Trang này chưa có khóa API Gemini dùng chung: sau khi chọn ảnh, hãy dán khóa của riêng bạn ở bước tiếp theo. '
+        'Người vận hành trang cũng có thể thêm dòng `GEMINI_API_KEY = "khóa"` vào `FoodCal_AI/.streamlit/secrets.toml`.'),
 
     # ---- Chosen photo and the start card ---------------------------------------------------------------------
     'chip.recognised': _('辨識完成', 'Recognised', '認識完了', '인식 완료', 'Selesai dikenali', 'Đã nhận diện'),
@@ -220,6 +221,51 @@ MESSAGES = {
         'Chỉ gửi ảnh đã thu nhỏ, không có thông tin chụp (kể cả GPS), và thẻ sinh viên được tự động che trước. Theo '
         'điều khoản bản miễn phí của Google, ảnh có thể được dùng để cải thiện sản phẩm và do con người xem xét, vì '
         'vậy đừng để lọt khuôn mặt vào ảnh.'),
+    'key.label_optional': _('自己的 Gemini API 金鑰（選填）', 'Your own Gemini API key (optional)',
+                            '自分の Gemini API キー（任意）', '내 Gemini API 키(선택)',
+                            'Kunci API Gemini Anda sendiri (opsional)', 'Khóa API Gemini của riêng bạn (không bắt buộc)'),
+    'key.label_required': _('你的 Gemini API 金鑰', 'Your Gemini API key', 'あなたの Gemini API キー', '내 Gemini API 키',
+                            'Kunci API Gemini Anda', 'Khóa API Gemini của bạn'),
+    'key.placeholder_optional': _('留空就用這個網頁的共用金鑰', "Leave empty to use this page's shared key",
+                                  '空欄ならこのページの共有キーを使います', '비워 두면 이 페이지의 공용 키를 사용합니다',
+                                  'Kosongkan untuk memakai kunci bersama halaman ini',
+                                  'Để trống để dùng khóa chung của trang này'),
+    'key.placeholder_required': _('貼上金鑰才能開始辨識', 'Paste a key to start recognition',
+                                  'キーを貼り付けると認識を開始できます', '키를 붙여 넣어야 인식을 시작할 수 있습니다',
+                                  'Tempel kunci untuk mulai mengenali', 'Dán khóa để bắt đầu nhận diện'),
+    'key.using_own': _('這次會用你的金鑰呼叫 Gemini，不用網頁的共用額度。',
+                       "Gemini will be called with your key, not the page's shared quota.",
+                       'Gemini はページの共有枠ではなく、あなたのキーで呼び出されます。',
+                       'Gemini를 페이지의 공용 한도가 아닌 내 키로 호출합니다.',
+                       'Gemini akan dipanggil dengan kunci Anda, bukan kuota bersama halaman ini.',
+                       'Gemini sẽ được gọi bằng khóa của bạn, không dùng hạn mức chung của trang.'),
+    'key.help': _(
+        '沒有金鑰？到 [Google AI Studio](https://aistudio.google.com/apikey) 免費申請。金鑰只放在這次瀏覽的記憶體裡，'
+        '只用來呼叫 Google Gemini，不會存檔，關掉分頁就消失。',
+        'No key? Get one free at [Google AI Studio](https://aistudio.google.com/apikey). The key stays only in the '
+        "memory of this visit and is used only to call Google Gemini; it is never saved and is gone when you close "
+        'the tab.',
+        'キーがない場合は [Google AI Studio](https://aistudio.google.com/apikey) で無料で取得できます。キーはこの閲覧中の'
+        'メモリにだけ置かれ、Google Gemini の呼び出しにだけ使われます。保存されず、タブを閉じると消えます。',
+        '키가 없나요? [Google AI Studio](https://aistudio.google.com/apikey)에서 무료로 받을 수 있습니다. 키는 이번 방문 '
+        '동안 메모리에만 있고 Google Gemini 호출에만 쓰이며, 저장되지 않고 탭을 닫으면 사라집니다.',
+        'Belum punya kunci? Dapatkan gratis di [Google AI Studio](https://aistudio.google.com/apikey). Kunci hanya '
+        'ada di memori kunjungan ini dan hanya dipakai untuk memanggil Google Gemini; tidak pernah disimpan dan hilang '
+        'saat tab ditutup.',
+        'Chưa có khóa? Lấy miễn phí tại [Google AI Studio](https://aistudio.google.com/apikey). Khóa chỉ nằm trong bộ '
+        'nhớ của lần truy cập này và chỉ dùng để gọi Google Gemini; không bao giờ được lưu và sẽ mất khi bạn đóng thẻ.'),
+    'key.malformed': _(
+        '這看起來不像 API 金鑰（含有空白或英數以外的字元），請重新複製貼上。',
+        "This doesn't look like an API key (it has spaces or non-ASCII characters); please copy and paste it again.",
+        'API キーではないようです（空白や英数字以外の文字が含まれています）。もう一度コピーして貼り付けてください。',
+        'API 키가 아닌 것 같습니다(공백이나 영문·숫자가 아닌 문자가 있음). 다시 복사해 붙여 넣으세요.',
+        'Ini tidak tampak seperti kunci API (berisi spasi atau karakter non-ASCII); salin dan tempel lagi.',
+        'Đây có vẻ không phải khóa API (có khoảng trắng hoặc ký tự không phải ASCII); hãy sao chép và dán lại.'),
+    'key.needed': _('先在上面貼上 Gemini API 金鑰，才能開始辨識。', 'Paste a Gemini API key above to start recognition.',
+                    '認識を始めるには、上に Gemini API キーを貼り付けてください。',
+                    '인식을 시작하려면 위에 Gemini API 키를 붙여 넣으세요.',
+                    'Tempel kunci API Gemini di atas untuk mulai mengenali.',
+                    'Hãy dán khóa API Gemini ở trên để bắt đầu nhận diện.'),
     'btn.start': _('開始辨識 →', 'Start recognition →', '認識を開始 →', '인식 시작 →', 'Mulai kenali →', 'Bắt đầu nhận diện →'),
     'start.side_caption': _(
         '會先辨識俯視照，再看側面照量高度（多一次 Gemini，約多 5–30 秒）。',
@@ -273,12 +319,15 @@ MESSAGES = {
                            'ditebak dari bentuk kartu', 'đoán từ hình dạng thẻ'),
     'caption.masked': _('，已在送出前塗掉', ', painted over before sending', '、送信前に塗りつぶし済み', ', 전송 전에 가림',
                         ', ditutup sebelum dikirim', ', đã che trước khi gửi'),
-    'caption.model': _('。模型 {model} · {seconds} 秒 · {tokens_in}/{tokens_out} tokens（免費額度）',
-                       '. Model {model} · {seconds} s · {tokens_in}/{tokens_out} tokens (free quota)',
-                       '。モデル {model} · {seconds} 秒 · {tokens_in}/{tokens_out} トークン（無料枠）',
-                       '. 모델 {model} · {seconds}초 · {tokens_in}/{tokens_out} 토큰(무료 한도)',
-                       '. Model {model} · {seconds} dtk · {tokens_in}/{tokens_out} token (kuota gratis)',
-                       '. Mô hình {model} · {seconds} giây · {tokens_in}/{tokens_out} token (hạn mức miễn phí)'),
+    'caption.model': _('。模型 {model} · {seconds} 秒 · {tokens_in}/{tokens_out} tokens',
+                       '. Model {model} · {seconds} s · {tokens_in}/{tokens_out} tokens',
+                       '。モデル {model} · {seconds} 秒 · {tokens_in}/{tokens_out} トークン',
+                       '. 모델 {model} · {seconds}초 · {tokens_in}/{tokens_out} 토큰',
+                       '. Model {model} · {seconds} dtk · {tokens_in}/{tokens_out} token',
+                       '. Mô hình {model} · {seconds} giây · {tokens_in}/{tokens_out} token'),
+    'caption.key_shared': _('（共用金鑰的免費額度）', ' (shared key, free quota)', '（共有キーの無料枠）', '(공용 키 무료 한도)',
+                            ' (kunci bersama, kuota gratis)', ' (khóa chung, hạn mức miễn phí)'),
+    'caption.key_own': _('（你的金鑰）', ' (your key)', '（あなたのキー）', '(내 키)', ' (kunci Anda)', ' (khóa của bạn)'),
     'warn.card_shape': _(
         '學生證是依外形推測的：請確認綠框框在學生證上，不對的話按「重新標學生證」。',
         'The student card was guessed from its shape: check that the green outline is on the card, and re-mark it '
@@ -619,6 +668,13 @@ MESSAGES = {
         '`.streamlit/secrets.toml`.',
         'Khóa API Gemini không hợp lệ hoặc không có quyền: hãy kiểm tra trong Google AI Studio rồi cập nhật '
         '`.streamlit/secrets.toml`.'),
+    'err.gemini_key_invalid_own': _(
+        '你的 Gemini API 金鑰無效或沒有權限：到 Google AI Studio 確認後，重新貼上。',
+        'Your Gemini API key is invalid or lacks permission: check it in Google AI Studio, then paste it again.',
+        'あなたの Gemini API キーが無効か、権限がありません。Google AI Studio で確認してから、もう一度貼り付けてください。',
+        '내 Gemini API 키가 유효하지 않거나 권한이 없습니다. Google AI Studio에서 확인한 뒤 다시 붙여 넣으세요.',
+        'Kunci API Gemini Anda tidak valid atau tidak punya izin: periksa di Google AI Studio, lalu tempel lagi.',
+        'Khóa API Gemini của bạn không hợp lệ hoặc không có quyền: hãy kiểm tra trong Google AI Studio rồi dán lại.'),
     'err.gemini_model_unavailable': _(
         '這組金鑰目前用不了 Gemini Flash 模型，請到 Google AI Studio 確認。',
         'This key cannot use the Gemini Flash models right now; please check in Google AI Studio.',
@@ -627,12 +683,25 @@ MESSAGES = {
         'Kunci ini belum bisa memakai model Gemini Flash; periksa di Google AI Studio.',
         'Khóa này hiện chưa dùng được mô hình Gemini Flash; hãy kiểm tra trong Google AI Studio.'),
     'err.gemini_quota_exceeded': _(
-        '已超過 Gemini 免費額度（每分鐘或每天的次數上限），請稍後再試。',
-        'The Gemini free quota is used up (requests per minute or per day); please try again later.',
-        'Gemini の無料枠（1分あたり・1日あたりの回数上限）を超えました。しばらくしてから再試行してください。',
-        'Gemini 무료 한도(분당 또는 하루 요청 수)를 넘었습니다. 잠시 후 다시 시도하세요.',
-        'Kuota gratis Gemini (batas permintaan per menit atau per hari) sudah habis; coba lagi nanti.',
-        'Đã vượt hạn mức miễn phí của Gemini (số lượt mỗi phút hoặc mỗi ngày); vui lòng thử lại sau.'),
+        '已超過 Gemini 免費額度（每分鐘或每天的次數上限），請稍後再試，或改用你自己的 Gemini API 金鑰。',
+        'The Gemini free quota is used up (requests per minute or per day); please try again later, or use your own '
+        'Gemini API key.',
+        'Gemini の無料枠（1分あたり・1日あたりの回数上限）を超えました。しばらくしてから再試行するか、自分の Gemini API キーを使ってください。',
+        'Gemini 무료 한도(분당 또는 하루 요청 수)를 넘었습니다. 잠시 후 다시 시도하거나 내 Gemini API 키를 사용하세요.',
+        'Kuota gratis Gemini (batas permintaan per menit atau per hari) sudah habis; coba lagi nanti, atau pakai kunci '
+        'API Gemini Anda sendiri.',
+        'Đã vượt hạn mức miễn phí của Gemini (số lượt mỗi phút hoặc mỗi ngày); vui lòng thử lại sau, hoặc dùng khóa '
+        'API Gemini của riêng bạn.'),
+    'err.gemini_quota_exceeded_own': _(
+        '你的金鑰已達 Gemini 的次數上限（每分鐘或每天），請稍後再試，或到 Google AI Studio 查看用量。',
+        'Your key has reached its Gemini limit (requests per minute or per day); try again later, or check its usage '
+        'in Google AI Studio.',
+        'あなたのキーは Gemini の回数上限（1分あたり・1日あたり）に達しました。しばらくしてから再試行するか、Google AI Studio で使用量を確認してください。',
+        '내 키가 Gemini 요청 한도(분당 또는 하루)에 도달했습니다. 잠시 후 다시 시도하거나 Google AI Studio에서 사용량을 확인하세요.',
+        'Kunci Anda sudah mencapai batas Gemini (permintaan per menit atau per hari); coba lagi nanti, atau periksa '
+        'penggunaannya di Google AI Studio.',
+        'Khóa của bạn đã chạm giới hạn Gemini (số lượt mỗi phút hoặc mỗi ngày); hãy thử lại sau, hoặc xem mức sử dụng '
+        'trong Google AI Studio.'),
     'err.gemini_service_error': _(
         'Gemini 服務暫時出錯，請稍後再試。', 'The Gemini service had a temporary error; please try again later.',
         'Gemini サービスで一時的なエラーが発生しました。しばらくしてから再試行してください。',
