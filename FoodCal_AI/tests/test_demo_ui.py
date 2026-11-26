@@ -412,12 +412,15 @@ class StreamlitOfflineTests(unittest.TestCase):
                         'bounding_box': {'x_min': 240, 'y_min': 120, 'x_max': 480, 'y_max': 360}}]}
 
     def key_app(self, shared=None):
-        """The chosen-photo page with no GEMINI_API_KEY in the environment and, optionally, a shared key."""
+        """The chosen-photo page with no GEMINI_API_KEY in the environment and, optionally, a shared key.
+
+        The secret is always set, '' meaning none: AppTest reads the real .streamlit/secrets.toml when it has no
+        secrets of its own, and a developer's computer may have a key there.
+        """
         app = AppTest.from_file(str(Path(__file__).resolve().parents[1]/'src/ui/app.py'), default_timeout=10)
         app.session_state['mode'] = 'upload'
         app.session_state['photo'] = {'raw': image_bytes(), 'name': 'lunch.png', 'source': 'upload'}
-        if shared:
-            app.secrets['GEMINI_API_KEY'] = shared
+        app.secrets['GEMINI_API_KEY'] = shared or ''
         return app.run()
 
     @staticmethod
@@ -479,7 +482,9 @@ class StreamlitOfflineTests(unittest.TestCase):
 
     def test_upload_step_says_the_key_goes_in_the_next_step(self):
         with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
-            app = AppTest.from_file(str(Path(__file__).resolve().parents[1]/'src/ui/app.py'), default_timeout=10).run()
+            app = AppTest.from_file(str(Path(__file__).resolve().parents[1]/'src/ui/app.py'), default_timeout=10)
+            app.secrets['GEMINI_API_KEY'] = ''  # not the real secrets.toml (see key_app)
+            app.run()
             self.assertTrue(any('下一步貼上你自己的金鑰' in i.value for i in app.info))
             app.secrets['GEMINI_API_KEY'] = 'shared-key'
             app.run()
