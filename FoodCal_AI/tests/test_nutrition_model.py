@@ -189,6 +189,30 @@ class NutritionModelTests(unittest.TestCase):
         self.assertEqual(drumstick['density'], D('0.58'))
         self.assertLess(drumstick['density'], food_nutrition([('chicken', 100)], 'braised')['density'])
 
+    def test_seafood(self):
+        """Fish and shellfish from TFDA: raw / 0.80, or a cooked or processed row as it is."""
+        for key in ('tilapia', 'cod', 'saury', 'hairtail', 'milkfish_belly', 'salmon_sashimi', 'eel', 'oyster', 'crab',
+                    'scallop', 'octopus', 'squid_ball', 'kamaboko', 'dried_shrimp'):
+            self.assertIn(key, INGREDIENTS)
+            self.assertIsNotNone(MICROS[key][4], key)  # sodium is measured for every seafood row
+        self.assertEqual(INGREDIENTS['saury'][1], D('346'))    # TFDA J0416501 277 / 0.80
+        self.assertEqual(INGREDIENTS['tilapia'][1], D('130'))  # TFDA J0412101 boiled fillet, not divided again
+        self.assertTrue(INGREDIENTS['eel'][3])                 # kabayaki already includes its sauce
+        self.assertLess(INGREDIENTS['milkfish'][1], INGREDIENTS['milkfish_belly'][1])
+        self.assertIsNone(MICROS['octopus'][2])                # saturated fat not analysed: left unknown
+        self.assertEqual(MICROS['hairtail'][1], D(0))          # carbohydrate 0 g: sugar counted as 0
+        self.assertEqual(DEFAULT_COMPONENTS['fried-spanish_mackerel_thick_soup'][0][1][0], 'spanish_mackerel')
+
+    def test_whole_fish_and_shellfish_in_the_shell_count_the_meat_only(self):
+        """Like meat on the bone: the shell or the head and bones stay the same while the meat cooks down."""
+        self.assertEqual(BONE_IN_REFUSE['clam'], D('79.4'))  # raw 75.5 % shell, meat x 0.80 when cooked
+        self.assertEqual(whole_density('clam'), D('0.22'))   # 1.05 x (1 - 79.4 %)
+        for key in ('shrimp', 'crab', 'mussel', 'saury', 'pomfret'):
+            self.assertLess(whole_density(key), INGREDIENTS[key][2], key)
+        self.assertEqual(whole_density('tuna_sashimi'), INGREDIENTS['tuna_sashimi'][2])  # nothing to throw away
+        whole_saury = food_nutrition([('saury', 100)], 'pan_fried', whole=True)
+        self.assertLess(whole_saury['density'], food_nutrition([('saury', 100)], 'pan_fried')['density'])
+
     def test_energy_for_grams(self):
         greens = food_nutrition([('leafy_vegetable', 100)], 'stir_fried')
         visible, hidden = energy_for_grams({'low': D(100), 'mid': D(150), 'high': D(200)}, greens)

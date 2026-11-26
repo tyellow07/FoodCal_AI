@@ -61,6 +61,7 @@ python -B -m src.pipeline.diagnostic_demo
 - 2026-11-26 多種方式找學生證（`docs/rough_volume_estimation_v0.md` 第 9 節、`tests/test_card_finder.py`）：643 tests，643 passed，0 skipped。
 - 2026-11-26 點四個角標學生證（`docs/demo_ui_v0.md` 最後一節、`src/ui/corner_picker.py`）：645 tests，645 passed，0 skipped；Chrome 預覽腳本實際點過。
 - 2026-11-26 肉類補齊 33 種（`docs/nutrition_model_v0.md` 第 9 節）：647 tests，647 passed，0 skipped。
+- 2026-11-26 海鮮 27 種（`docs/nutrition_model_v0.md` 第 10 節）：649 tests，649 passed，0 skipped；diagnostic_demo exit 0。
 
 ## 私有測試與缺席資源
 
