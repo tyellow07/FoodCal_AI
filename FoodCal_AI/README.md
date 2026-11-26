@@ -73,7 +73,8 @@ python -m venv .venv
 ```
 
 上傳照片的辨識用 Google Gemini 免費 API（`docs/gemini_vision_v0.md`）：`.venv/bin/python -m pip install -r requirements-vision.txt`，
-在 `.streamlit/secrets.toml` 寫 `GEMINI_API_KEY = "..."`（不會被加進 Git）。使用者勾選同意後照片才會送出，學生證會先塗掉。
+在 `.streamlit/secrets.toml` 寫 `GEMINI_API_KEY = "..."`（不會被加進 Git）。使用者也可以在網頁的「開始辨識」卡片貼上自己的
+Gemini API 金鑰（沒有共用金鑰時必填），金鑰只放在這次瀏覽的記憶體裡。使用者勾選同意後照片才會送出，學生證會先塗掉。
 免費版條款允許 Google 用送出的內容改進產品。
 
 UI 預設使用合成展示，服務位址以啟動輸出為準。Tk GUI 需要 Python 安裝的 Tk/Tcl 與 Pillow；用法見 `docs/ingredient_pilot_ai_import_v0.md`。沒有核准的本機圖片、manifest 與 workspace 時，先執行合成測試，不要建立假的私人資料以通過驗證。
