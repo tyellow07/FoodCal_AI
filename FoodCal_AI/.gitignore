@@ -206,6 +206,11 @@
 !/src/ui/i18n.py
 !/src/ui/messages.py
 !/tests/test_i18n.py
+!/docs/recognition_evaluation_v0.md
+!/src/evaluation/recognition_metrics.py
+!/tools/run_gemini_batch.py
+!/tools/evaluate_recognition.py
+!/tests/test_recognition_eval.py
 
 # Private data stays blocked even under future broad allow rules.
 **/data/

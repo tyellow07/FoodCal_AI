@@ -64,6 +64,7 @@
 ## 5. 待做
 
 - 用同一批校園照片，由人工標出正確菜名，量 Gemini 的菜名正確率、漏掉和多認的數量，並列出至少 3 個失敗案例。
+  2026-11-26 已有工具（`docs/recognition_evaluation_v0.md`：`tools.run_gemini_batch` 批次辨識、`tools.evaluate_recognition` 計分）；還要人工標註和真的照片。
 - 確認期末專案可以使用外部 AI 服務（問助教）。
 
 ## 6. 飲料、水果與整顆食物（2026-11-26）
