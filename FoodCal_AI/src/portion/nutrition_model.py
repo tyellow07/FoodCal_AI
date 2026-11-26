@@ -251,6 +251,34 @@ INGREDIENTS = {
     'jerky': ('肉乾（豬、牛）', D('336'), D('0.9'), True, 'TFDA R5200101 牛肉乾 335、R5200201 片狀豬肉乾 329、R5200301 條狀豬肉乾 345 平均；密度：假設值'),
     'chinese_bacon': ('臘肉', D('525'), D('1.0'), True, 'TFDA R5100901 臘肉（五花肉）525；密度：假設值'),
     'luncheon_meat': ('午餐肉（罐頭）', D('315'), D('1.0'), True, 'TFDA 沒有，用 USDA SR Legacy 7908 豬肉火腿午餐肉罐頭 315；密度：假設值'),
+    # ---- seafood (2026-11-26, docs/nutrition_model_v0.md section 10) ----
+    'tilapia': ('台灣鯛魚片（熟）', D('130'), D('0.85'), False, 'TFDA J0412101 台灣鯛魚片（水煮）130'),
+    'cod': ('鱈魚（圓鱈／扁鱈，熟）', D('302'), D('0.85'), False, 'TFDA J0416301 犬牙南極魚切片（圓鱈，生）282、J0415701 鰈魚切片（扁鱈，生）201 平均 ÷ 約 0.80'),
+    'saury': ('秋刀魚（烤，可吃部分）', D('346'), D('0.85'), False, 'TFDA J0416501 秋刀魚（生，去皮）277 ÷ 約 0.80'),
+    'hairtail': ('白帶魚（熟，可吃部分）', D('128'), D('0.85'), False, 'TFDA J0413801 白帶魚（生，含皮）102 ÷ 約 0.80'),
+    'swordfish': ('旗魚（熟）', D('139'), D('0.85'), False, 'TFDA J0414901 旗魚切片（生）111 ÷ 約 0.80'),
+    'sea_bass': ('鱸魚（熟，可吃部分）', D('139'), D('0.85'), False, 'TFDA J0404501 日本花鱸（生，含皮）111 ÷ 約 0.80'),
+    'pomfret': ('鯧魚（熟，可吃部分）', D('155'), D('0.85'), False, 'TFDA J0415401 銀鯧（生，含皮）124 ÷ 約 0.80'),
+    'milkfish_belly': ('虱目魚肚（熟）', D('428'), D('0.85'), False, 'TFDA J0401201 虱目魚腹肉（生）342 ÷ 約 0.80'),
+    'spanish_mackerel': ('土魠魚（熟）', D('220'), D('0.85'), False, 'TFDA J0414401 康氏馬加鰆切片（生，含皮）176 ÷ 約 0.80'),
+    'salmon_sashimi': ('鮭魚生魚片', D('222'), D('0.85'), False, 'TFDA J0402404 大西洋鮭魚生魚片 222'),
+    'tuna_sashimi': ('鮪魚生魚片', D('100'), D('0.85'), False, 'TFDA J0414601 鮪魚生魚片 100'),
+    'eel': ('蒲燒鰻', D('272'), D('0.9'), True, 'TFDA R7500201 日本鰻鱺魚片（蒲燒）272；密度：假設值'),
+    'whitebait': ('魩仔魚（熟）', D('124'), D('0.6'), False, 'TFDA J04006 魩仔魚平均值（加工，水煮）124；密度：假設值'),
+    'dried_small_fish': ('小魚乾', D('335'), D('0.45'), False, 'TFDA J0800101 小魚干（乾貨）335；密度：假設值'),
+    'shishamo': ('柳葉魚（熟，整尾）', D('181'), D('0.85'), False, 'TFDA J0416601 毛鱗魚（生，含卵，整尾）145 ÷ 約 0.80；密度：假設值'),
+    'oyster': ('蚵仔（熟，去殼）', D('61'), D('0.68'), False, 'TFDA J3100201 真牡蠣（去殼，生）49 ÷ 約 0.80；密度：USDA SR Legacy 15170 罐頭牡蠣瀝乾 1 杯 162 g'),
+    'oyster_omelette': ('蚵仔煎（不含醬）', D('192'), D('0.9'), True, 'TFDA R3000301 蚵仔煎（不含醬料）192；密度：假設值'),
+    'crab': ('蟹肉（熟）', D('153'), D('0.57'), False, 'TFDA J2500101 紅蟳（生，可食部位）122 ÷ 約 0.80；密度：USDA SR Legacy 15140 煮熟藍蟹 1 杯 135 g'),
+    'crab_stick': ('蟹肉棒（魚漿）', D('118'), D('1.0'), False, 'TFDA R6700101 冷凍蟹味棒 118；密度：假設值'),
+    'scallop': ('干貝（熟）', D('71'), D('0.85'), False, 'TFDA J3200101 干貝（冷凍，生）57 ÷ 約 0.80；密度：假設值'),
+    'mussel': ('淡菜（熟，去殼）', D('120'), D('0.63'), False, 'TFDA J3100501 綠殼菜蛤（去殼，生）96 ÷ 約 0.80；密度：USDA SR Legacy 15164 淡菜（生）1 杯 150 g'),
+    'octopus': ('章魚（熟）', D('76'), D('0.85'), False, 'TFDA J3500201 章魚（生）61 ÷ 約 0.80；密度：假設值'),
+    'small_squid': ('小卷／透抽（熟）', D('90'), D('0.85'), False, 'TFDA J3500501 台灣鎖管（生）72 ÷ 約 0.80'),
+    'squid_ball': ('花枝丸', D('166'), D('0.95'), False, 'TFDA R6100101 冷凍花枝丸 166；密度：假設值'),
+    'shrimp_ball': ('蝦丸', D('123'), D('0.95'), False, 'TFDA R6100601 冷凍蝦丸 123；密度：假設值'),
+    'kamaboko': ('魚板', D('128'), D('1.0'), False, 'TFDA R6700301 魚板 128；密度：假設值'),
+    'dried_shrimp': ('蝦米', D('264'), D('0.55'), False, 'TFDA J2300201 蝦米（乾貨）264；密度：假設值'),
 }
 
 # Protein, fat, carbohydrate g per 100 g as eaten (same TFDA rows as above; cooked meat = raw / the same yield).
@@ -469,6 +497,34 @@ MACROS = {
     'jerky': (D('34.5'), D('6'), D('36')),
     'chinese_bacon': (D('18.5'), D('49'), D('2.4')),
     'luncheon_meat': (D('13.4'), D('26.6'), D('4.6')),
+    # ---- seafood (2026-11-26, docs/nutrition_model_v0.md section 10) ----
+    'tilapia': (D('23.4'), D('3.3'), D('1.3')),
+    'cod': (D('15.8'), D('26'), D('0')),
+    'saury': (D('23.5'), D('27.3'), D('5.1')),
+    'hairtail': (D('24.5'), D('2.5'), D('0')),
+    'swordfish': (D('32.5'), D('0'), D('1')),
+    'sea_bass': (D('24'), D('4'), D('1')),
+    'pomfret': (D('21'), D('7.3'), D('1.4')),
+    'milkfish_belly': (D('21.8'), D('37'), D('0')),
+    'spanish_mackerel': (D('24.1'), D('13'), D('1.9')),
+    'salmon_sashimi': (D('19.6'), D('15.3'), D('0')),
+    'tuna_sashimi': (D('23.3'), D('0.1'), D('0')),
+    'eel': (D('25'), D('18.7'), D('0.9')),
+    'whitebait': (D('26.2'), D('1.3'), D('1')),
+    'dried_small_fish': (D('69.2'), D('4.4'), D('0')),
+    'shishamo': (D('17.6'), D('11.8'), D('0.5')),
+    'oyster': (D('11.3'), D('1.5'), D('2.3')),
+    'oyster_omelette': (D('4.9'), D('10.4'), D('19.7')),
+    'crab': (D('26.1'), D('4.5'), D('8.1')),
+    'crab_stick': (D('9.3'), D('0.7'), D('18.6')),
+    'scallop': (D('15.9'), D('0.5'), D('2.1')),
+    'mussel': (D('22.3'), D('2.8'), D('3.3')),
+    'octopus': (D('16.3'), D('0.8'), D('1.1')),
+    'small_squid': (D('20'), D('0.5'), D('2')),
+    'squid_ball': (D('12.7'), D('7'), D('13')),
+    'shrimp_ball': (D('10.8'), D('2.3'), D('14.7')),
+    'kamaboko': (D('10'), D('2'), D('17.6')),
+    'dried_shrimp': (D('57.1'), D('2.2'), D('0')),
 }
 
 # Other nutrients: (key, name, unit, display step), in the order of the MICROS tuples.
@@ -695,6 +751,34 @@ MICROS = {
     'jerky': (None, D('23.7'), D('2.43'), D('110.7'), D('1273'), D('683'), D('9.3'), D('2.6')),
     'chinese_bacon': (D('0'), D('0'), D('18.8'), D('76'), D('1539'), D('221'), D('5'), D('0.9')),
     'luncheon_meat': (D('0'), D('0'), D('9.99'), D('71'), D('1411'), D('409'), D('0'), D('0.6')),
+    # ---- seafood (2026-11-26, docs/nutrition_model_v0.md section 10) ----
+    'tilapia': (D('0'), None, D('1.1'), D('59'), D('34'), D('271'), D('10'), D('0.2')),
+    'cod': (D('0'), D('0'), D('6.06'), D('75.6'), D('99.4'), D('334.4'), D('13.8'), D('0.3')),
+    'saury': (D('0'), D('0.13'), D('7'), D('53.8'), D('68.8'), D('295'), D('13.8'), D('1.1')),
+    'hairtail': (D('0'), D('0'), D('1.13'), D('86.3'), D('67.5'), D('363.8'), D('6.3'), D('0.3')),
+    'swordfish': (D('0'), None, D('0'), D('45'), D('45'), D('416.3'), D('10'), D('1.4')),
+    'sea_bass': (D('0'), D('0'), D('1.38'), D('83.8'), D('68.8'), D('495'), D('3.8'), D('0.4')),
+    'pomfret': (D('0'), D('0'), D('3.5'), D('82.5'), D('393.8'), D('228.8'), D('10'), D('0.4')),
+    'milkfish_belly': (D('0'), D('0.88'), D('11.25'), D('133.8'), D('58.8'), D('351.3'), D('7.5'), D('1.4')),
+    'spanish_mackerel': (D('0'), None, D('6.38'), D('100'), D('67.5'), D('398.8'), D('5'), D('0.4')),
+    'salmon_sashimi': (D('0'), D('0'), D('4.1'), D('57'), D('36'), D('393'), D('6'), D('0')),
+    'tuna_sashimi': (D('0'), D('0'), D('0'), D('32'), D('27'), D('511'), D('4'), D('0.9')),
+    'eel': (None, D('2.3'), D('5.8'), D('201'), D('421'), D('242'), D('233'), D('1.1')),
+    'whitebait': (D('0'), None, D('0.3'), D('291'), D('1841'), D('291'), D('358'), D('0.5')),
+    'dried_small_fish': (D('0'), D('0'), D('2.1'), D('669'), D('1753'), D('738'), D('2213'), D('6.8')),
+    'shishamo': (D('0'), D('0.13'), D('2.38'), D('248.8'), D('387.5'), D('221.3'), D('396.3'), D('1.8')),
+    'oyster': (D('0'), D('0.5'), D('0.63'), D('58.8'), D('242.5'), D('168.8'), D('25'), D('6.8')),
+    'oyster_omelette': (D('0.5'), D('0.3'), D('4.8'), D('100'), D('479'), D('91'), D('31'), D('2.9')),
+    'crab': (D('0'), None, D('2.25'), D('370'), D('386.3'), D('318.8'), D('98.8'), D('3.3')),
+    'crab_stick': (None, D('3.1'), D('0.2'), None, D('694'), D('69'), D('90'), D('0.5')),
+    'scallop': (D('0'), D('0'), D('0.13'), D('47.5'), D('1186.3'), D('63.8'), D('7.5'), D('0.4')),
+    'mussel': (D('0'), None, D('0.88'), D('87.5'), D('376.3'), D('178.8'), D('50'), D('5.3')),
+    'octopus': (D('0'), None, None, D('228.8'), D('287.5'), D('68.8'), D('17.5'), D('7.6')),
+    'small_squid': (D('0'), None, D('0.25'), D('395'), D('311.3'), D('193.8'), D('13.8'), D('0.9')),
+    'squid_ball': (D('1.9'), D('2.6'), D('2.7'), D('113'), D('456'), D('131'), D('11'), D('0.2')),
+    'shrimp_ball': (None, None, D('0.9'), D('35'), D('780'), D('47'), D('406'), D('1.2')),
+    'kamaboko': (D('1.3'), D('2.9'), D('0.4'), D('17'), D('863'), D('29'), D('45'), D('0')),
+    'dried_shrimp': (D('0'), D('0'), D('0.8'), D('645'), D('3186'), D('708'), D('1075'), D('4.9')),
 }
 PLANT_NO_CHOLESTEROL = '植物性，膽固醇 0（同類較新樣品如 R4700902 傳統豆腐、E3000104 甘藍記 0）'
 ANIMAL_NO_FIBER = '動物性，膳食纖維 0（同類較新樣品如 I0108302 牛腱、K01001 雞蛋平均值記 0）'
@@ -915,6 +999,34 @@ MICRO_NOTES = {
     'jerky': '三筆平均；膳食纖維沒有資料（含糖、果醬醃料）',
     'chinese_bacon': ANIMAL_NO_FIBER,
     'luncheon_meat': 'USDA 7908 各項都有資料',
+    # ---- seafood (2026-11-26, docs/nutrition_model_v0.md section 10) ----
+    'tilapia': '糖沒有資料；' + ANIMAL_NO_FIBER,
+    'cod': '兩筆平均 ÷ 0.80；' + ANIMAL_NO_FIBER,
+    'saury': '÷ 0.80；' + ANIMAL_NO_FIBER,
+    'hairtail': '÷ 0.80；碳水 0 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'swordfish': '÷ 0.80；糖沒有資料；' + ANIMAL_NO_FIBER,
+    'sea_bass': '÷ 0.80；' + ANIMAL_NO_FIBER,
+    'pomfret': '÷ 0.80；' + ANIMAL_NO_FIBER,
+    'milkfish_belly': '÷ 0.80；' + ANIMAL_NO_FIBER,
+    'spanish_mackerel': '÷ 0.80；糖沒有資料；' + ANIMAL_NO_FIBER,
+    'salmon_sashimi': ANIMAL_NO_FIBER,
+    'tuna_sashimi': '碳水 0 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'eel': '膳食纖維沒有資料（含蒲燒醬）',
+    'whitebait': '糖沒有資料；' + ANIMAL_NO_FIBER,
+    'dried_small_fish': '碳水 0 g，糖以 0 計；' + ANIMAL_NO_FIBER,
+    'shishamo': '÷ 0.80；J0416601 各項都有資料',
+    'oyster': '÷ 0.80；' + ANIMAL_NO_FIBER,
+    'oyster_omelette': 'R3000301 各項都有資料',
+    'crab': '÷ 0.80；糖沒有資料；' + ANIMAL_NO_FIBER,
+    'crab_stick': '膳食纖維沒有資料（含澱粉）；膽固醇沒有資料',
+    'scallop': '÷ 0.80；' + ANIMAL_NO_FIBER,
+    'mussel': '÷ 0.80；糖沒有資料；' + ANIMAL_NO_FIBER,
+    'octopus': '÷ 0.80；糖沒有資料；飽和脂肪沒有資料；' + ANIMAL_NO_FIBER,
+    'small_squid': '÷ 0.80；糖沒有資料；' + ANIMAL_NO_FIBER,
+    'squid_ball': 'R6100101 各項都有資料',
+    'shrimp_ball': '糖沒有資料；膳食纖維沒有資料（含澱粉）',
+    'kamaboko': 'R6700301 各項都有資料',
+    'dried_shrimp': ANIMAL_NO_FIBER,
 }
 
 # key: (name, oil g per 100 g (low, high), sugar g per 100 g (low, high), source note)
@@ -985,11 +1097,12 @@ WHOLE_REFUSE = {  # percent, TFDA 廢棄率 of the row each ingredient uses
     'corn': D('38.7'), 'potato': D('11.8'), 'sweet_potato': D('15.5'), 'tomato': D('2.0'),
 }
 
-# Meat on the bone photographed as one piece (shape 'whole': a drumstick, chicken wings, spare ribs, pork knuckle) is
-# weighed from its outline bone and all. Edible grams per mL = BONE_IN_DENSITY (a piece of meat with its bone; an
-# assumption, meat is about 1.05 g/mL) x (1 - the bone share of the cooked piece). TFDA's 廢棄率 is the bone share of
-# the raw piece, r; the meat loses water in cooking (yield y, as in the ingredient row) and the bone does not, so the
-# cooked share is r / (r + y (1 - r)).
+# Meat on the bone photographed as one piece (shape 'whole': a drumstick, chicken wings, spare ribs, pork knuckle), a
+# whole fish, or shrimp, crab and shellfish still in the shell is weighed from its outline bone (or shell) and all.
+# Edible grams per mL = BONE_IN_DENSITY (a piece of meat with its bone; an assumption, meat is about 1.05 g/mL) x
+# (1 - the bone share of the cooked piece). TFDA's 廢棄率 is the bone share of the raw piece, r; the meat loses water in
+# cooking (yield y, as in the ingredient row) and the bone does not, so the cooked share is r / (r + y (1 - r)).
+# Shells are denser than meat, so shellfish in the shell likely come out low.
 BONE_IN_DENSITY = D('1.05')
 BONE_IN_RAW = {  # key: (TFDA 廢棄率 %, cooking yield of the ingredient row; 1 when the row is cooked or not divided)
     'chicken': (D('37.9'), D('0.75')),        # I0404302 drumstick
@@ -999,6 +1112,15 @@ BONE_IN_RAW = {  # key: (TFDA 廢棄率 %, cooking yield of the ingredient row; 
     'duck_wing': (D('57.2'), D('0.75')),      # I0520601
     'pork_ribs': (D('40.9'), D('0.75')),      # I0304301 spare ribs
     'pork_knuckle': (D('37.0'), D('1')),      # R5101101, already stewed
+    # seafood (2026-11-26, section 10): a whole fish, and shellfish still in the shell
+    'saury': (D('43.9'), D('0.80')),          # J0416501 head, bones and guts
+    'hairtail': (D('40.0'), D('0.80')),       # J0413801, also steaks cut across the bone
+    'sea_bass': (D('50.4'), D('0.80')),       # J0404501
+    'pomfret': (D('45.2'), D('0.80')),        # J0415401
+    'shrimp': (D('41.5'), D('0.80')),         # J21009 shell, head and tail
+    'crab': (D('66.0'), D('0.80')),           # J2500101 shell
+    'clam': (D('75.5'), D('0.80')),           # J3101001 shell
+    'mussel': (D('50.0'), D('0.80')),         # J3100501 shell
 }
 BONE_IN_REFUSE = {key: (100 * r / (r + y * (100 - r))).quantize(D('0.1')) for key, (r, y) in BONE_IN_RAW.items()}
 
@@ -1018,7 +1140,7 @@ DEFAULT_COMPONENTS = {
     'cold_noodle': ([('noodles', 85), ('leafy_vegetable', 15)], 'sweet_sauce'),
     'deep-fried_chicken_cutlets': ([('chicken_cutlet', 85), ('batter_coating', 15)], 'deep_fried'),
     'egg_pancake_roll': ([('pancake_skin', 60), ('egg', 40)], 'pan_fried'),
-    'fried-spanish_mackerel_thick_soup': ([('thick_soup', 75), ('fish', 25)], 'deep_fried'),
+    'fried-spanish_mackerel_thick_soup': ([('thick_soup', 75), ('spanish_mackerel', 25)], 'deep_fried'),
     'fried_instant_noodles': ([('instant_noodles', 85), ('leafy_vegetable', 15)], 'stir_fried'),
     'fried_rice_noodles': ([('rice_noodles', 85), ('leafy_vegetable', 15)], 'stir_fried'),
     'loofah': ([('gourd_vegetable', 100)], 'stir_fried'),

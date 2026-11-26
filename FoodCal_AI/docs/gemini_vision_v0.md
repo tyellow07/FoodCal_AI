@@ -87,3 +87,9 @@
 - 食材清單多了 33 種肉（`docs/nutrition_model_v0.md` 第 9 節），提示詞自動列出。
 - 加一句：看得出部位或內臟就選那一項（例如 pork_jowl、beef_brisket、chicken_gizzard），否則用一般的 chicken、pork、beef、duck。
 - `whole` 形狀也包括帶骨的肉（雞腿、雞翅、排骨、豬腳），克數只算肉。
+
+## 8. 海鮮（2026-11-26）
+
+- 食材清單多了 27 種海鮮（`docs/nutrition_model_v0.md` 第 10 節），提示詞自動列出。
+- 加一句：看得出是哪種魚或海鮮就選那一項（例如 tilapia、saury、salmon_sashimi、oyster、crab_stick），否則用一般的 fish、shrimp、squid。
+- `whole` 形狀也包括整尾魚，和還帶殼的蝦、蟹、蛤蠣、淡菜，克數只算可吃的部分。
